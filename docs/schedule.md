@@ -43,7 +43,7 @@ gantt
 ## Marcos de decisão do dono
 | Data | Decisão | Base |
 |---|---|---|
-| até 12/11 | **D13**: Blazor WASM ou React no painel | #5 |
+| 04/11 | **D13**: Blazor WASM no painel (decidido) | #5 |
 | até 14/11 | **D16**: usar o `agile@canary` pelo SDK? | spike #10 |
 | 15/11 | Ajustar os tetos da noite | relatórios da semana 1 |
 | 06/12 | **Go/no-go** do Friday completo | relatório de métricas (S4) |
