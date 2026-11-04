@@ -117,7 +117,7 @@ describe("validateContract", () => {
     );
     const q: QaReport = qa as QaReport;
     const rv: ReviewVerdict["verdict"] = "approve";
-    const viol: Violation = { code: "x", path: "", message: "" };
+    const viol: Violation = { code: "json_invalid", path: "", message: "" };
     const res: ValidationResult<QaReport> = { ok: false, violations: [viol] };
     expect([q.verdict, rv, res.ok]).toBeDefined();
   });
