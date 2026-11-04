@@ -32,6 +32,9 @@ describe("contracts layer", () => {
       "worker_threads",
       "fastify",
       "@scope/pkg",
+      "fs/promises",
+      "@x/pkg",
+      "a/b",
     ]) {
       expect(await ruleIds(c, mod), mod).toContain("no-restricted-imports");
     }
