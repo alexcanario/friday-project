@@ -32,14 +32,14 @@ describe("rounds", () => {
   });
 
   it("resets on resume and cancels from held", () => {
-    const base = { verifyRound: 3, qaRound: 2, reviewIter: 1, phaseIndex: 1 };
+    const base = { verifyRound: 3, qaRound: 2, reviewIter: 1 };
     const cases: [HeldReason, Counter][] = [
       ["VerifyRoundsExhausted", "verifyRound"],
       ["QaRoundsExhausted", "qaRound"],
       ["ReviewItersExhausted", "reviewIter"],
     ];
     for (const [reason, counter] of cases) {
-      const s = snap("Held", { ...base, heldReason: reason });
+      const s = snap("Held", { ...base, heldReason: reason, phaseIndex: 1 });
       const r = transition(s, INPUTS.Resumed);
       if (!r.ok) throw new Error(r.error);
       expect(r.value.snapshot).toMatchObject({

@@ -57,7 +57,10 @@ describe("guards", () => {
         if (!r.ok) throw new Error(`${from} ${reason}`);
         expect(r.value.snapshot).toMatchObject({ state: "Held", heldReason: reason });
       }
-      const bad = transition(snap(from), { type: "RunHeld", reason: "MergeBlocked" });
+      const bad = transition(snap(from), {
+        type: "RunHeld",
+        reason: "MergeBlocked",
+      } as unknown as WorkflowInput);
       expect(bad).toEqual({ ok: false, error: "InvalidTransition" });
     }
   });

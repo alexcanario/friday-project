@@ -1,5 +1,5 @@
 import { DEFAULT_PHASES } from "../src/index.ts";
-import type { HeldReason, IssueState, WorkflowInput, WorkflowSnapshot } from "../src/index.ts";
+import type { RunHeldReason, IssueState, WorkflowInput, WorkflowSnapshot } from "../src/index.ts";
 
 export function snap(
   state: IssueState,
@@ -55,7 +55,7 @@ export const INPUTS = {
 
 export const INPUT_TYPES = Object.keys(INPUTS) as WorkflowInput["type"][];
 
-export const RUN_HELD_REASONS: readonly HeldReason[] = [
+export const RUN_HELD_REASONS: readonly RunHeldReason[] = [
   "RunMisconfigured",
   "BudgetExceeded",
   "TurnsExceeded",
