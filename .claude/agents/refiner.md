@@ -43,6 +43,7 @@ Criteria:
 - Each criterion must pass in CI, with no API key, no secret and no owner action. The issue closes when its PR merges. Work that needs a key or an owner run goes to a `split` entry for an `owner-action` issue; never leave it as a pending criterion.
 - Cover both directions: a valid case that is accepted and an invalid case that is rejected. A criterion that an empty implementation passes is not a criterion.
 - Check that criteria do not conflict: a fixture that must fail one command cannot live where another command must pass.
+- Tests stay in CI after the merge. Assert only what must stay true: no exact sets, empty files or file-wide bans that a later issue must change, or that the issue's own owner follow-up must change.
 
 Scope:
 - Name every dependency the implementation needs, with its exact version when the planning sources fix one. The implementer stops at any dependency the issue does not name.
