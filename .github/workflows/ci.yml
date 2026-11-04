@@ -18,25 +18,12 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
-      - name: Detect workspace
-        id: ws
-        run: |
-          if [ -f package.json ]; then echo "node=true" >> "$GITHUB_OUTPUT"; else echo "node=false" >> "$GITHUB_OUTPUT"; fi
-      - name: No workspace yet (docs only)
-        if: steps.ws.outputs.node == 'false'
-        run: echo "No package.json yet; the monorepo issue will replace this job."
       - uses: pnpm/action-setup@v4
-        if: steps.ws.outputs.node == 'true'
       - uses: actions/setup-node@v4
-        if: steps.ws.outputs.node == 'true'
         with:
           node-version: 26
           cache: pnpm
-      - if: steps.ws.outputs.node == 'true'
-        run: pnpm install --frozen-lockfile
-      - if: steps.ws.outputs.node == 'true'
-        run: pnpm -r --if-present typecheck
-      - if: steps.ws.outputs.node == 'true'
-        run: pnpm -r --if-present lint
-      - if: steps.ws.outputs.node == 'true'
-        run: pnpm -r --if-present test
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm -r typecheck
+      - run: pnpm -r lint
+      - run: pnpm -r test
