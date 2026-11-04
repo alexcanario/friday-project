@@ -22,6 +22,10 @@ Fonte única das decisões em vigor. O histórico e o raciocínio estão em `pla
 | D20 | Tempo do dono: ~1 h/dia para relatório e gates | fechada | 2026-11-04 |
 | D21 | Idioma híbrido: código, variáveis, nomes de arquivo, branches e testes em inglês; commits, PRs, issues, comentários, relatórios, docs, textos de tela e conversas em pt-BR | fechada | 2026-11-04 |
 | D22 | Um motor (Friday) e pacotes de método (`agile`, `lens`) como dado; estados do motor fixos, fases plugáveis dentro do `in_progress`; a execução dos plugins é aposentada depois de 4–8 semanas de uso real do Friday ([`method-packs.md`](method-packs.md)) | proposta; confirmar no go/no-go | 2026-11-04 |
+| D23 | Contratos Zod em `packages/contracts`; `domain` sem dependências externas; `application` importa `domain` e `contracts` | fechada | 2026-11-04 |
+| D24 | A #12 entrega `qaReport`, `reviewVerdict` e o validador; os outros contratos e o JSON Schema vão para a #29, a carga do `factory.yaml` para a #30, o evento de transição para a #13 e o resultado de run para a #16 | fechada | 2026-11-04 |
+| D25 | A #8 fica só em Ubuntu; a #14 acrescenta um job separado em Windows para o `better-sqlite3`, sem mudar o check obrigatório `check` | fechada | 2026-11-04 |
+| D26 | A rodada real do spike é a `owner-action` #31, com teto de 10 turnos e 0,5 USD na rodada normal; a #9 entrega o código testado sem chave | fechada | 2026-11-04 |
 
 ## Siglas
 - **API:** Application Programming Interface.

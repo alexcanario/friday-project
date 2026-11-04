@@ -13,7 +13,7 @@ Owner: Alex (pt-BR). Current decisions: `docs/decisions.md`. Process: `docs/proc
 ## Stack (decided)
 - Node 26, TypeScript strict, pnpm workspaces, Vitest, ESLint + Prettier, Zod 4, Fastify, better-sqlite3 + Drizzle, `@anthropic-ai/claude-agent-sdk` pinned to an exact version.
 - Panel: Blazor WASM consuming the Fastify API through an OpenAPI-generated C# client (D13, pending owner confirmation in issue "Decidir D13").
-- Layers (`docs/planning/08-implementation-roadmap.md` §3.4): `domain` (pure, no I/O) → `application` (ports) → `infrastructure` (adapters) → `apps` (daemon, cli, api). Domain never imports infrastructure.
+- Layers (`docs/planning/08-implementation-roadmap.md` §3.4): `domain` (pure, no I/O, no external dependencies) → `application` (ports) → `infrastructure` (adapters) → `apps` (daemon, cli, api). Domain never imports infrastructure. `packages/contracts` holds the Zod schemas (D23) and is imported by `application`, never by `domain`.
 - Naming (D15): `friday` everywhere — package scope `@friday/*`, CLI `friday`, MCP tools `mcp__friday__*`, config `.friday/`. Never `fhp` in new code.
 
 ## Status lives in labels
