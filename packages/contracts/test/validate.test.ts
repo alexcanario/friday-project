@@ -110,10 +110,15 @@ describe("validateContract", () => {
   it("package index exports the public API", () => {
     expect(Object.keys(api).sort()).toEqual(
       [
+        "contractJsonSchema",
+        "criteriaSchema",
+        "diagnosisSchema",
         "parseAndValidateContract",
         "qaReportSchema",
         "reviewVerdictSchema",
+        "triageSchema",
         "validateContract",
+        "workReportSchema",
       ].sort(),
     );
     const q: QaReport = qa as QaReport;
