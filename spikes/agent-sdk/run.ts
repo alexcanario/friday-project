@@ -1,4 +1,5 @@
 import { parseArgs } from "node:util";
+import { fileURLToPath } from "node:url";
 import { query } from "@anthropic-ai/claude-agent-sdk";
 import { buildEnv } from "./src/env.ts";
 import { resolvePreset } from "./src/presets.ts";
@@ -31,7 +32,7 @@ if (!env.ANTHROPIC_API_KEY) fail("ANTHROPIC_API_KEY ausente");
 const { worktree } = await runSpike({
   repo: values.repo,
   mode,
-  outDir: new URL("./spike", import.meta.url).pathname,
+  outDir: fileURLToPath(new URL("./spike", import.meta.url)),
   env,
   query: query as any,
 });
