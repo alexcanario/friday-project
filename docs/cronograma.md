@@ -10,10 +10,10 @@ O MVP de 4 semanas (de `planejamento/13-segunda-opiniao.md` §8), com o painel e
 ## Milestones
 | Milestone | Período | Entrega | Issues |
 |---|---|---|---|
-| **S1 · Fundação e spikes** | 05/11 → 15/11 | monorepo + CI, contratos Zod, máquina de estados, 3 spikes, sandbox, D13 decidido | 8 |
-| **S2 · Workflow e runner** | 16/11 → 22/11 | persistência, worktrees, runtime do agente, política de permissões, GitHub, orquestrador, verify, Judge, ledger e tetos | 9 |
-| **S3 · Painel** | 23/11 → 29/11 | API Fastify + OpenAPI, painel Blazor (lista e detalhe), aprovar/rejeitar preso ao SHA + merge, SSE | 4 |
-| **S4 · Medição e decisão** | 30/11 → 06/12 | 15–20 issues reais no sandbox; métricas; go/no-go | 1 |
+| **S1 · Fundação e spikes** | 05/11 → 15/11 | monorepo + CI, contratos Zod, máquina de estados, 3 spikes, linha de base, D13 decidido | #2–#13 (6 do dono) |
+| **S2 · Workflow e runner** | 16/11 → 22/11 | persistência, worktrees, runtime do agente, política de permissões, GitHub, orquestrador, verify, Judge, ledger e tetos | #14–#21 |
+| **S3 · Painel** | 23/11 → 29/11 | API Fastify + OpenAPI, painel Blazor (lista e detalhe), aprovar/rejeitar preso ao SHA + merge, SSE | #22–#25 |
+| **S4 · Medição e decisão** | 30/11 → 06/12 | 15–20 issues reais no sandbox; métricas; go/no-go | #26–#27 |
 
 ## Linha do tempo
 ```mermaid
@@ -43,8 +43,8 @@ gantt
 ## Marcos de decisão do dono
 | Data | Decisão | Base |
 |---|---|---|
-| até 12/11 | **D13**: Blazor WASM ou React no painel | issue "Decidir D13" |
-| até 14/11 | **D16**: usar o `agile@canary` pelo SDK? | resultado do spike |
+| até 12/11 | **D13**: Blazor WASM ou React no painel | #5 |
+| até 14/11 | **D16**: usar o `agile@canary` pelo SDK? | spike #10 |
 | 15/11 | Ajustar os tetos da noite | relatórios da semana 1 |
 | 06/12 | **Go/no-go** do Friday completo | relatório de métricas (S4) |
 

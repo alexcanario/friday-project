@@ -18,7 +18,7 @@ Owner: Alex (pt-BR). Current decisions: `docs/decisoes.md`. Process: `docs/proce
 ## Status lives in labels
 - Exactly one `status:*` label per open issue: `backlog` → `ready` → `in-progress` → `review` → (closed) or `needs-human` / `blocked`. A GitHub Action mirrors it to the Project field "Estado". Never touch the Project directly (GraphQL is not available to cloud sessions).
 - Gate labels stop the merge for the owner: `gate:business`, `gate:security`, `gate:budget`, `gate:screen`. Everything else that the AI validated (CI green + QA + Judge approve) merges without a human.
-- `owner-action` issues are done by the owner only; agents skip them.
+- `owner-action` issues are done by the owner only; agents skip them. Issue #1 (`type:report`) has no `status:*` and only receives night reports.
 
 ## Rules
 - Tests come first: the `## Criterion → test` table of the issue is written at refinement and its tests are committed before the implementation.
