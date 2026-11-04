@@ -6,6 +6,7 @@ export type ViolationCode =
   | "pass_without_criteria"
   | "pass_with_failed_criterion"
   | "invalid_head_sha"
+  | "invalid_criteria_index"
   | "findings_missing"
   | "evidence_blank"
   | "invalid_rules"
@@ -31,6 +32,8 @@ const templates: Record<ViolationCode, string> = {
   pass_with_failed_criterion:
     "Relatório de QA com veredito pass não aceita critério reprovado (<path>).",
   invalid_head_sha: "headSha deve ter 40 caracteres hexadecimais minúsculos (headSha).",
+  invalid_criteria_index:
+    "Os índices de critérios devem ser 1, 2, 3… na ordem da lista (criteria).",
   findings_missing: "Veredito changes_requested ou reject exige ao menos um finding (findings).",
   evidence_blank: "Regra do veredito exige evidência (<path>).",
   invalid_rules: "rules deve ter exatamente 5 entradas, uma para cada regra de 1 a 5 (rules).",

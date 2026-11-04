@@ -1,0 +1,55 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "issue_number": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 9007199254740991
+    },
+    "root_cause": {
+      "type": "string",
+      "minLength": 20
+    },
+    "evidence": {
+      "minItems": 1,
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "proposed_change": {
+      "type": "string"
+    },
+    "risk": {
+      "type": "string",
+      "enum": [
+        "low",
+        "medium",
+        "high"
+      ]
+    },
+    "affected_components": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "load_relevant": {
+      "type": "boolean"
+    },
+    "jev_score": {
+      "type": "number"
+    }
+  },
+  "required": [
+    "issue_number",
+    "root_cause",
+    "evidence",
+    "proposed_change",
+    "risk",
+    "affected_components",
+    "load_relevant"
+  ],
+  "additionalProperties": false
+}

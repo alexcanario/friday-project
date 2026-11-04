@@ -1,5 +1,9 @@
 import { z } from "zod";
 import { qaReportSchema, type QaReport } from "./qa-report.ts";
+import { criteriaSchema, type Criteria } from "./criteria.ts";
+import { diagnosisSchema, type Diagnosis } from "./diagnosis.ts";
+import { triageSchema, type Triage } from "./triage.ts";
+import { workReportSchema, type WorkReport } from "./work-report.ts";
 import { reviewVerdictSchema, type ReviewVerdict } from "./review-verdict.ts";
 import {
   violation,
@@ -11,14 +15,23 @@ import {
 interface ContractMap {
   qaReport: QaReport;
   reviewVerdict: ReviewVerdict;
+  triage: Triage;
+  criteria: Criteria;
+  workReport: WorkReport;
+  diagnosis: Diagnosis;
 }
 
 export type ContractKind = keyof ContractMap;
 
-const schemas: Record<ContractKind, z.ZodType> = {
+export const contractSchemas: Record<ContractKind, z.ZodType> = {
   qaReport: qaReportSchema,
   reviewVerdict: reviewVerdictSchema,
+  triage: triageSchema,
+  criteria: criteriaSchema,
+  workReport: workReportSchema,
+  diagnosis: diagnosisSchema,
 };
+const schemas = contractSchemas;
 
 const join = (path: PropertyKey[]) => path.map(String).join(".");
 
