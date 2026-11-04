@@ -1,4 +1,5 @@
-import { describe, expect, it } from "vitest";
+import { z } from "zod";
+import { afterEach, describe, expect, it } from "vitest";
 import * as api from "../src/index.ts";
 import {
   parseAndValidateContract,
@@ -120,5 +121,49 @@ describe("validateContract", () => {
     const viol: Violation = { code: "json_invalid", path: "", message: "" };
     const res: ValidationResult<QaReport> = { ok: false, violations: [viol] };
     expect([q.verdict, rv, res.ok]).toBeDefined();
+  });
+});
+
+describe("validateContract robustness", () => {
+  afterEach(() => {
+    z.config(z.locales.en());
+  });
+
+  it("keeps required_field when Zod uses another locale or a custom error map", () => {
+    z.config({ localeError: () => "mensagem sem o texto padrao" });
+    const result = validateContract("qaReport", { verdict: "pass", notChecked: [] });
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.violations.map((x) => [x.code, x.path])).toContainEqual([
+        "required_field",
+        "criteria",
+      ]);
+    }
+  });
+
+  it("reports invalid_value for a present value of the wrong type", () => {
+    z.config({ localeError: () => "mensagem sem o texto padrao" });
+    const result = validateContract("qaReport", { verdict: "pass", criteria: null, notChecked: [] });
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.violations.map((x) => [x.code, x.path])).toContainEqual([
+        "invalid_value",
+        "criteria",
+      ]);
+    }
+  });
+
+  it("does not let replacement patterns in the key deform the message", () => {
+    const result = validateContract("qaReport", { ...qa, "$&": 1 });
+    expect(result).toEqual({
+      ok: false,
+      violations: [
+        {
+          code: "unknown_field",
+          path: "$&",
+          message: "Campo não previsto no contrato ($&).",
+        },
+      ],
+    });
   });
 });

@@ -23,6 +23,9 @@ describe("contracts layer", () => {
       expect(await ruleIds(c, mod), mod).toContain("no-restricted-imports");
     }
     expect(await ruleIds(c, "zod")).not.toContain("no-restricted-imports");
+    for (const mod of ["node:fs", "fs", "node:child_process", "node:net"]) {
+      expect(await ruleIds(c, mod), mod).toContain("no-restricted-imports");
+    }
     expect(await ruleIds(c, "./y.ts")).not.toContain("no-restricted-imports");
     expect(await ruleIds("packages/application/src/x.ts", "@friday/contracts")).not.toContain(
       "no-restricted-imports",
