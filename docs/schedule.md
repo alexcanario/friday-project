@@ -10,8 +10,8 @@ O MVP de 4 semanas (de `planning/13-second-opinion.md` §8), com o painel e o wo
 ## Milestones
 | Milestone | Período | Entrega | Issues |
 |---|---|---|---|
-| **S1 · Fundação e spikes** | 05/11 → 15/11 | monorepo + CI, contratos Zod, máquina de estados, 3 spikes, linha de base, D13 decidido | #2–#13 (6 do dono) |
-| **S2 · Workflow e runner** | 16/11 → 22/11 | persistência, worktrees, runtime do agente, política de permissões, GitHub, orquestrador, verify, Judge, ledger e tetos | #14–#21 |
+| **S1 · Fundação e spikes** | 05/11 → 15/11 | monorepo + CI, contratos Zod, máquina de estados, 3 spikes, linha de base, D13 decidido | #2–#13, #29 e #31 (7 do dono) |
+| **S2 · Workflow e runner** | 16/11 → 22/11 | persistência, worktrees, runtime do agente, política de permissões, GitHub, orquestrador, verify, Judge, ledger e tetos | #14–#21 e #30 |
 | **S3 · Painel** | 23/11 → 29/11 | API Fastify + OpenAPI, painel Blazor (lista e detalhe), aprovar/rejeitar preso ao SHA + merge, SSE | #22–#25 |
 | **S4 · Medição e decisão** | 30/11 → 06/12 | 15–20 issues reais no sandbox; métricas; go/no-go | #26–#27 |
 
