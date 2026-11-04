@@ -62,6 +62,28 @@ export default tseslint.config(
     ),
   },
   {
+    files: ["packages/contracts/src/**/*.ts"],
+    rules: restrict(
+      [
+        "@friday/domain",
+        "@friday/application",
+        "@friday/infrastructure",
+        "@friday/daemon",
+        "@friday/cli",
+        ...nodeBuiltins,
+      ],
+      [
+        ...["@friday/domain", "@friday/application", "@friday/infrastructure"].map((n) => `${n}/*`),
+        "@friday/daemon/*",
+        "@friday/cli/*",
+        rel("domain"),
+        rel("application"),
+        rel("infrastructure"),
+        rel("apps"),
+      ],
+    ),
+  },
+  {
     files: ["packages/application/**/*.ts"],
     rules: restrict(
       ["@friday/infrastructure", "@friday/daemon", "@friday/cli"],
