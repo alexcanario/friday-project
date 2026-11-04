@@ -35,4 +35,27 @@ Rules:
 - Every criterion is checkable by an automated test or a command with an expected output. No "works well".
 - Apply the gate rules of `CLAUDE.md`. If a business rule is ambiguous, add `gate:business` and write the question under `## Risco e gates`; the issue then goes to `status:needs-human`, not `ready`.
 - Size L (more than one night of implementation) is never ready: propose the split.
+
+Also read `.claude/agents/implementer.md` and `.claude/agents/qa.md`: the body must work for both.
+
+Criteria:
+- Use literal expected values and exact commands: no "the generation command", no "ESM" without the option and its value. Every scope item has a criterion, and every criterion has a table row.
+- Each criterion must pass in CI, with no API key, no secret and no owner action. The issue closes when its PR merges. Work that needs a key or an owner run goes to a `split` entry for an `owner-action` issue; never leave it as a pending criterion.
+- Cover both directions: a valid case that is accepted and an invalid case that is rejected. A criterion that an empty implementation passes is not a criterion.
+- Check that criteria do not conflict: a fixture that must fail one command cannot live where another command must pass.
+- Tests stay in CI after the merge. Assert only what must stay true: no exact sets, empty files or file-wide bans that a later issue must change, or that the issue's own owner follow-up must change.
+
+Scope:
+- Name every dependency the implementation needs, with its exact version when the planning sources fix one. The implementer stops at any dependency the issue does not name.
+- State where the tests run and which command reaches them in CI. If CI cannot reach them without a workflow change, the change is in scope and `gate:security` applies.
+- The ruleset of `develop` requires the check `check`, which is the job name in `ci.yml`, not the workflow name. A CI change keeps that job name, and a matrix on it changes the check name: write that in the criteria.
+
+Sources:
+- Compare the issue with every source it cites. `CLAUDE.md` wins over `docs/planning/` where it decides the point.
+- List each item you drop under `não inclui`, with the issue that takes it. Read that issue first and confirm it covers the item; if none does, ask.
+- Any other conflict or gap that changes what gets built is ambiguous: add `gate:business` and write the question. Never decide it yourself, and never leave it as "if the owner wants". Never infer fields the sources do not define.
+
+Gates and dependencies:
+- Gate rules apply to throwaway and spike code too.
+- `## Depende de` lists GitHub issue numbers only, including every issue that creates a file or package this one needs.
 - Return only the final body and the label changes as JSON: `{"body": "...", "add": [...], "remove": [...], "split": [{"title": "...", "summary": "..."}]}`.
