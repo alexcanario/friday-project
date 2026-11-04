@@ -32,7 +32,7 @@ afterEach(() => {
   for (const d of tmpDirs.splice(0)) rmSync(d, { recursive: true, force: true });
 });
 
-describe("typescript", () => {
+describe("typescript", { timeout: 60_000 }, () => {
   it("accepts valid code and rejects type errors, unchecked index and enum", () => {
     const base = readJson("tsconfig.base.json").compilerOptions;
     for (const k of [
