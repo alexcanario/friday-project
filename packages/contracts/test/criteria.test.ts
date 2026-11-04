@@ -2,7 +2,11 @@ import { describe, expect, it } from "vitest";
 import { validateContract } from "../src/validate.ts";
 import { pairs } from "./helpers.ts";
 
-const cmd = (index: number) => ({ index, claim: "c", proof: { kind: "command", command: "pnpm t" } });
+const cmd = (index: number) => ({
+  index,
+  claim: "c",
+  proof: { kind: "command", command: "pnpm t" },
+});
 const br = (index: number) => ({ index, claim: "c", proof: { kind: "browser", step: "abrir" } });
 const withProof = (proof: unknown) => ({ criteria: [{ index: 1, claim: "c", proof }] });
 const FIXED = "Os índices de critérios devem ser 1, 2, 3… na ordem da lista (criteria).";
@@ -11,7 +15,12 @@ describe("criteria", () => {
   it("requires sequential criteria with a claim", () => {
     expect(validateContract("criteria", { criteria: [cmd(1), br(2)] }).ok).toBe(true);
     expect(pairs("criteria", { criteria: [] })).toEqual(["invalid_value@criteria"]);
-    for (const [a, b] of [[1, 3], [2, 1], [2, 3], [0, 1]] as const) {
+    for (const [a, b] of [
+      [1, 3],
+      [2, 1],
+      [2, 3],
+      [0, 1],
+    ] as const) {
       const r = validateContract("criteria", { criteria: [cmd(a), cmd(b)] });
       expect(r.ok).toBe(false);
       if (!r.ok) {

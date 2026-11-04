@@ -19,7 +19,13 @@ describe("diagnosis", () => {
   });
 
   it("returns the violations of the refused json", () => {
-    const bad = { issue_number: 142, root_cause: "Bug", evidence: [], risk: "critical", merge: true };
+    const bad = {
+      issue_number: 142,
+      root_cause: "Bug",
+      evidence: [],
+      risk: "critical",
+      merge: true,
+    };
     expect(pairs("diagnosis", bad)).toEqual(
       [
         "unknown_field@merge",

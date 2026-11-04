@@ -11,7 +11,8 @@ describe("workReport", () => {
       "invalid_head_sha@headSha",
     ]);
     expect(pairs("workReport", { ...ok, summary: " " })).toEqual(["invalid_value@summary"]);
-    const { notDone: _omit, ...rest } = ok;
+    const rest: Record<string, unknown> = { ...ok };
+    delete rest.notDone;
     expect(pairs("workReport", rest)).toEqual(["required_field@notDone"]);
     expect(pairs("workReport", { ...ok, changedFiles: [1] })).toEqual([
       "invalid_value@changedFiles.0",

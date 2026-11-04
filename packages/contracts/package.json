@@ -6,6 +6,7 @@
     ".": "./src/index.ts"
   },
   "scripts": {
+    "generate:schemas": "node scripts/generate-schemas.ts",
     "typecheck": "tsc --noEmit",
     "lint": "eslint . && prettier --check .",
     "test": "vitest run --passWithNoTests"
