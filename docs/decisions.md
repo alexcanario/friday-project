@@ -34,10 +34,15 @@ Fonte única das decisões em vigor. O histórico e o raciocínio estão em `pla
 | D32 | `RunHeld` vale em `Triage`, `InProgress`, `Verify`, `QA` e `InReview` | fechada | 2026-11-04 |
 | D33 | Ao sair de `Held` com `Resumed`, só o contador do motivo esgotado é zerado; toda volta a `InProgress` recomeça da primeira fase do pacote | fechada | 2026-11-04 |
 | D34 | Formas dos contratos da #29: `triage` = `specialist` (backend, database, frontend, infra, security) + `reason`; `criteria` = lista de `index`, `claim` e `proof` tipada (`command` ou `browser`); `workReport` = `summary`, `headSha`, `changedFiles`, `notDone`; `diagnosis` = forma do Felipe, e os campos do Lode entram em M5 | fechada | 2026-11-04 |
+| D35 | `factory.yaml` e fichas de agente da #30 ficam inteiros no registro central do Friday, fora do repositório alvo, cumprindo D14 e R4; a carga recebe a pasta por `--root`, e a pasta final e a proibição de ler da worktree ficam com a #17. Prevalece sobre o `.fhp/` no repositório alvo de `planning/08-implementation-roadmap.md` §4.5 | fechada | 2026-11-04 |
+| D36 | Chaves do projeto no `factory.yaml`: `schemaVersion` (`friday/v1`), `enabled`, `repository`, `verify`, `flow` (`screen_paths`, `pr_evidence`, `triage`), `risk`, `pull_requests`, `limits` e `secrets`; saem os estados de `flow` e os tetos de rodada, fixos no motor (D29, D31) | fechada | 2026-11-04 |
+| D37 | Roster check: ao menos um agente em `InProgress`, `QA` e `InReview`; `states` aceita só esses três; os 5 especialistas da triagem precisam de ficha com `InProgress` | fechada | 2026-11-04 |
+| D38 | Ferramentas aceitas numa ficha de agente: `Read`, `Glob`, `Grep`, `Bash`, `Edit` e `Write`, mais as 8 ferramentas MCP da #43; `WebFetch` e `WebSearch` ficam de fora | fechada | 2026-11-04 |
 
 ## Siglas
 - **API:** Application Programming Interface.
 - **CI:** Continuous Integration.
+- **MCP:** Model Context Protocol.
 - **QA:** Quality Assurance.
 - **SDK:** Software Development Kit.
 - **WAL:** Write-Ahead Logging, modo de journal do SQLite.
