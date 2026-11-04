@@ -7,3 +7,11 @@ export { criteriaSchema, type Criteria } from "./criteria.ts";
 export { workReportSchema, type WorkReport } from "./work-report.ts";
 export { diagnosisSchema, type Diagnosis } from "./diagnosis.ts";
 export { contractJsonSchema } from "./json-schema.ts";
+export { factoryConfigSchema, type FactoryConfig } from "./factory-config.ts";
+export {
+  agentConfigSchema,
+  type AgentConfig,
+  BUILTIN_TOOLS,
+  MCP_TOOLS,
+  AGENT_STATES,
+} from "./agent-config.ts";

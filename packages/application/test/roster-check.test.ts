@@ -19,9 +19,7 @@ function agent(role: string, states: AgentConfig["states"]): AgentConfig {
 const roster: AgentConfig[] = [
   agent("qa", ["QA"]),
   agent("judge", ["InReview"]),
-  ...["backend", "database", "frontend", "infra", "security"].map((r) =>
-    agent(r, ["InProgress"]),
-  ),
+  ...["backend", "database", "frontend", "infra", "security"].map((r) => agent(r, ["InProgress"])),
 ];
 
 describe("checkRoster", () => {
@@ -44,9 +42,7 @@ describe("checkRoster", () => {
       ]);
     }
 
-    const noImplementers = checkRoster(
-      roster.filter((a) => !a.states.includes("InProgress")),
-    );
+    const noImplementers = checkRoster(roster.filter((a) => !a.states.includes("InProgress")));
     expect(noImplementers.filter((p) => p.code === "state_without_agent")).toEqual([
       {
         file: "agents",

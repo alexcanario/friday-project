@@ -47,7 +47,8 @@ describe("agentConfigSchema", () => {
       expect(result.success, JSON.stringify(patch)).toBe(false);
     }
     for (const key of Object.keys(qa)) {
-      const { [key as keyof typeof qa]: _removed, ...rest } = qa;
+      const rest: Record<string, unknown> = { ...qa };
+      delete rest[key];
       expect(agentConfigSchema.safeParse(rest).success, key).toBe(false);
     }
   });

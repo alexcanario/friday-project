@@ -1,7 +1,10 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, expect, it } from "vitest";
 import { factoryConfigSchema } from "../src/index.ts";
 
-function valid(): Record<string, any> {
+type Json = { [key: string]: any };
+
+function valid(): Json {
   return {
     schemaVersion: "friday/v1",
     enabled: true,
@@ -28,7 +31,7 @@ function paths(obj: unknown, prefix: string[] = []): string[][] {
   return Object.entries(obj).flatMap(([k, v]) => [[...prefix, k], ...paths(v, [...prefix, k])]);
 }
 
-function without(path: string[]): Record<string, any> {
+function without(path: string[]): Json {
   const copy = valid();
   let node = copy;
   for (const key of path.slice(0, -1)) node = node[key];
@@ -36,7 +39,7 @@ function without(path: string[]): Record<string, any> {
   return copy;
 }
 
-function withValue(path: string[], value: unknown): Record<string, any> {
+function withValue(path: string[], value: unknown): Json {
   const copy = valid();
   let node = copy;
   for (const key of path.slice(0, -1)) node = node[key];
@@ -58,7 +61,10 @@ describe("factoryConfigSchema", () => {
       [["risk", "max_changed_lines"], 0],
       [["limits", "per_day_usd"], 0],
       [["flow", "triage", "max_budget_usd"], 0],
-      [["risk", "rules"], ["ci", "ci"]],
+      [
+        ["risk", "rules"],
+        ["ci", "ci"],
+      ],
       [["risk", "rules"], ["other"]],
       [["flow", "max_qa_rounds"], 3],
       [["flow", "implement"], "x"],

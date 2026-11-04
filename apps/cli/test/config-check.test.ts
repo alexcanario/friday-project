@@ -55,7 +55,11 @@ describe("friday config check", () => {
     expect(secret.stdout).not.toContain("ghp_x1");
     expect(secret.stdout).toContain("secret_value");
 
-    for (const args of [["config", "check"], ["config", "check", "--root"], ["config", "other"]]) {
+    for (const args of [
+      ["config", "check"],
+      ["config", "check", "--root"],
+      ["config", "other"],
+    ]) {
       const r = run(...args);
       expect(r.code, args.join(" ")).toBe(2);
       expect(r.stdout).toBe("");
