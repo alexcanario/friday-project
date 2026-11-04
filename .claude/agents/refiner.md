@@ -47,6 +47,7 @@ Criteria:
 Scope:
 - Name every dependency the implementation needs, with its exact version when the planning sources fix one. The implementer stops at any dependency the issue does not name.
 - State where the tests run and which command reaches them in CI. If CI cannot reach them without a workflow change, the change is in scope and `gate:security` applies.
+- The ruleset of `develop` requires the check `check`, which is the job name in `ci.yml`, not the workflow name. A CI change keeps that job name, and a matrix on it changes the check name: write that in the criteria.
 
 Sources:
 - Compare the issue with every source it cites. `CLAUDE.md` wins over `docs/planning/` where it decides the point.
