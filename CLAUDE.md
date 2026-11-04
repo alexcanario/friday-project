@@ -4,9 +4,10 @@ Friday is an agentic software-factory orchestrator (TypeScript + Claude Agent SD
 
 Owner: Alex (pt-BR). Current decisions: `docs/decisoes.md`. Process: `docs/processo.md`. Night runbook: `docs/noite.md`. Schedule: `docs/cronograma.md`. Planning sources (read only the section an issue cites): `docs/planejamento/`.
 
-## Language
-- Talk to the owner in pt-BR. Docs the owner reads (`docs/*.md`, issue `## Resumo`, night reports) are pt-BR.
-- Code, identifiers, commits, branch names, PR titles and test names are English.
+## Language (hybrid, D21)
+- **English:** code, identifiers, variables, file and folder names, branch names, test names, log messages, JSON keys, config keys, and the instructions in `.claude/` and `CLAUDE.md`.
+- **pt-BR:** conversations with the owner, commit messages (Conventional Commits prefix stays English: `feat: adiciona máquina de estados (#13)`), PR titles and bodies, issue titles and bodies, comments on issues and PRs, night reports, `docs/`, and any text shown to a user (panel, CLI output, error messages).
+- JSON produced by agents: keys in English, free-text values in pt-BR.
 - Every pt-BR doc that uses an acronym ends with a `## Siglas` section.
 
 ## Stack (decided)

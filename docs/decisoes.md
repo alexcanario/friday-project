@@ -20,6 +20,7 @@ Fonte única das decisões em vigor. O histórico e o raciocínio estão em `pla
 | D18 | Gates humanos: regra de negócio, segurança, estouro de teto e telas | fechada | 2026-11-04 |
 | D19 | Painel e workflow (máquina de estados com gates) ficam no escopo | fechada | 2026-11-04 |
 | D20 | Tempo do dono: ~1 h/dia para relatório e gates | fechada | 2026-11-04 |
+| D21 | Idioma híbrido: código, variáveis, nomes de arquivo, branches e testes em inglês; commits, PRs, issues, comentários, relatórios, docs, textos de tela e conversas em pt-BR | fechada | 2026-11-04 |
 
 ## Siglas
 - **API:** Application Programming Interface.

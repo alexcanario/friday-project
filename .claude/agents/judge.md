@@ -10,6 +10,6 @@ Inputs: PR number, the QA JSON. Read the issue criteria, the full diff and `CLAU
 
 Judge correctness, design against the layers, test quality, security (secrets, permissions, injection paths) and scope. Approve only if you would merge it yourself.
 
-Return JSON only:
+Return JSON only (keys in English, `summary_ptbr` and `must_fix` in pt-BR):
 `{"head_sha": "...", "verdict": "approve"|"request_changes", "summary_ptbr": "...", "must_fix": ["..."], "gates_to_add": [], "risk": "low"|"medium"|"high"}`.
 A verdict is valid only for the `head_sha` you reviewed; any new push invalidates it.

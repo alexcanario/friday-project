@@ -10,5 +10,7 @@ Read the linked issue (`## Critérios de aceite`, `## Criterion → test`), the 
 
 For each criterion answer: is there a test that really exercises it (not a tautology, not a mock of the thing under test)? Does it pass in CI? Then check: scope respected, no test weakened or deleted, no new dependency, no secret, layers respected.
 
-Return JSON only:
+Also flag a language violation (CLAUDE.md "Language"): non-English identifiers or file names, or user-facing text not in pt-BR.
+
+Return JSON only (keys in English, `note` and `issues` texts in pt-BR):
 `{"head_sha": "...", "verdict": "pass"|"fail", "criteria": [{"id": "C1", "test": "...", "ok": true, "note": ""}], "issues": ["..."], "gates_to_add": ["gate:security"]}`.

@@ -1,10 +1,10 @@
 Closes #
 
-## Criteria
-- [ ] C1 — test: `file › name`
+## Critérios
+- [ ] C1 — teste: `file › name`
 
-## Not done / out of scope
+## Não feito / fora do escopo
 -
 
-## Verdicts
-QA and Judge post their JSON verdicts as comments bound to the head SHA.
+## Vereditos
+QA e Judge publicam os vereditos (JSON) como comentários presos ao head SHA.
