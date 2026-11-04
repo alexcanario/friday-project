@@ -14,6 +14,7 @@ Shape:
 **Falhou / parou:** #n — diagnóstico em 1 linha
 **Refinadas e prontas:** #n, #n
 **Próxima noite:** #n, #n
+**Notas para os plugins:** novas linhas ⏳ em docs/agile/retro-log.md (só se houver)
 **Observações de custo:** turnos, retentativas, o que pesou
 ```
 Then end with `## Siglas` if you used any acronym.

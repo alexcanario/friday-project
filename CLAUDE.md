@@ -29,6 +29,7 @@ Owner: Alex (pt-BR). Current decisions: `docs/decisions.md`. Process: `docs/proc
 - Agent tool permissions, budget code, auth, tokens or anything under `.github/workflows` touched by a PR ⇒ add `gate:security` (or `gate:budget` for caps/ledger).
 - Changes visible in the panel ⇒ `gate:screen`. A business rule or an ambiguous requirement ⇒ `gate:business` with the question written in the issue.
 - Economy: read only the files the issue lists plus what a failing test points to; no repo-wide exploration. Use the subagents in `.claude/agents/` (each declares its model) instead of doing their work in the main session.
+- Lessons for the sibling plugins (agile@canary, legacy-lens), **only when needed** — a real bug, gap or improvement seen while working, never speculation: append a `⏳ plugin: agile|lens [<scope>]` note to `docs/agile/retro-log.md` (row in "Plugin notes — status" + dated entry, English, no secrets). Never write in those repositories; the same lesson twice stays one row.
 - Keep files small: a source file ≤ 300 lines, a function ≤ 50 lines.
 
 ## Done

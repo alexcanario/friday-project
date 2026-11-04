@@ -56,7 +56,10 @@ Ordem de escolha: milestone mais antigo aberto → `prio:1` → `prio:2` → `pr
 2. **Gates (30–40 min):** coluna *Needs you* do Project. Responder ou fazer o merge dos itens com gate.
 3. **Planejar (10 min):** ajustar `prio:*`, fechar `owner-action`, criar ideias novas como `status:backlog` (não precisa refinar: a noite refina).
 
-## 8. Branches
+## 8. Lições para o Agile e o Lens
+Quando necessário, qualquer sessão do Friday registra uma nota `⏳ plugin: agile|lens` em `docs/agile/retro-log.md`. As sessões dos plugins levam a nota para os quadros deles; o Friday nunca escreve nesses repositórios.
+
+## 9. Branches
 - `develop`: integração, recebe os merges automáticos.
 - `main`: releases, merge manual do dono ao fim de cada milestone.
 - `friday/<n>-<slug>`: uma por issue, apagada após o merge.

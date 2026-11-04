@@ -48,6 +48,9 @@ Três tarefas agendadas do Claude Code na nuvem (limite atual do plano: 3 sessõ
       - Judge `request_changes` ⇒ 1 rodada de correção e Judge de novo; senão `needs-human` + `gate:budget`.
 3. Subagente `reporter` publica o relatório da noite na issue `type:report`.
 
+## Notas para o Agile e o Lens
+Quando, e só quando, uma fase encontra um bug, uma lacuna ou uma melhoria real para o `agile@canary` ou o `legacy-lens`, anota em `docs/agile/retro-log.md` uma nota `⏳ plugin: agile|lens`, no formato que as sessões dos plugins leem (`/agile:sync`, `/lens:intake`). A noite nunca escreve nos repositórios dos plugins. A nota entra num PR comum (sem gate) e o relatório da manhã lista as notas novas.
+
 ## Economia
 - Modelos: Haiku (relatório), Sonnet (refinar, implementar, QA, Judge comum), Opus só no `judge-strong`.
 - Cada subagente recebe só o número da issue/PR; ele lê o que a issue lista. Nada de explorar o repositório inteiro.

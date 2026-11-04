@@ -65,7 +65,7 @@ Política de gates do `lens`: a do `agile`, mais `gate:business` para toda difer
 4. **Extração:** `packs/agile/` e `packs/lens/`, versionados e lidos como dado (Markdown, JSON e schemas). O `lens-dotnet` continua como ferramenta externa.
 5. **Aposentadoria:** as partes de execução dos plugins (autopilot, resolve, parallel-build, batch-ship, sync de quadro) são marcadas como obsoletas e removidas depois de 4 a 8 semanas de uso real do Friday. As sessões interativas continuam no Claude Code.
 
-## 7. Lacunas a criar no Lens (issues no quadro do Lens, não aqui)
+## 7. Lacunas do Lens (registradas como notas ⏳ em `docs/agile/retro-log.md`)
 - uma ferramenta de testes de caracterização ou golden master;
 - um modo headless para a parte não interativa da adoção;
 - uma política de risco e gates legível por máquina.
