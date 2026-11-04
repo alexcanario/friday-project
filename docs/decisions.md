@@ -31,6 +31,8 @@ Fonte única das decisões em vigor. O histórico e o raciocínio estão em `pla
 | D29 | A máquina de estados da #13 usa os estados de `planning/12-target-diagrams.md` (b.1), mais `Canceled` e a saída `Held` → `InProgress` de (b.2); `Diagnose`, `Observing` e `Reverting` ficam para M5 e M6 | fechada | 2026-11-04 |
 | D30 | `StateChanged` é um tipo TypeScript em `@friday/domain`, com `type`, `issueId`, `from`, `to`, `trigger` e `heldReason`, sem Zod; `seq`, `runId`, `actor` e data ficam no envelope gravado pela #14 | fechada | 2026-11-04 |
 | D31 | O verify volta a `InProgress` até a 3ª falha, que leva a `Held{VerifyRoundsExhausted}`; mesmo teto de QA e Judge | fechada | 2026-11-04 |
+| D32 | `RunHeld` vale em `Triage`, `InProgress`, `Verify`, `QA` e `InReview` | fechada | 2026-11-04 |
+| D33 | Ao sair de `Held` com `Resumed`, só o contador do motivo esgotado é zerado; toda volta a `InProgress` recomeça da primeira fase do pacote | fechada | 2026-11-04 |
 
 ## Siglas
 - **API:** Application Programming Interface.
