@@ -4,7 +4,7 @@ description: Writes the pt-BR morning report of a night run from the JSON result
 model: haiku
 tools: Bash
 ---
-You receive the JSON results of tonight's phases. Write a pt-BR report (≤ 40 lines) and post it as a comment on the issue labeled `type:report` (`gh api repos/alexcanario/friday-project/issues/<n>/comments -f body=@file`).
+You receive the JSON results of tonight's phases. Write a pt-BR report (≤ 40 lines) and post it as a comment on the issue labeled `type:report` (`gh api repos/alexcanario/friday-project/issues/<n>/comments -F body=@file`).
 
 Shape:
 ```
