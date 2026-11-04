@@ -12,7 +12,7 @@ Fonte única das decisões em vigor. O histórico e o raciocínio estão em `pla
 | D6′ | Merge automático em `develop` do que a IA validou (CI + QA + Judge), exceto com gate | fechada | 2026-11-04 |
 | D8 | Modelos por papel: Haiku relatório, Sonnet refinar/implementar/QA/Judge, Opus só no Judge com gate ou risco ≥ medium | fechada | 2026-11-04 |
 | D9 | SQLite (better-sqlite3) + Drizzle, WAL, um processo escritor (*produto*) | fechada | 2026-11-04 |
-| D13 | Painel: Blazor WASM + cliente C# gerado do OpenAPI (*produto*) | **a confirmar pelo dono** (#5) | — |
+| D13 | Painel: Blazor WASM + cliente C# gerado do OpenAPI (*produto*) | fechada | 2026-11-04 |
 | D14 | Multi-projeto com `project_id` desde o início; política de segurança fora do repositório do projeto (*produto*) | fechada | 2026-11-04 |
 | D15 | Nome `friday` em tudo (label, CLI, `mcp__friday__*`, `.friday/`) | fechada | 2026-11-04 |
 | D16 | Carregar o `agile@canary` pelo SDK | **aberta**: depende do spike #10 | — |
@@ -28,6 +28,11 @@ Fonte única das decisões em vigor. O histórico e o raciocínio estão em `pla
 | D26 | A rodada real do spike é a `owner-action` #31, com teto de 10 turnos e 0,5 USD na rodada normal; a #9 entrega o código testado sem chave | fechada | 2026-11-04 |
 | D27 | `develop` protegida pelo ruleset `develop-protection`, com GitHub Pro: check obrigatório `check`, só PR com squash, sem force-push nem exclusão | fechada | 2026-11-04 |
 | D28 | Tarefa noturna A desligada até vermos o resultado da #8; B e C ligadas | **temporária** | 2026-11-04 |
+| D29 | A máquina de estados da #13 usa os estados de `planning/12-target-diagrams.md` (b.1), mais `Canceled` e a saída `Held` → `InProgress` de (b.2); `Diagnose`, `Observing` e `Reverting` ficam para M5 e M6 | fechada | 2026-11-04 |
+| D30 | `StateChanged` é um tipo TypeScript em `@friday/domain`, com `type`, `issueId`, `from`, `to`, `trigger` e `heldReason`, sem Zod; `seq`, `runId`, `actor` e data ficam no envelope gravado pela #14 | fechada | 2026-11-04 |
+| D31 | O verify volta a `InProgress` até a 3ª falha, que leva a `Held{VerifyRoundsExhausted}`; mesmo teto de QA e Judge | fechada | 2026-11-04 |
+| D32 | `RunHeld` vale em `Triage`, `InProgress`, `Verify`, `QA` e `InReview` | fechada | 2026-11-04 |
+| D33 | Ao sair de `Held` com `Resumed`, só o contador do motivo esgotado é zerado; toda volta a `InProgress` recomeça da primeira fase do pacote | fechada | 2026-11-04 |
 
 ## Siglas
 - **API:** Application Programming Interface.

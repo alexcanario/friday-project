@@ -12,8 +12,8 @@ O Friday é **um motor** (fila, noite, estado, gates, tetos, painel). O Agile e 
 | Projeto | registro do Friday | `method`, `profile`, tetos, gates extras, repositórios relacionados |
 
 ## 2. Ponto de extensão
-A máquina de estados do Friday é fixa: `triage → ready → in_progress → verify → judge → human_review → merged`. Um pacote declara:
-- **fases** dentro do `in_progress` (lista ordenada; cada fase tem um papel/agente, entradas, saídas e se é determinística);
+A máquina de estados do Friday é fixa e está em `planning/12-target-diagrams.md` (b.1), conforme D29; as fases abaixo rodam dentro de `InProgress`, e `human_review` significa `AwaitingApproval` ou `Held`. Um pacote declara:
+- **fases** dentro do `InProgress` (lista ordenada; cada fase tem um papel/agente, entradas, saídas e se é determinística);
 - **política de gates** (quais condições levam a `human_review` e com que label);
 - **perfis** e **regras** copiados para o worktree da run.
 
@@ -28,7 +28,7 @@ Fatos do repositório (relatório de leitura de 2026-11-04):
 - **Ainda não existe** ferramenta de testes de caracterização, golden master ou paridade, nem classificação de risco legível por máquina. As áreas não confiáveis "ganham um teste de caracterização antes de mudar, ou uma nota escrita".
 
 ## 4. Pacote `agile` (greenfield e entrega)
-| Fase em `in_progress` | Papel | Origem |
+| Fase em `InProgress` | Papel | Origem |
 |---|---|---|
 | design (só itens de contrato, schema ou API) | `system-design` (Opus) | agente do Agile |
 | testes de aceite travados | `test-writer` | agente + `test-lock.md` |
