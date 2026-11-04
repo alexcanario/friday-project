@@ -33,7 +33,7 @@ function fromIssue(issue: z.core.$ZodIssue): Violation[] {
   }
   if (issue.code === "invalid_type") {
     if (path === "") return [violation("schema_invalid", "")];
-    const missing = issue.message.includes("received undefined");
+    const missing = issue.input === undefined;
     return [violation(missing ? "required_field" : "invalid_value", path)];
   }
   return [violation("invalid_value", path)];
@@ -47,7 +47,7 @@ export function validateContract<K extends ContractKind>(
   if (schema === undefined) {
     return { ok: false, violations: [violation("unknown_kind", "kind", String(kind))] };
   }
-  const result = schema.safeParse(value);
+  const result = schema.safeParse(value, { reportInput: true });
   if (result.success) return { ok: true, value: result.data as ContractMap[K] };
   return { ok: false, violations: result.error.issues.flatMap(fromIssue) };
 }

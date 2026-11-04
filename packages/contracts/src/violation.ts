@@ -41,5 +41,5 @@ const templates: Record<ViolationCode, string> = {
 };
 
 export function violation(code: ViolationCode, path: string, detail = path): Violation {
-  return { code, path, message: templates[code].replace("<path>", detail) };
+  return { code, path, message: templates[code].replace("<path>", () => detail) };
 }

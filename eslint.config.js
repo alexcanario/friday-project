@@ -70,6 +70,7 @@ export default tseslint.config(
         "@friday/infrastructure",
         "@friday/daemon",
         "@friday/cli",
+        ...nodeBuiltins,
       ],
       [
         ...["@friday/domain", "@friday/application", "@friday/infrastructure"].map((n) => `${n}/*`),

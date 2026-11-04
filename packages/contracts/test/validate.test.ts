@@ -143,7 +143,11 @@ describe("validateContract robustness", () => {
 
   it("reports invalid_value for a present value of the wrong type", () => {
     z.config({ localeError: () => "mensagem sem o texto padrao" });
-    const result = validateContract("qaReport", { verdict: "pass", criteria: null, notChecked: [] });
+    const result = validateContract("qaReport", {
+      verdict: "pass",
+      criteria: null,
+      notChecked: [],
+    });
     expect(result.ok).toBe(false);
     if (!result.ok) {
       expect(result.violations.map((x) => [x.code, x.path])).toContainEqual([
