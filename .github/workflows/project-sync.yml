@@ -1,0 +1,71 @@
+name: project-sync
+
+# Mirrors the issue's status:* label (or its closed state) into the "Estado"
+# single-select field of the user-owned GitHub Project. Agents only touch labels.
+# Needs: secret PROJECT_TOKEN (classic PAT, scopes: project, repo) and
+#        variable PROJECT_NUMBER. Optional variable PROJECT_FIELD (default "Estado").
+
+on:
+  issues:
+    types: [opened, reopened, closed, labeled, unlabeled]
+
+concurrency:
+  group: project-sync-${{ github.event.issue.number }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  sync:
+    if: ${{ vars.PROJECT_NUMBER != '' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/github-script@v7
+        env:
+          PROJECT_NUMBER: ${{ vars.PROJECT_NUMBER }}
+          PROJECT_FIELD: ${{ vars.PROJECT_FIELD || 'Estado' }}
+        with:
+          github-token: ${{ secrets.PROJECT_TOKEN }}
+          script: |
+            const map = {
+              'status:backlog': 'Backlog',
+              'status:ready': 'Ready',
+              'status:in-progress': 'In progress',
+              'status:review': 'In review',
+              'status:needs-human': 'Needs you',
+              'status:blocked': 'Blocked',
+            };
+            const issue = context.payload.issue;
+            const labels = issue.labels.map(l => l.name);
+            let target = 'Backlog';
+            if (issue.state === 'closed') {
+              target = issue.state_reason === 'not_planned' ? 'Discarded' : 'Done';
+            } else {
+              const found = Object.keys(map).filter(k => labels.includes(k));
+              if (found.length > 1) core.warning(`#${issue.number} has ${found.length} status labels: ${found.join(', ')}`);
+              if (found.length > 0) target = map[found[found.length - 1]];
+            }
+            const owner = context.repo.owner;
+            const number = parseInt(process.env.PROJECT_NUMBER, 10);
+            const fieldName = process.env.PROJECT_FIELD;
+            const q = await github.graphql(`
+              query($login: String!, $number: Int!, $field: String!) {
+                user(login: $login) { projectV2(number: $number) {
+                  id
+                  field(name: $field) { ... on ProjectV2SingleSelectField { id options { id name } } }
+                } }
+              }`, { login: owner, number, field: fieldName });
+            const project = q.user.projectV2;
+            if (!project || !project.field) { core.setFailed(`Project ${number} or field "${fieldName}" not found`); return; }
+            const option = project.field.options.find(o => o.name === target);
+            if (!option) { core.setFailed(`Option "${target}" missing in field "${fieldName}"`); return; }
+            const add = await github.graphql(`
+              mutation($p: ID!, $c: ID!) { addProjectV2ItemById(input: {projectId: $p, contentId: $c}) { item { id } } }`,
+              { p: project.id, c: issue.node_id });
+            await github.graphql(`
+              mutation($p: ID!, $i: ID!, $f: ID!, $o: String!) {
+                updateProjectV2ItemFieldValue(input: {projectId: $p, itemId: $i, fieldId: $f, value: {singleSelectOptionId: $o}}) { projectV2Item { id } }
+              }`, { p: project.id, i: add.addProjectV2ItemById.item.id, f: project.field.id, o: option.id });
+            core.info(`#${issue.number} → ${target}`);
