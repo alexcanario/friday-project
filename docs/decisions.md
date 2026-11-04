@@ -26,6 +26,8 @@ Fonte única das decisões em vigor. O histórico e o raciocínio estão em `pla
 | D24 | A #12 entrega `qaReport`, `reviewVerdict` e o validador; os outros contratos e o JSON Schema vão para a #29, a carga do `factory.yaml` para a #30, o evento de transição para a #13 e o resultado de run para a #16 | fechada | 2026-11-04 |
 | D25 | A #8 fica só em Ubuntu; a #14 acrescenta um job separado em Windows para o `better-sqlite3`, sem mudar o check obrigatório `check` | fechada | 2026-11-04 |
 | D26 | A rodada real do spike é a `owner-action` #31, com teto de 10 turnos e 0,5 USD na rodada normal; a #9 entrega o código testado sem chave | fechada | 2026-11-04 |
+| D27 | `develop` protegida pelo ruleset `develop-protection`, com GitHub Pro: check obrigatório `check`, só PR com squash, sem force-push nem exclusão | fechada | 2026-11-04 |
+| D28 | Tarefa noturna A desligada até vermos o resultado da #8; B e C ligadas | **temporária** | 2026-11-04 |
 
 ## Siglas
 - **API:** Application Programming Interface.

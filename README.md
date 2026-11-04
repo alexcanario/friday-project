@@ -18,7 +18,7 @@ O Friday é construído por uma **fábrica noturna**: três tarefas agendadas do
 | [`CLAUDE.md`](CLAUDE.md) | Regras para os agentes |
 
 ## Quadro
-GitHub Project **Friday**, com o campo **Estado** espelhado das labels `status:*` pela Action `project-sync`. Para criar o quadro (uma vez): [`scripts/setup-github-project.ps1`](scripts/setup-github-project.ps1).
+[GitHub Project **Friday**](https://github.com/users/alexcanario/projects/17), com o campo **Estado** espelhado das labels `status:*` pela Action `project-sync`. O quadro já existe: não rode de novo [`scripts/setup-github-project.ps1`](scripts/setup-github-project.ps1), porque ele cria outro Project.
 
 ## Interruptor da noite
 Para suspender a noite, crie uma issue com a label `night:stop`. Para retomar, feche essa issue.
