@@ -1,6 +1,6 @@
 # Decisões vigentes
 
-Fonte única das decisões em vigor. O histórico e o raciocínio estão em `planejamento/08-roteiro-implementacao.md` §0 e `planejamento/13-segunda-opiniao.md`. Quando uma decisão muda, a linha é atualizada aqui no mesmo commit.
+Fonte única das decisões em vigor. O histórico e o raciocínio estão em `planning/08-implementation-roadmap.md` §0 e `planning/13-second-opinion.md`. Quando uma decisão muda, a linha é atualizada aqui no mesmo commit.
 
 > Duas coisas diferentes: a **fábrica que constrói o Friday** (sessões agendadas na nuvem, hoje) e o **Friday como produto** (o orquestrador TypeScript, que um dia substitui essas sessões). As decisões marcadas *produto* valem para o código do Friday.
 
@@ -21,6 +21,7 @@ Fonte única das decisões em vigor. O histórico e o raciocínio estão em `pla
 | D19 | Painel e workflow (máquina de estados com gates) ficam no escopo | fechada | 2026-11-04 |
 | D20 | Tempo do dono: ~1 h/dia para relatório e gates | fechada | 2026-11-04 |
 | D21 | Idioma híbrido: código, variáveis, nomes de arquivo, branches e testes em inglês; commits, PRs, issues, comentários, relatórios, docs, textos de tela e conversas em pt-BR | fechada | 2026-11-04 |
+| D22 | Um motor (Friday) e pacotes de método (`agile`, `lens`) como dado; estados do motor fixos, fases plugáveis dentro do `in_progress`; a execução dos plugins é aposentada depois de 4–8 semanas de uso real do Friday ([`method-packs.md`](method-packs.md)) | proposta; confirmar no go/no-go | 2026-11-04 |
 
 ## Siglas
 - **API:** Application Programming Interface.

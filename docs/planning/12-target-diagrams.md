@@ -1,6 +1,6 @@
 # Diagramas da arquitetura alvo (TypeScript, 2026-11-04, revisados na S8)
 
-Diagramas **mermaid** da fábrica `fhp` na versão TypeScript + Claude Agent SDK (D1 decidida em 2026-11-04). Cada diagrama indica a seção de origem em `08-roteiro-implementacao.md` e, quando houver, em `05`, `03`, `04` e `09`. Nomes de pacotes e APIs estão verificados em `08` §3 `[WEB]`; o que não tem fonte é proposta deste roteiro **[DECIDIR]**.
+Diagramas **mermaid** da fábrica `fhp` na versão TypeScript + Claude Agent SDK (D1 decidida em 2026-11-04). Cada diagrama indica a seção de origem em `08-implementation-roadmap.md` e, quando houver, em `05`, `03`, `04` e `09`. Nomes de pacotes e APIs estão verificados em `08` §3 `[WEB]`; o que não tem fonte é proposta deste roteiro **[DECIDIR]**.
 
 **Revisão S8 (2026-11-04, frente B):** conferidos contra `08` §4 e §10, `05`, `03`, `04` e `09` (relatório em `sessoes/saida/S8b-revisao-alvo.md`). Mudanças: (b) dividido em (b.1) e (b.2), com `verifyRound`, `Merging → Held`, entrada de monitor e catálogo de `heldReason`; (d) mostra a ausência do portão Bearer 401 e separa 403/404; (e) dividido em (e.1) e (e.2); (f) passa a começar depois das guardas de (k); (i) reorganizado em colunas; novos (k.1), (k.2), (l) e (m). Os ids (a) a (j) continuam os mesmos; sub-ids `.1`/`.2` marcam divisões. Toda a sintaxe foi validada com `@mermaid-js/mermaid-cli` (`mmdc`) em 2026-11-04; alvo de legibilidade: 300 a 1600 px de altura a 1228 px de largura.
 

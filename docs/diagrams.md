@@ -101,6 +101,25 @@ flowchart LR
     GQL --> PJ[("Project 'Friday'<br/>campo Estado")]
 ```
 
+## 6. Motor e pacotes de método (D22)
+```mermaid
+flowchart TB
+    subgraph Motor["Friday · motor (estados fixos)"]
+        direction LR
+        T[triage] --> R[ready] --> IP[in_progress] --> V[verify] --> J[judge] --> H[human_review] --> MG[merged]
+    end
+    subgraph AG["pacote agile"]
+        A1[design] --> A2[testes travados] --> A3[implementação] --> A4[segurança]
+    end
+    subgraph LE["pacote lens"]
+        L0["lens-dotnet map/guard<br/>(determinístico)"] --> L1[caracterizar] --> L2["fases do agile<br/>perfil adopted"] --> L3["re-map + ledger"]
+    end
+    IP -. "method: agile" .-> AG
+    IP -. "method: lens" .-> LE
+    L3 -. "diferença no ledger" .-> H
+```
+Detalhes em [`method-packs.md`](method-packs.md).
+
 ## Siglas
 - **CI:** Continuous Integration.
 - **PR:** Pull Request.

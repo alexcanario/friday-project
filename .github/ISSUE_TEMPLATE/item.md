@@ -8,4 +8,4 @@ labels: ["status:backlog"]
 <o que e por quê; pode ser curto: a fase A da noite completa o resto>
 
 ## Fonte
-<seção de docs/planejamento/ ou link, se houver>
+<seção de docs/planning/ ou link, se houver>

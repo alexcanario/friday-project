@@ -1,6 +1,6 @@
 # Processo de trabalho do friday-project
 
-Como uma issue vai da ideia ao merge, quem decide cada passo e onde o humano entra. A execução noturna está em [`noite.md`](noite.md); os diagramas, em [`diagramas.md`](diagramas.md).
+Como uma issue vai da ideia ao merge, quem decide cada passo e onde o humano entra. A execução noturna está em [`night.md`](night.md); os diagramas, em [`diagrams.md`](diagrams.md).
 
 ## 1. Papéis
 | Papel | Quem | O que faz |

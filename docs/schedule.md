@@ -1,6 +1,6 @@
 # Cronograma
 
-O MVP de 4 semanas (de `planejamento/13-segunda-opiniao.md` §8), com o painel e o workflow no escopo. As noites trabalham todos os dias. O dono gasta ~1 h por dia. O go/no-go do Friday completo (M1+ de `planejamento/08`) é em **2026-12-06**.
+O MVP de 4 semanas (de `planning/13-second-opinion.md` §8), com o painel e o workflow no escopo. As noites trabalham todos os dias. O dono gasta ~1 h por dia. O go/no-go do Friday completo (M1+ de `planning/08`) é em **2026-12-06**.
 
 ## Capacidade (estimativa, ajustar com a semana 1)
 - Teto por noite: 5 refinamentos e 3 implementações. Na prática, contar **~2 merges por noite**: algumas issues param em gate, outras falham.
@@ -55,7 +55,7 @@ gantt
 - O Judge pega ≥ 70% dos defeitos plantados.
 
 ## Depois do MVP (se for go)
-M1 restante, M2 e M3 de `planejamento/08` §5. A estimativa original é de 35–63 dias de esforço para M0–M2, revista com a velocidade medida no MVP. O Friday passa a rodar as próprias noites (dogfooding) quando o loop do M1 estiver estável.
+M1 restante, M2 e M3 de `planning/08` §5. A estimativa original é de 35–63 dias de esforço para M0–M2, revista com a velocidade medida no MVP. O Friday passa a rodar as próprias noites (dogfooding) quando o loop do M1 estiver estável. Em seguida vêm os pilotos dos pacotes `agile` e `lens` ([`method-packs.md`](method-packs.md) §6).
 
 ## Siglas
 - **API:** Application Programming Interface.

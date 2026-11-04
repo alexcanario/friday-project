@@ -49,7 +49,7 @@ Seção "Monitors 0": "No monitors. A monitor runs on a schedule or when its web
 | no stage | Todo | backend, database, frontend, infra, planner, security | holds no stage with this form |
 | no stage | Diagnose | diagnose | holds no stage with this form |
 
-Textos de ajuda literais: `flow.implement` "where specialists work; must be an active state (default In Progress)"; `flow.validate` "where QA validates; must be an active state (default QA)"; `flow.review` "where a pass QA Report moves the issue; must be an active state (default In Review)"; `flow.human_review` "where a person takes over; neither active nor terminal (default Human Review)"; `flow.diagnose` "optional; where a read-only agent diagnoses an issue; an active state, none by default". Valores e regras de QA/risco: ver `05-regras-gates.md` (S4).
+Textos de ajuda literais: `flow.implement` "where specialists work; must be an active state (default In Progress)"; `flow.validate` "where QA validates; must be an active state (default QA)"; `flow.review` "where a pass QA Report moves the issue; must be an active state (default In Review)"; `flow.human_review` "where a person takes over; neither active nor terminal (default Human Review)"; `flow.diagnose` "optional; where a read-only agent diagnoses an issue; an active state, none by default". Valores e regras de QA/risco: ver `05-rules-gates.md` (S4).
 
 ---
 
@@ -362,7 +362,7 @@ def remaining(entry):
   "task_id": "issue-142"
 }
 ```
-- **Triage, saída aceita** (campos e regras): ver `correcoes.md` 2.8 e `05-regras-gates.md` [VISTO 49:28].
+- **Triage, saída aceita** (campos e regras): ver `correcoes.md` 2.8 e `05-rules-gates.md` [VISTO 49:28].
 
 ### 6.4 Judge do Felipe (agente Review) [VISTO 52:00]
 "O Judge devolve um veredito, não um texto · A máquina só lê dois campos: verdict e head_sha."

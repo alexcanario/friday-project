@@ -1,6 +1,6 @@
 # Backlog v2: TypeScript + Claude Agent SDK (2026-11-04)
 
-Issues para construir a fábrica de `08-roteiro-implementacao.md` (D1 = TypeScript + Claude Agent SDK, decidida pelo usuário em 2026-11-04). A v1 (.NET) está em `_arquivo/09-backlog.v1-dotnet.md`.
+Issues para construir a fábrica de `08-implementation-roadmap.md` (D1 = TypeScript + Claude Agent SDK, decidida pelo usuário em 2026-11-04). A v1 (.NET) está em `_arquivo/09-backlog.v1-dotnet.md`.
 Formato: descrição, **critérios de aceite** verificáveis, dependências (Dep.), estimativa (Est.: **P** ≈ 0,5–1 dia, **M** ≈ 1–2, **G** ≈ 3–4 dias de trabalho com apoio de agente [INFERIDO]), fonte e modelo sugerido para o agente que implementa (Mod.). Versões de pacotes: `08` §3.1 [WEB]. Código e identificadores em inglês; camadas de `08` §3.4.
 **FHP-001 a FHP-005 podem começar hoje:** não dependem de decisão pendente. A FHP-001 usa a chave de API do Alex por variável de ambiente (nunca gravada em arquivo). Comandos que surgirem vão para `D:\dev\_control-alt-systems\dev-doc-scripts` (convenção do Alex), sem senha ou chave.
 

@@ -7,13 +7,14 @@ O Friday é construído por uma **fábrica noturna**: três tarefas agendadas do
 ## Comece por aqui
 | Documento | Para quê |
 |---|---|
-| [`docs/processo.md`](docs/processo.md) | Estados, gates, Definition of Ready/Done, rotina do dono |
-| [`docs/noite.md`](docs/noite.md) | Runbook das 3 fases da noite, tetos e economia |
-| [`docs/noite-prompts.md`](docs/noite-prompts.md) | Prompts das tarefas agendadas |
-| [`docs/cronograma.md`](docs/cronograma.md) | Milestones S1–S4, linha do tempo, go/no-go em 06/12 |
-| [`docs/decisoes.md`](docs/decisoes.md) | Decisões em vigor (D1–D20) |
-| [`docs/diagramas.md`](docs/diagramas.md) | Fluxo dia/noite, estados, decisão de merge, sequência, sync |
-| [`docs/planejamento/`](docs/planejamento/) | Roteiro, backlog, agentes, gates, diagramas alvo, segunda opinião |
+| [`docs/process.md`](docs/process.md) | Estados, gates, Definition of Ready/Done, rotina do dono |
+| [`docs/night.md`](docs/night.md) | Runbook das 3 fases da noite, tetos e economia |
+| [`docs/night-prompts.md`](docs/night-prompts.md) | Prompts das tarefas agendadas |
+| [`docs/schedule.md`](docs/schedule.md) | Milestones S1–S4, linha do tempo, go/no-go em 06/12 |
+| [`docs/decisions.md`](docs/decisions.md) | Decisões em vigor (D1–D22) |
+| [`docs/method-packs.md`](docs/method-packs.md) | Como o Friday hospeda o Agile e o Lens (D22) |
+| [`docs/diagrams.md`](docs/diagrams.md) | Fluxo dia/noite, estados, decisão de merge, sequência, sync |
+| [`docs/planning/`](docs/planning/) | Roteiro, backlog, agentes, gates, diagramas alvo, segunda opinião |
 | [`CLAUDE.md`](CLAUDE.md) | Regras para os agentes |
 
 ## Quadro

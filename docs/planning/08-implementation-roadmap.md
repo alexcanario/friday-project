@@ -1,6 +1,6 @@
 # Roteiro de implementação v2: TypeScript + Claude Agent SDK (2026-11-04)
 
-Transforma o mapa (`01` a `07`, `10`) numa proposta executável para reproduzir a "Fábrica de Software Agêntica". Backlog em `09-backlog.md`; diagramas em `12-diagramas-alvo.md`. A v1 (.NET 10 + `claude -p`) está arquivada em `_arquivo/08-roteiro-implementacao.v1-dotnet.md`.
+Transforma o mapa (`01` a `07`, `10`) numa proposta executável para reproduzir a "Fábrica de Software Agêntica". Backlog em `09-backlog.md`; diagramas em `12-target-diagrams.md`. A v1 (.NET 10 + `claude -p`) está arquivada em `_arquivo/08-implementation-roadmap.v1-dotnet.md`.
 Marcas: **[VISTO]**/**[FALA]** = fatos do vídeo (fonte `arquivo §seção`); **[WEB]** = pesquisa na web, acessada em 2026-11-04 (versões lidas do registro npm nesse dia); **[INFERIDO]**; **[DECIDIR]** = proposta nossa que o usuário pode trocar; **a confirmar** = não verificado.
 
 **D1 = TypeScript com o Claude Agent SDK (TypeScript), decidido pelo usuário em 2026-11-04.** Motivo registrado: a documentação oficial diz que o Agent SDK é programável "in Python and TypeScript" e que, em outra linguagem, é preciso rodar o CLI como subprocesso com `-p` [WEB: [Agent SDK overview](https://code.claude.com/docs/en/agent-sdk/overview)].
@@ -52,7 +52,7 @@ Inalterados em relação à v1: reproduzimos o **núcleo executável do loop V2*
 
 ## 2. Requisitos
 ### 2.1 Funcionais
-Os requisitos RF01–RF15 da v1 continuam válidos sem mudança de conteúdo (`_arquivo/08-roteiro-implementacao.v1-dotnet.md` §2.1). Resumo: intake por label `fhp` (RF01); triagem barata (RF02); worktree por issue (RF03); critérios antes de codar e work report (RF04); verify da fábrica (RF05); QA separado com evidência e ≤ 3 rodadas (RF06); Judge com `head_sha` e ≤ 3 iterações (RF07); risco (RF08); gate humano (RF09); merge squash com SHA exato (RF10); Held/Needs you (RF11); monitores e Diagnose (RF12); pós-merge e revert (RF13); painel (RF14); modelo por severidade (RF15).
+Os requisitos RF01–RF15 da v1 continuam válidos sem mudança de conteúdo (`_arquivo/08-implementation-roadmap.v1-dotnet.md` §2.1). Resumo: intake por label `fhp` (RF01); triagem barata (RF02); worktree por issue (RF03); critérios antes de codar e work report (RF04); verify da fábrica (RF05); QA separado com evidência e ≤ 3 rodadas (RF06); Judge com `head_sha` e ≤ 3 iterações (RF07); risco (RF08); gate humano (RF09); merge squash com SHA exato (RF10); Held/Needs you (RF11); monitores e Diagnose (RF12); pós-merge e revert (RF13); painel (RF14); modelo por severidade (RF15).
 
 ### 2.2 Não funcionais (com o mecanismo TS)
 | Id | Requisito | Mecanismo na v2 | Fonte |

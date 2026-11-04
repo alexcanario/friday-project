@@ -1,6 +1,6 @@
 # Runbook da noite
 
-Três tarefas agendadas do Claude Code na nuvem (limite atual do plano: 3 sessões agendadas por dia), cada uma uma sessão nova e independente. Horário de Lisboa. Cada sessão lê este arquivo e executa **só a sua fase**. Os prompts das tarefas estão em [`noite-prompts.md`](noite-prompts.md).
+Três tarefas agendadas do Claude Code na nuvem (limite atual do plano: 3 sessões agendadas por dia), cada uma uma sessão nova e independente. Horário de Lisboa. Cada sessão lê este arquivo e executa **só a sua fase**. Os prompts das tarefas estão em [`night-prompts.md`](night-prompts.md).
 
 | Fase | Horário | Sessão | Teto por noite |
 |---|---|---|---|
@@ -20,7 +20,7 @@ Três tarefas agendadas do Claude Code na nuvem (limite atual do plano: 3 sessõ
 
 ## Fase A · Refinar (23:41)
 1. Primeiro, conferir o interruptor `night:stop`.
-2. Listar `status:backlog` sem `owner-action`, na ordem de prioridade de `processo.md` §6; pegar no máximo 5.
+2. Listar `status:backlog` sem `owner-action`, na ordem de prioridade de `process.md` §6; pegar no máximo 5.
 3. Para cada uma: subagente `refiner` → aplicar o corpo e as labels que ele devolver.
    - Sem pergunta de negócio e tamanho S/M ⇒ `status:ready`.
    - `gate:business` com pergunta ⇒ `status:needs-human`.
