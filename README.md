@@ -15,6 +15,7 @@ O Friday é construído por uma **fábrica noturna**: três tarefas agendadas do
 | [`docs/method-packs.md`](docs/method-packs.md) | Como o Friday hospeda o Agile e o Lens (D22) |
 | [`docs/diagrams.md`](docs/diagrams.md) | Fluxo dia/noite, estados, decisão de merge, sequência, sync |
 | [`docs/planning/`](docs/planning/) | Roteiro, backlog, agentes, gates, diagramas alvo, segunda opinião |
+| [`docs/planning/08-implementation-roadmap.md`](docs/planning/08-implementation-roadmap.md), [`09-backlog.md`](docs/planning/09-backlog.md) e [`12-target-diagrams.md`](docs/planning/12-target-diagrams.md) | Roteiro, backlog e diagramas alvo (`docs/planning/09-backlog.md`, `docs/planning/12-target-diagrams.md`) |
 | [`CLAUDE.md`](CLAUDE.md) | Regras para os agentes |
 
 ## Quadro

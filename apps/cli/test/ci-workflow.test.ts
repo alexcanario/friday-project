@@ -12,7 +12,7 @@ describe("ci workflow", () => {
     const start = ci.indexOf("\n  check:");
     expect(start).toBeGreaterThan(-1);
     const rest = ci.slice(start + 1);
-    const next = rest.slice("  check:".length).search(/\n  [A-Za-z0-9_-]+:/);
+    const next = rest.slice("  check:".length).search(/\n {2}[A-Za-z0-9_-]+:/);
     const job = next === -1 ? rest : rest.slice(0, "  check:".length + next);
     expect(job).toMatch(/runs-on: ubuntu-latest/);
     expect(job).not.toMatch(/^\s{4}strategy:/m);

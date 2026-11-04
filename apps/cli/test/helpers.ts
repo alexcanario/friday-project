@@ -15,7 +15,10 @@ export function readText(rel: string): string {
   return readFileSync(join(root, rel), "utf8");
 }
 
-export function readJson(rel: string): Record<string, any> {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export type Json = { [key: string]: any };
+
+export function readJson(rel: string): Json {
   return JSON.parse(readText(rel));
 }
 
