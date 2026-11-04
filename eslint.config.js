@@ -69,7 +69,7 @@ export default tseslint.config(
         {
           patterns: [
             {
-              regex: "^(?!zod(?:/|$)|\.{1,2}/).+",
+              regex: "^(?!zod(?:/|$)|\\.{1,2}/).+",
               message: "O pacote contracts só pode importar zod e módulos relativos.",
             },
             {
