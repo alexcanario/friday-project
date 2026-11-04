@@ -33,6 +33,7 @@ Fonte única das decisões em vigor. O histórico e o raciocínio estão em `pla
 | D31 | O verify volta a `InProgress` até a 3ª falha, que leva a `Held{VerifyRoundsExhausted}`; mesmo teto de QA e Judge | fechada | 2026-11-04 |
 | D32 | `RunHeld` vale em `Triage`, `InProgress`, `Verify`, `QA` e `InReview` | fechada | 2026-11-04 |
 | D33 | Ao sair de `Held` com `Resumed`, só o contador do motivo esgotado é zerado; toda volta a `InProgress` recomeça da primeira fase do pacote | fechada | 2026-11-04 |
+| D34 | Formas dos contratos da #29: `triage` = `specialist` (backend, database, frontend, infra, security) + `reason`; `criteria` = lista de `index`, `claim` e `proof` tipada (`command` ou `browser`); `workReport` = `summary`, `headSha`, `changedFiles`, `notDone`; `diagnosis` = forma do Felipe, e os campos do Lode entram em M5 | fechada | 2026-11-04 |
 
 ## Siglas
 - **API:** Application Programming Interface.
