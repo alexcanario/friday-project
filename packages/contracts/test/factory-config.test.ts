@@ -1,0 +1,86 @@
+import { describe, expect, it } from "vitest";
+import { factoryConfigSchema } from "../src/index.ts";
+
+function valid(): Record<string, any> {
+  return {
+    schemaVersion: "friday/v1",
+    enabled: true,
+    repository: { owner: "alexcanario", name: "friday-sandbox", base: "main" },
+    verify: { command: "pnpm -r test", timeout_s: 900 },
+    flow: {
+      screen_paths: ["**/*.razor"],
+      pr_evidence: true,
+      triage: { model: "haiku", max_budget_usd: 0.5 },
+    },
+    risk: {
+      rules: ["migrations", "infra", "ci", "dependencies", "secrets", "agent_config", "size"],
+      max_changed_lines: 2000,
+      max_changed_files: 50,
+    },
+    pull_requests: { merge: "manual" },
+    limits: { per_issue_usd: 5, per_day_usd: 10, approval_expires_min: 30 },
+    secrets: ["ANTHROPIC_API_KEY"],
+  };
+}
+
+function paths(obj: unknown, prefix: string[] = []): string[][] {
+  if (obj === null || typeof obj !== "object" || Array.isArray(obj)) return [];
+  return Object.entries(obj).flatMap(([k, v]) => [[...prefix, k], ...paths(v, [...prefix, k])]);
+}
+
+function without(path: string[]): Record<string, any> {
+  const copy = valid();
+  let node = copy;
+  for (const key of path.slice(0, -1)) node = node[key];
+  delete node[path[path.length - 1] as string];
+  return copy;
+}
+
+function withValue(path: string[], value: unknown): Record<string, any> {
+  const copy = valid();
+  let node = copy;
+  for (const key of path.slice(0, -1)) node = node[key];
+  node[path[path.length - 1] as string] = value;
+  return copy;
+}
+
+describe("factoryConfigSchema", () => {
+  it("accepts the factory config and rejects each invalid key", () => {
+    expect(factoryConfigSchema.safeParse(valid()).success).toBe(true);
+
+    for (const path of paths(valid())) {
+      expect(factoryConfigSchema.safeParse(without(path)).success, path.join(".")).toBe(false);
+    }
+
+    const invalid: Array<[string[], unknown]> = [
+      [["schemaVersion"], "fhp/v1"],
+      [["pull_requests", "merge"], "always"],
+      [["risk", "max_changed_lines"], 0],
+      [["limits", "per_day_usd"], 0],
+      [["flow", "triage", "max_budget_usd"], 0],
+      [["risk", "rules"], ["ci", "ci"]],
+      [["risk", "rules"], ["other"]],
+      [["flow", "max_qa_rounds"], 3],
+      [["flow", "implement"], "x"],
+      [["flow", "triage", "x"], 1],
+      [["limits", "x"], 1],
+      [["risk", "x"], 1],
+      [["repository", "x"], 1],
+      [["verify", "x"], 1],
+      [["pull_requests", "x"], 1],
+      [["x"], 1],
+      [["repository", "name"], "  "],
+      [["verify", "command"], ""],
+      [["verify", "timeout_s"], 1.5],
+      [["limits", "approval_expires_min"], 0],
+      [["flow", "triage", "model"], "gpt"],
+      [["secrets"], ["lower"]],
+      [["secrets"], ["A=1"]],
+    ];
+    for (const [path, value] of invalid) {
+      expect(factoryConfigSchema.safeParse(withValue(path, value)).success, path.join(".")).toBe(
+        false,
+      );
+    }
+  });
+});

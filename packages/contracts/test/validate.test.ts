@@ -110,6 +110,11 @@ describe("validateContract", () => {
   it("package index exports the public API", () => {
     expect(Object.keys(api).sort()).toEqual(
       [
+        "AGENT_STATES",
+        "BUILTIN_TOOLS",
+        "MCP_TOOLS",
+        "agentConfigSchema",
+        "factoryConfigSchema",
         "contractJsonSchema",
         "criteriaSchema",
         "diagnosisSchema",
