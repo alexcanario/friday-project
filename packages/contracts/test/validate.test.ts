@@ -171,3 +171,46 @@ describe("validateContract robustness", () => {
     });
   });
 });
+
+describe("missing enum keys", () => {
+  it("classifies a missing verdict as required_field for qaReport and reviewVerdict", () => {
+    const qaNoVerdict: Record<string, unknown> = { ...qa };
+    delete qaNoVerdict.verdict;
+    const res = validateContract("qaReport", qaNoVerdict);
+    expect(res.ok).toBe(false);
+    if (!res.ok) {
+      expect(res.violations).toContainEqual(
+        expect.objectContaining({ code: "required_field", path: "verdict" }),
+      );
+    }
+    const rv = validateContract("reviewVerdict", { findings: [] });
+    expect(rv.ok).toBe(false);
+    if (!rv.ok) {
+      expect(rv.violations).toContainEqual(
+        expect.objectContaining({ code: "required_field", path: "verdict" }),
+      );
+    }
+  });
+
+  it("classifies a nested missing enum key as required_field", () => {
+    const criterion: Record<string, unknown> = { ...qa.criteria[0] };
+    delete criterion.result;
+    const res = validateContract("qaReport", { ...qa, criteria: [criterion] });
+    expect(res.ok).toBe(false);
+    if (!res.ok) {
+      expect(res.violations).toContainEqual(
+        expect.objectContaining({ code: "required_field", path: "criteria.0.result" }),
+      );
+    }
+  });
+
+  it("keeps invalid_value for a present but wrong enum value", () => {
+    const res = validateContract("qaReport", { ...qa, verdict: "talvez" });
+    expect(res.ok).toBe(false);
+    if (!res.ok) {
+      expect(res.violations).toContainEqual(
+        expect.objectContaining({ code: "invalid_value", path: "verdict" }),
+      );
+    }
+  });
+});

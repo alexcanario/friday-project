@@ -22,7 +22,17 @@ const schemas: Record<ContractKind, z.ZodType> = {
 
 const join = (path: PropertyKey[]) => path.map(String).join(".");
 
-function fromIssue(issue: z.core.$ZodIssue): Violation[] {
+function keyMissing(root: unknown, path: PropertyKey[]): boolean {
+  let current: unknown = root;
+  for (const [index, key] of path.entries()) {
+    if (typeof current !== "object" || current === null) return false;
+    if (index === path.length - 1) return !Object.hasOwn(current, key);
+    current = (current as Record<PropertyKey, unknown>)[key];
+  }
+  return false;
+}
+
+function fromIssue(root: unknown, issue: z.core.$ZodIssue): Violation[] {
   const path = join(issue.path);
   if (issue.code === "unrecognized_keys") {
     return issue.keys.map((k) => violation("unknown_field", join([...issue.path, k])));
@@ -31,11 +41,8 @@ function fromIssue(issue: z.core.$ZodIssue): Violation[] {
     const code = (issue.params as { code?: ViolationCode } | undefined)?.code;
     return [violation(code ?? "invalid_value", path)];
   }
-  if (issue.code === "invalid_type") {
-    if (path === "") return [violation("schema_invalid", "")];
-    const missing = issue.input === undefined;
-    return [violation(missing ? "required_field" : "invalid_value", path)];
-  }
+  if (path === "") return [violation("schema_invalid", "")];
+  if (keyMissing(root, issue.path)) return [violation("required_field", path)];
   return [violation("invalid_value", path)];
 }
 
@@ -47,9 +54,9 @@ export function validateContract<K extends ContractKind>(
   if (schema === undefined) {
     return { ok: false, violations: [violation("unknown_kind", "kind", String(kind))] };
   }
-  const result = schema.safeParse(value, { reportInput: true });
+  const result = schema.safeParse(value);
   if (result.success) return { ok: true, value: result.data as ContractMap[K] };
-  return { ok: false, violations: result.error.issues.flatMap(fromIssue) };
+  return { ok: false, violations: result.error.issues.flatMap((issue) => fromIssue(value, issue)) };
 }
 
 export function parseAndValidateContract<K extends ContractKind>(
