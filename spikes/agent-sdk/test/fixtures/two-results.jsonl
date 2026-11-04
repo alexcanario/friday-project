@@ -1,0 +1,3 @@
+{"type":"system","subtype":"init","tools":["Read","Glob","Grep","mcp__spike__record","StructuredOutput"]}
+{"type":"result","subtype":"success","is_error":false,"total_cost_usd":0.01,"num_turns":1,"structured_output":{"summary":"ok","files":[],"count":1}}
+{"type":"result","subtype":"success","is_error":false,"total_cost_usd":0.01,"num_turns":1,"structured_output":{"summary":"ok","files":[],"count":1}}

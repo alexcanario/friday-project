@@ -1,0 +1,2 @@
+{"type":"system","subtype":"init","tools":["Read","Glob","Grep","mcp__spike__record","StructuredOutput"]}
+{"type":"assistant","message":{"content":[{"type":"text","text":"ok"}]}}
