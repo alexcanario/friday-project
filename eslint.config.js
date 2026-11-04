@@ -63,24 +63,27 @@ export default tseslint.config(
   },
   {
     files: ["packages/contracts/src/**/*.ts"],
-    rules: restrict(
-      [
-        "@friday/domain",
-        "@friday/application",
-        "@friday/infrastructure",
-        "@friday/daemon",
-        "@friday/cli",
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          paths: nodeBuiltins.map((name) => ({
+            name,
+            message: "Contracts só pode importar zod e módulos internos.",
+          })),
+          patterns: [
+            {
+              regex: "^(?!zod(?:/|$)|\\.{1,2}/).+",
+              message: "Contracts só pode importar zod e módulos internos.",
+            },
+            {
+              group: [rel("domain"), rel("application"), rel("infrastructure"), rel("apps")],
+              message: "Importação proibida pelas camadas.",
+            },
+          ],
+        },
       ],
-      [
-        ...["@friday/domain", "@friday/application", "@friday/infrastructure"].map((n) => `${n}/*`),
-        "@friday/daemon/*",
-        "@friday/cli/*",
-        rel("domain"),
-        rel("application"),
-        rel("infrastructure"),
-        rel("apps"),
-      ],
-    ),
+    },
   },
   {
     files: ["packages/application/**/*.ts"],

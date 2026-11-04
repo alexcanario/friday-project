@@ -22,7 +22,18 @@ const schemas: Record<ContractKind, z.ZodType> = {
 
 const join = (path: PropertyKey[]) => path.map(String).join(".");
 
-function fromIssue(issue: z.core.$ZodIssue): Violation[] {
+function keyMissing(root: unknown, path: PropertyKey[]): boolean {
+  let cur: unknown = root;
+  for (const [i, key] of path.entries()) {
+    if (typeof cur !== "object" || cur === null) return false;
+    const last = i === path.length - 1;
+    if (last) return !Object.hasOwn(cur, key);
+    cur = (cur as Record<PropertyKey, unknown>)[key];
+  }
+  return false;
+}
+
+function fromIssue(root: unknown, issue: z.core.$ZodIssue): Violation[] {
   const path = join(issue.path);
   if (issue.code === "unrecognized_keys") {
     return issue.keys.map((k) => violation("unknown_field", join([...issue.path, k])));
@@ -31,11 +42,8 @@ function fromIssue(issue: z.core.$ZodIssue): Violation[] {
     const code = (issue.params as { code?: ViolationCode } | undefined)?.code;
     return [violation(code ?? "invalid_value", path)];
   }
-  if (issue.code === "invalid_type") {
-    if (path === "") return [violation("schema_invalid", "")];
-    const missing = issue.message.includes("received undefined");
-    return [violation(missing ? "required_field" : "invalid_value", path)];
-  }
+  if (path === "") return [violation("schema_invalid", "")];
+  if (keyMissing(root, issue.path)) return [violation("required_field", path)];
   return [violation("invalid_value", path)];
 }
 
@@ -49,7 +57,7 @@ export function validateContract<K extends ContractKind>(
   }
   const result = schema.safeParse(value);
   if (result.success) return { ok: true, value: result.data as ContractMap[K] };
-  return { ok: false, violations: result.error.issues.flatMap(fromIssue) };
+  return { ok: false, violations: result.error.issues.flatMap((i) => fromIssue(value, i)) };
 }
 
 export function parseAndValidateContract<K extends ContractKind>(
