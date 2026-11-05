@@ -21,10 +21,10 @@ Rodada real (limites fixos: 10 turnos e US$ 0,50, D44):
 
 ```
 cd spikes/agile-plugin
-ANTHROPIC_API_KEY=... node run.ts --plugin <pasta-do-plugin-agile> --project <pasta-do-projeto> --args "<argumentos>"
+ANTHROPIC_API_KEY=... node run.ts --plugin <pasta-do-plugin-agile> --project <pasta-do-projeto> --args="<argumentos>"
 ```
 
-O prompt enviado é `/agile:autopilot ` seguido de `--args`. Em Windows, acrescente `--env-keys SystemRoot,USERPROFILE,TEMP`.
+O prompt enviado é `/agile:autopilot ` seguido do valor de `--args=`. Em Windows, acrescente `--env-keys SystemRoot,USERPROFILE,TEMP`.
 
 Depois da rodada, resuma:
 

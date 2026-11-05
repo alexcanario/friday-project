@@ -39,7 +39,7 @@ describe("FINDINGS.md", () => {
       "0.3.318",
       "node run.ts --plugin",
       "pnpm --dir spikes/agile-plugin --ignore-workspace install",
-      "--args",
+      "--args=",
       "/agile:autopilot",
       "--env-keys SystemRoot,USERPROFILE,TEMP",
     ]) {
