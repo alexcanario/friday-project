@@ -1,5 +1,3 @@
-import { existsSync } from "node:fs";
-import { join } from "node:path";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { GitWorktreeManager } from "../src/git-worktree-manager.ts";
 import { makeFixture, type Fixture } from "./worktree-helpers.ts";
@@ -50,6 +48,5 @@ describe("locked directory", () => {
     const m3 = await setup(enoent);
     expect((await m3.remove(rm())).ok).toBe(true);
     expect(enoent).toHaveBeenCalledTimes(1);
-    expect(existsSync(join(fx.root, fx.project, "15")) || true).toBe(true);
   });
 });

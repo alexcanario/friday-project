@@ -1,10 +1,7 @@
 import type { Result } from "@friday/domain";
 
 export type WorktreeErrorCode =
-  | "WorktreeExists"
-  | "WorktreeCreateFailed"
-  | "WorktreeRemoveFailed"
-  | "InvalidPath";
+  "WorktreeExists" | "WorktreeCreateFailed" | "WorktreeRemoveFailed" | "InvalidPath";
 
 export interface WorktreeError {
   code: WorktreeErrorCode;

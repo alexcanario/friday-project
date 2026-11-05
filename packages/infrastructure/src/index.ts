@@ -5,3 +5,8 @@ export {
   ClaudeAgentSdkRuntime,
   type ClaudeAgentSdkRuntimeDeps,
 } from "./claude-agent-sdk-runtime.ts";
+export {
+  GitWorktreeManager,
+  branchName,
+  type GitWorktreeManagerDeps,
+} from "./git-worktree-manager.ts";
