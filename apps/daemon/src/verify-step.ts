@@ -3,6 +3,7 @@ import type { WorkflowInput } from "@friday/domain";
 import { buildRunEnv, loadFactoryConfig } from "@friday/infrastructure";
 
 const TAIL_CHARS = 4000;
+const EXIT_GRACE_MS = 200;
 
 export interface VerifyStepDeps {
   registryRoot: string;
@@ -51,15 +52,17 @@ function runCommand(
   return new Promise((resolve, reject) => {
     const child = spawn(command, { shell: true, detached: true, cwd, env });
     let tail = "";
-    let timedOut = false;
     let settled = false;
     const collect = (chunk: string): void => {
       tail = (tail + chunk).slice(-TAIL_CHARS);
     };
     child.stdout.setEncoding("utf8").on("data", collect);
     child.stderr.setEncoding("utf8").on("data", collect);
+    const releasePipes = (): void => {
+      child.stdout.destroy();
+      child.stderr.destroy();
+    };
     const timer = setTimeout(() => {
-      timedOut = true;
       if (child.pid !== undefined) {
         try {
           process.kill(-child.pid, "SIGKILL");
@@ -67,18 +70,23 @@ function runCommand(
           // group already gone
         }
       }
+      finish({ kind: "timeout" });
     }, timeoutMs);
     const finish = (end: RunEnd | Error): void => {
       if (settled) return;
       settled = true;
       clearTimeout(timer);
+      releasePipes();
       if (end instanceof Error) reject(end);
       else resolve(end);
     };
     child.on("error", (error) => finish(error));
-    child.on("close", (code) => {
-      finish(timedOut ? { kind: "timeout" } : { kind: "exit", code, tail });
+    // A detached grandchild may keep the pipes open after the command exits, so
+    // `close` is not guaranteed: give the streams a short grace period, then settle.
+    child.on("exit", (code) => {
+      setTimeout(() => finish({ kind: "exit", code, tail }), EXIT_GRACE_MS);
     });
+    child.on("close", (code) => finish({ kind: "exit", code, tail }));
   });
 }
 
