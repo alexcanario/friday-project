@@ -46,8 +46,8 @@ Três tarefas agendadas do Claude Code na nuvem (limite atual do plano: 3 sessõ
    2. Subagente `qa`. `fail` ⇒ 1 rodada de correção pelo `implementer` e QA de novo; falhou de novo ⇒ `needs-human` + `gate:budget`.
    3. Judge: ler a linha `- risco:` de `## Risco e gates` da issue. `judge-strong` se houver gate, se o risco for `medium` ou `high`, ou se a linha faltar; `judge` só com `low`. O Judge confere no código cada comentário de revisão do PR, inclusive os do Copilot (D50). Se o `judge` devolver `risk` maior que o declarado, repetir com `judge-strong` no mesmo `head_sha`, e esse veredito passa a valer; `risk` menor não muda nada (D39). Publicar o veredito no PR com o `head_sha`, o risco declarado, o `risk` devolvido e o agente usado.
    4. Decidir:
-      - QA `pass` + Judge `approve` + CI verde + **sem gate** ⇒ esperar 2 min e ler de novo os comentários de revisão do PR; comentário novo no `head_sha` ⇒ Judge de novo (D59). Sem comentário novo ⇒ merge squash com `sha` = `head_sha` (`PUT .../pulls/<pr>/merge`) ⇒ a issue fecha pelo `Closes #n`.
-      - Com gate ⇒ `status:needs-human`, comentário com o `summary_ptbr` do Judge e o que o dono deve olhar.
+      - QA `pass` e Judge `approve` no **mesmo** `head_sha` (correção depois do QA ⇒ QA de novo nesse SHA) + CI verde + **sem gate** + `risk` do veredito que vale `low` ou `medium` ⇒ esperar 2 min e ler de novo os comentários de revisão do PR; comentário novo no `head_sha` ⇒ Judge de novo (D59). Sem comentário novo ⇒ merge squash com `sha` = `head_sha` (`PUT .../pulls/<pr>/merge`) ⇒ a issue fecha pelo `Closes #n`.
+      - Com gate, ou `risk` `high` ⇒ não mesclar (D63): `status:needs-human`, comentário com o `summary_ptbr` do Judge e o que o dono deve olhar.
       - Judge `request_changes` ⇒ 1 rodada de correção e Judge de novo; senão `needs-human` + `gate:budget`.
 3. Subagente `reporter` publica o relatório da noite na issue `type:report`.
 

@@ -47,7 +47,7 @@ O que a IA validou **não volta para validação humana**, exceto nos quatro gat
 | `gate:budget` | estouro de teto: mais de 2 correções, CI vermelho persistente, issue que não coube na noite, código de tetos/ledger | decide: dividir, reescrever o critério ou liberar mais uma noite |
 | `gate:screen` | qualquer mudança visível no painel | roda o painel localmente, confere a tela e faz o merge |
 
-Sem gate: CI verde + QA `pass` + Judge `approve` no mesmo `head_sha` ⇒ **merge automático em `develop`**.
+Sem gate: CI verde + QA `pass` + Judge `approve` no mesmo `head_sha` + `risk` do Judge `low` ou `medium` ⇒ **merge automático em `develop`**. Com `risk` `high`, o PR espera a aprovação do dono, presa ao `head_sha` (D63).
 
 ## 6. Prioridade
 Ordem de escolha: milestone mais antigo aberto → `prio:1` → `prio:2` → `prio:3` → número da issue. O dono reordena trocando `prio:*` (o quadro do Project é só para leitura: a noite não lê a ordem dele).
