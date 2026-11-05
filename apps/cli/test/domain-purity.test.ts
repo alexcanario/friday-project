@@ -11,7 +11,9 @@ function externalImports(dir: string): string[] {
   const found: string[] = [];
   for (const file of files) {
     const text = readFileSync(join(dir, file), "utf8");
-    const specs = [...text.matchAll(/(?:from|import)\s*\(?\s*["']([^"']+)["']/g)].map((m) => m[1]);
+    const specs = [...text.matchAll(/(?:from|import)\s*\(?\s*["']([^"']+)["']/g)].map(
+      (m) => m[1] ?? "",
+    );
     found.push(...specs.filter((spec) => !/^\.\.?\//.test(spec)));
   }
   return found;

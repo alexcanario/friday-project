@@ -10,7 +10,7 @@ Como uma issue vai da ideia ao merge, quem decide cada passo e onde o humano ent
 | Refinador | subagente `refiner` (Sonnet) | Transforma a issue em item pronto: critérios testáveis, tabela critério → teste, gates. |
 | Implementador | subagente `implementer` (Sonnet) | Testes primeiro, código, CI local, PR. |
 | QA | subagente `qa` (Sonnet, só leitura) | Confere cada critério contra um teste real e o CI. |
-| Judge | `judge` (Sonnet) ou `judge-strong` (Opus, só com gate ou risco ≥ medium) | Revisão independente, veredito preso ao `head_sha`. |
+| Judge | `judge` (Sonnet) ou `judge-strong` (Opus, só com gate, risco ≥ medium ou risco não declarado; D39) | Revisão independente, veredito preso ao `head_sha`. |
 | Relator | subagente `reporter` (Haiku) | Relatório da manhã em pt-BR. |
 
 ## 2. Estados (labels `status:*`)

@@ -8,7 +8,12 @@ describe("night rules", () => {
     const decide = lines.findIndex((l) => l.startsWith("   4. Decidir"));
     expect(judge).toBeGreaterThan(-1);
     expect(judge).toBeLessThan(decide);
-    for (const part of ["`- risco:`", "`judge-strong`", "se a linha faltar", "no mesmo `head_sha`"]) {
+    for (const part of [
+      "`- risco:`",
+      "`judge-strong`",
+      "se a linha faltar",
+      "no mesmo `head_sha`",
+    ]) {
       expect(lines[judge], part).toContain(part);
     }
     expect(readText("docs/night.md")).not.toMatch(/judge-strong. se houver gate ou risco/);

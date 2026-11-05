@@ -14,6 +14,10 @@ const kinds: ContractKind[] = [
 
 const outFlag = process.argv.indexOf("--out");
 const outArg = outFlag === -1 ? undefined : process.argv[outFlag + 1];
+if (outFlag !== -1 && (outArg === undefined || outArg === "" || outArg.startsWith("-"))) {
+  console.error("Uso: generate-schemas [--out <pasta>]");
+  process.exit(1);
+}
 const outDir =
   outArg === undefined ? resolve(import.meta.dirname, "../../../contracts") : resolve(outArg);
 

@@ -73,10 +73,11 @@ describe("guards", () => {
       decidedAt,
       expiresAt,
     });
-    for (const [at, exp] of [
+    const bad: [number, number][] = [
       [Number.NaN, 200],
       [100, Number.NaN],
-    ]) {
+    ];
+    for (const [at, exp] of bad) {
       const r = transition(snap("AwaitingApproval"), grant(at, exp));
       if (!r.ok) throw new Error(r.error);
       expect(r.value.snapshot).toMatchObject({ state: "Held", heldReason: "ApprovalExpired" });

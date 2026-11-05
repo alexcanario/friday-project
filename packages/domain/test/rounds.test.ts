@@ -3,7 +3,9 @@ import {
   HELD_REASONS,
   createWorkflow,
   transition,
-  type HeldReason, type IssueState, type WorkflowInput,
+  type HeldReason,
+  type IssueState,
+  type WorkflowInput,
 } from "../src/index.ts";
 import { INPUTS, snap } from "./fixtures.ts";
 
