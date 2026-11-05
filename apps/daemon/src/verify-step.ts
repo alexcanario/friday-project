@@ -43,6 +43,26 @@ function verifyEnv(source: Record<string, string | undefined>): Record<string, s
 
 type RunEnd = { kind: "exit"; code: number | null; tail: string } | { kind: "timeout" };
 
+const IS_WINDOWS = process.platform === "win32";
+
+/**
+ * Kills the command and its descendants, then calls `done`. On Windows there are no
+ * process groups (`process.kill(-pid)` throws), so `taskkill /T /F` kills the tree.
+ */
+function killTree(pid: number | undefined, done: () => void): void {
+  if (pid === undefined) return done();
+  if (IS_WINDOWS) {
+    execFile("taskkill", ["/T", "/F", "/PID", String(pid)], () => done());
+    return;
+  }
+  try {
+    process.kill(-pid, "SIGKILL");
+  } catch {
+    // group already gone
+  }
+  done();
+}
+
 function runCommand(
   command: string,
   cwd: string,
@@ -50,7 +70,9 @@ function runCommand(
   timeoutMs: number,
 ): Promise<RunEnd> {
   return new Promise((resolve, reject) => {
-    const child = spawn(command, { shell: true, detached: true, cwd, env });
+    // On Windows `detached` gives the command its own console and its output is lost;
+    // the tree is killed by pid there, so a process group is only needed elsewhere.
+    const child = spawn(command, { shell: true, detached: !IS_WINDOWS, cwd, env });
     let tail = "";
     let settled = false;
     const collect = (chunk: string): void => {
@@ -62,15 +84,12 @@ function runCommand(
       child.stdout.destroy();
       child.stderr.destroy();
     };
+    let timedOut = false;
+    const ended = (code: number | null): RunEnd =>
+      timedOut ? { kind: "timeout" } : { kind: "exit", code, tail };
     const timer = setTimeout(() => {
-      if (child.pid !== undefined) {
-        try {
-          process.kill(-child.pid, "SIGKILL");
-        } catch {
-          // group already gone
-        }
-      }
-      finish({ kind: "timeout" });
+      timedOut = true;
+      killTree(child.pid, () => finish({ kind: "timeout" }));
     }, timeoutMs);
     const finish = (end: RunEnd | Error): void => {
       if (settled) return;
@@ -84,9 +103,9 @@ function runCommand(
     // A detached grandchild may keep the pipes open after the command exits, so
     // `close` is not guaranteed: give the streams a short grace period, then settle.
     child.on("exit", (code) => {
-      setTimeout(() => finish({ kind: "exit", code, tail }), EXIT_GRACE_MS);
+      setTimeout(() => finish(ended(code)), EXIT_GRACE_MS);
     });
-    child.on("close", (code) => finish({ kind: "exit", code, tail }));
+    child.on("close", (code) => finish(ended(code)));
   });
 }
 

@@ -28,7 +28,7 @@ function registry(command: string, timeoutS = 60): string {
   cpSync(FIXTURE, root, { recursive: true });
   const file = join(root, "factory.yaml");
   const yaml = readFileSync(file, "utf8").replace(
-    /verify:\n {2}command: .*\n {2}timeout_s: .*\n/,
+    /verify:\r?\n {2}command: .*\r?\n {2}timeout_s: .*\r?\n/,
     `verify:\n  command: ${JSON.stringify(command)}\n  timeout_s: ${timeoutS}\n`,
   );
   writeFileSync(file, yaml);
