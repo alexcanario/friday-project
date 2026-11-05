@@ -27,7 +27,7 @@ Fonte única das decisões em vigor. O histórico e o raciocínio estão em `pla
 | D25 | A #8 fica só em Ubuntu; a #14 acrescenta um job separado em Windows para o `better-sqlite3`, sem mudar o check obrigatório `check` | fechada | 2026-11-04 |
 | D26 | A rodada real do spike é a `owner-action` #31, com teto de 10 turnos e 0,5 USD na rodada normal; a #9 entrega o código testado sem chave | fechada | 2026-11-04 |
 | D27 | `develop` protegida pelo ruleset `develop-protection`, com GitHub Pro: check obrigatório `check`, só PR com squash, sem force-push nem exclusão | fechada | 2026-11-04 |
-| D28 | Tarefa noturna A desligada até vermos o resultado da #8; B e C ligadas | **temporária** | 2026-11-04 |
+| D28 | Tarefa noturna A ficou desligada de 04/11 a 05/11, até vermos o resultado da #8; religada pelo dono em 05/11, com primeira execução às 23:41 UTC, sem revisão independente à noite. As três tarefas estão ligadas | fechada | 2026-11-05 |
 | D29 | A máquina de estados da #13 usa os estados de `planning/12-target-diagrams.md` (b.1), mais `Canceled` e a saída `Held` → `InProgress` de (b.2); `Diagnose`, `Observing` e `Reverting` ficam para M5 e M6 | fechada | 2026-11-04 |
 | D30 | `StateChanged` é um tipo TypeScript em `@friday/domain`, com `type`, `issueId`, `from`, `to`, `trigger` e `heldReason`, sem Zod; `seq`, `runId`, `actor` e data ficam no envelope gravado pela #14 | fechada | 2026-11-04 |
 | D31 | O verify volta a `InProgress` até a 3ª falha, que leva a `Held{VerifyRoundsExhausted}`; mesmo teto de QA e Judge | fechada | 2026-11-04 |
