@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import type { Options } from "@anthropic-ai/claude-agent-sdk";
 import { describe, expect, it } from "vitest";
+import { validateContract } from "@friday/contracts";
 import { buildQueryOptions, buildRunEnv, ClaudeAgentSdkRuntime } from "../src/index.ts";
 import { fakeQuery, init, makeRequest, PROMPT, result, type QueryFn } from "./runtime-helpers.ts";
 
@@ -88,6 +89,9 @@ describe("ClaudeAgentSdkRuntime", () => {
     const noInit = fakeQuery([result()]);
     const out = await new ClaudeAgentSdkRuntime({ query: noInit, env: {} }).run(makeRequest());
     expect(out.status).toBe("misconfigured");
+    const late = fakeQuery([result(), init()]);
+    const lateOut = await new ClaudeAgentSdkRuntime({ query: late, env: {} }).run(makeRequest());
+    expect(lateOut).toMatchObject({ status: "misconfigured", costUsd: 0.5, numTurns: 2 });
   });
 
   it("validates the structured output", async () => {
@@ -101,7 +105,9 @@ describe("ClaudeAgentSdkRuntime", () => {
     const bad = await run({ structured_output: { verdict: "pass" } });
     expect(bad.status).toBe("invalid_output");
     expect(bad.output).toBeNull();
-    expect(bad.violations.length).toBeGreaterThan(0);
+    const expectedBad = validateContract("qaReport", { verdict: "pass" });
+    if (expectedBad.ok) throw new Error("expected a contract violation");
+    expect(bad.violations).toEqual(expectedBad.violations);
     const missing = await run({});
     expect(missing.status).toBe("invalid_output");
     expect(missing.violations).toEqual([
@@ -141,6 +147,17 @@ describe("ClaudeAgentSdkRuntime", () => {
     }).run(makeRequest());
     expect(signal?.aborted).toBe(true);
     expect(bad).toMatchObject({ status: "misconfigured", model: "m-init" });
+
+    const lateViolation: QueryFn = (p) =>
+      (async function* () {
+        const abort = p.options.abortController!.signal;
+        await new Promise<void>((resolve) => abort.addEventListener("abort", () => resolve()));
+        yield init(["Bash"]);
+      })();
+    const both = await new ClaudeAgentSdkRuntime({ query: lateViolation, env: {} }).run(
+      makeRequest({ timeoutMs: 10 }),
+    );
+    expect(both.status).toBe("misconfigured");
   });
 
   it("handles timeout and missing result", async () => {
