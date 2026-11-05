@@ -10,10 +10,10 @@ export const MAX_DIFF_BYTES = 102400;
 
 export const RISK_RULE_GLOBS: Record<Exclude<RiskRuleName, "size">, readonly string[]> = {
   migrations: ["**/migrations/**", "**/migrate/**", "**/alembic/**", "**/schema.rb"],
-  infra: [],
+  infra: ["**/Dockerfile", "**/docker-compose*.yml", "**/*.tf", "infra/**", "k8s/**"],
   ci: [".github/**", ".gitlab-ci.yml", ".circleci/**", "**/Jenkinsfile"],
   dependencies: ["**/package.json", "pnpm-lock.yaml", "pnpm-workspace.yaml"],
-  secrets: [],
+  secrets: ["**/.env", "**/.env.*", "**/*.pem", "**/*.key", "**/secrets/**"],
   agent_config: [".claude/**", "CLAUDE.md", "**/AGENTS.md", ".friday/**"],
 };
 
