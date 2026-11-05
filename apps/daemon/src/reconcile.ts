@@ -79,6 +79,8 @@ export async function reconcile(deps: ReconcileDeps): Promise<ReconcileReport> {
     removedWorktrees: [],
     worktreeErrors: [],
   };
+  // Catch up the projection first: a crash between append and rebuild must not yield a second event.
+  deps.issues.rebuild(deps.projectId);
   for (const run of deps.runs.listActive(deps.projectId)) {
     if (holdIssue(deps, run)) report.heldIssues.push(run.issueId);
     deps.runs.save({
