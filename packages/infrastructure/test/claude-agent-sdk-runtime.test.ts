@@ -2,8 +2,16 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import type { Options } from "@anthropic-ai/claude-agent-sdk";
 import { describe, expect, it } from "vitest";
+import { mkdirSync, mkdtempSync, symlinkSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import type { ToolDenied } from "@friday/application";
 import { validateContract } from "@friday/contracts";
-import { buildQueryOptions, buildRunEnv, ClaudeAgentSdkRuntime } from "../src/index.ts";
+import {
+  buildQueryOptions,
+  buildRunEnv,
+  buildToolPolicy,
+  ClaudeAgentSdkRuntime,
+} from "../src/index.ts";
 import { fakeQuery, init, makeRequest, PROMPT, result, type QueryFn } from "./runtime-helpers.ts";
 
 const qa = {
@@ -32,13 +40,22 @@ describe("ClaudeAgentSdkRuntime", () => {
       append: readFileSync(join(request.configRoot, "prompt.md"), "utf8"),
     });
     expect(PROMPT).toBe((call.options.systemPrompt as { append: string }).append);
+    const built = buildToolPolicy(request.agent, request.cwd);
+    if (!built.ok) throw new Error("policy");
     const expected = buildQueryOptions({
       request,
       env: buildRunEnv(env),
       systemPromptAppend: PROMPT,
       abortController: call.options.abortController!,
+      policy: built.policy,
+      sink: { record: () => undefined },
     });
-    expect(call.options).toEqual(expected);
+    expect(Object.keys(call.options).sort()).toEqual(Object.keys(expected).sort());
+    expect({ ...call.options, hooks: 0, canUseTool: 0 }).toEqual({
+      ...expected,
+      hooks: 0,
+      canUseTool: 0,
+    });
 
     let called = false;
     const missing = makeRequest({ promptFile: "nope.md" });
@@ -198,5 +215,77 @@ describe("ClaudeAgentSdkRuntime", () => {
     await new ClaudeAgentSdkRuntime({ query: quick, env: {} }).run(makeRequest({ timeoutMs: 20 }));
     await new Promise((r) => setTimeout(r, 40));
     expect(signal?.aborted).toBe(false);
+  });
+
+  it("refuses a config root inside the worktree and a role-invalid agent file", async () => {
+    const base = mkdtempSync(join(tmpdir(), "friday-guard-rt-"));
+    const cwd = join(base, "wt");
+    mkdirSync(join(cwd, "cfg"), { recursive: true });
+    writeFileSync(join(cwd, "cfg", "prompt.md"), PROMPT);
+    mkdirSync(join(base, "sibling"));
+    writeFileSync(join(base, "sibling", "prompt.md"), PROMPT);
+    symlinkSync(cwd, join(base, "link"));
+    const agent = makeRequest().agent;
+    const attempt = async (configRoot: string, over = agent) => {
+      let calls = 0;
+      const denied: ToolDenied[] = [];
+      const query: QueryFn = (p) => {
+        calls += 1;
+        return fakeQuery([init(), result()])(p);
+      };
+      const rt = new ClaudeAgentSdkRuntime({
+        query,
+        env: {},
+        sink: { record: (d) => denied.push(d) },
+      });
+      const out = await rt.run({ cwd, configRoot, prompt: "x", agent: over });
+      return { status: out.status, calls, denied };
+    };
+    for (const root of [
+      join(cwd, "cfg"),
+      join(cwd, "cfg", "..", "cfg"),
+      join(base, "link", "cfg"),
+    ]) {
+      expect(await attempt(root)).toEqual({ status: "misconfigured", calls: 0, denied: [] });
+    }
+    expect(await attempt(join(base, "sibling"))).toMatchObject({ status: "succeeded", calls: 1 });
+    const forbidden = { ...agent, states: ["InReview" as const], tools: ["Read", "Write"] };
+    expect(await attempt(join(base, "sibling"), forbidden)).toEqual({
+      status: "misconfigured",
+      calls: 0,
+      denied: [],
+    });
+  });
+
+  it("records permission denials once", async () => {
+    const denial = { tool_name: "Bash", tool_use_id: "t1", tool_input: { command: "ls" } };
+    const denied: ToolDenied[] = [];
+    const sink = { record: (d: ToolDenied) => denied.push(d) };
+    const out = await new ClaudeAgentSdkRuntime({
+      query: fakeQuery([init(), result({ permission_denials: [denial] })]),
+      env: {},
+      sink,
+    }).run(makeRequest());
+    expect(out.status).toBe("succeeded");
+    expect(denied).toEqual([{ toolName: "Bash", toolUseId: "t1" }]);
+
+    denied.length = 0;
+    const query: QueryFn = async function* ({ options }) {
+      const hook = options.hooks!.PreToolUse![0]!.hooks[0]!;
+      await hook(
+        {
+          hook_event_name: "PreToolUse",
+          tool_name: "Bash",
+          tool_input: { command: "ls" },
+          tool_use_id: "t1",
+        } as never,
+        "t1",
+        { signal: new AbortController().signal },
+      );
+      yield init();
+      yield result({ permission_denials: [denial] });
+    };
+    await new ClaudeAgentSdkRuntime({ query, env: {}, sink }).run(makeRequest());
+    expect(denied).toEqual([{ toolName: "Bash", toolUseId: "t1" }]);
   });
 });

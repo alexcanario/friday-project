@@ -12,8 +12,9 @@ export function makeRequest(over: Partial<AgentRunOptions> = {}): AgentRunReques
   const configRoot = mkdtempSync(join(tmpdir(), "friday-rt-"));
   mkdirSync(join(configRoot), { recursive: true });
   writeFileSync(join(configRoot, "prompt.md"), PROMPT);
+  const cwd = mkdtempSync(join(tmpdir(), "friday-wt-"));
   return {
-    cwd: configRoot,
+    cwd,
     prompt: "faça",
     configRoot,
     agent: {
