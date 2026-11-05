@@ -106,4 +106,25 @@ describe("sqlite schema", () => {
       "INSERT INTO run_results (project_id, run_id, kind, value_json) VALUES ('p1', 'r1', 'qaReport', '{}')",
     );
   });
+
+  it("runs has a status column defaulting to running", () => {
+    const cols = db.sqlite.pragma("table_info(runs)") as Array<{
+      name: string;
+      type: string;
+      notnull: number;
+      dflt_value: string | null;
+    }>;
+    const col = cols.find((c) => c.name === "status");
+    // SQLite reports the type of a column added by ALTER TABLE in upper case.
+    expect(col?.type.toLowerCase()).toBe("text");
+    expect(col).toMatchObject({ notnull: 1, dflt_value: "'running'" });
+    run("INSERT INTO projects (id) VALUES ('p')");
+    run("INSERT INTO runs (id, project_id, issue_id) VALUES ('r9', 'p', 1)");
+    expect(db.sqlite.prepare("SELECT status FROM runs WHERE id = 'r9'").get()).toEqual({
+      status: "running",
+    });
+    expect(() =>
+      run("INSERT INTO runs (id, project_id, issue_id, status) VALUES ('r8', 'p', 1, NULL)"),
+    ).toThrow();
+  });
 });

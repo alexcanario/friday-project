@@ -21,6 +21,7 @@ export type {
   LedgerRepository,
   NewEvent,
   RunRecord,
+  RunRecordStatus,
   RunRepository,
   StateChangedPayload,
   StoredEvent,
