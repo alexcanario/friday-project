@@ -1,6 +1,6 @@
 import type { FactoryConfig } from "@friday/contracts";
 import { describe, expect, it } from "vitest";
-import { classifyRisk, type PrDiff } from "../src/index.ts";
+import { classifyRisk, RISK_RULE_GLOBS, type PrDiff } from "../src/index.ts";
 
 type Config = FactoryConfig["risk"];
 const ALL: Config["rules"] = [
@@ -91,7 +91,7 @@ describe("classifyRisk", () => {
     expect(classifyRisk(diff(["a.ts"], 5000), cfg([])).risk).toBe("unclassified");
   });
 
-  it("agent_config and dependencies paths are high, empty rules never match", () => {
+  it("agent_config and dependencies paths are high", () => {
     for (const p of [".claude/agents/judge.md", "CLAUDE.md", "a/AGENTS.md", ".friday/x.yaml"]) {
       expect(classifyRisk(diff([p]), cfg(["agent_config"]))).toEqual({
         risk: "high",
@@ -104,7 +104,58 @@ describe("classifyRisk", () => {
         rules: ["dependencies"],
       });
     }
-    expect(classifyRisk(diff(["Dockerfile", ".env"]), cfg(["infra", "secrets"]))).toEqual({
+  });
+
+  it("infra globs are exact and each matches an example", () => {
+    expect(RISK_RULE_GLOBS.infra).toEqual([
+      "**/Dockerfile",
+      "**/docker-compose*.yml",
+      "**/*.tf",
+      "infra/**",
+      "k8s/**",
+    ]);
+    for (const p of [
+      "Dockerfile",
+      "apps/api/Dockerfile",
+      "docker-compose.yml",
+      "docker-compose.prod.yml",
+      "main.tf",
+      "deploy/main.tf",
+      "infra/a.yaml",
+      "k8s/app/deploy.yaml",
+    ]) {
+      expect(classifyRisk(diff([p]), cfg(["infra"]))).toEqual({ risk: "high", rules: ["infra"] });
+    }
+  });
+
+  it("secrets globs are exact and each matches an example", () => {
+    expect(RISK_RULE_GLOBS.secrets).toEqual([
+      "**/.env",
+      "**/.env.*",
+      "**/*.pem",
+      "**/*.key",
+      "**/secrets/**",
+    ]);
+    for (const p of [
+      ".env",
+      "apps/api/.env",
+      ".env.local",
+      "a/.env.production",
+      "cert.pem",
+      "keys/server.pem",
+      "id.key",
+      "secrets/a.txt",
+      "app/secrets/b.json",
+    ]) {
+      expect(classifyRisk(diff([p]), cfg(["secrets"]))).toEqual({
+        risk: "high",
+        rules: ["secrets"],
+      });
+    }
+  });
+
+  it("docs/readme.md matches neither infra nor secrets", () => {
+    expect(classifyRisk(diff(["docs/readme.md"]), cfg(["infra", "secrets"]))).toEqual({
       risk: "unclassified",
       rules: [],
     });
