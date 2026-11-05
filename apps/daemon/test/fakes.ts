@@ -101,5 +101,5 @@ export function fakeRequest(issueId: number): AgentRunRequest {
       promptFile: "p.md",
       outputKind: null,
     },
-  } as AgentRunRequest;
+  } as unknown as AgentRunRequest;
 }
