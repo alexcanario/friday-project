@@ -90,11 +90,9 @@ export function createRunRecorder(deps: RunRecorderDeps): RunRecorder {
       const seen = new Set<string>();
       return {
         record({ toolName, toolUseId }) {
-          if (toolUseId !== "") {
-            if (seen.has(toolUseId)) return;
-            seen.add(toolUseId);
-          }
+          if (toolUseId !== "" && seen.has(toolUseId)) return;
           events.append({ ...base(ctx), type: "ToolDenied", payload: { toolName, toolUseId } });
+          if (toolUseId !== "") seen.add(toolUseId);
         },
       };
     },
