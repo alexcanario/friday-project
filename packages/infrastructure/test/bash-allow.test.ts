@@ -56,4 +56,15 @@ describe("bash allowlist", () => {
     expect(bash(["*"], "echo #x")).toBe(false);
     expect(bash(["pnpm test*"], "pnpm test --filter=@friday/domain -- a/b.ts")).toBe(true);
   });
+
+  it("denies blocked commands spelled with case or Windows executable suffixes", () => {
+    expect(bash(["git*"], "git.exe push origin x")).toBe(false);
+    expect(bash(["git*"], "GIT push origin x")).toBe(false);
+    expect(bash(["*"], "git.cmd push origin x")).toBe(false);
+    expect(bash(["*"], "gh.exe pr list")).toBe(false);
+    expect(bash(["*"], "GH.BAT pr list")).toBe(false);
+    expect(bash(["*"], "curl.exe https://x")).toBe(false);
+    expect(bash(["*"], "curl.com https://x")).toBe(false);
+    expect(bash(["git*"], "git.exe status")).toBe(true);
+  });
 });
