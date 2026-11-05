@@ -93,4 +93,10 @@ describe("decideGates", () => {
     };
     expect(input).toEqual({ type: "RiskAssessed", risk: "unclassified", autoMerge: false });
   });
+
+  it("a protected path with a newline still raises gate:security", () => {
+    const d = decideGates({ ...base, changedPaths: [".claude/a\nb.md"] });
+    expect(d.gates).toEqual(["gate:security"]);
+    expect(d.autoMerge).toBe(false);
+  });
 });

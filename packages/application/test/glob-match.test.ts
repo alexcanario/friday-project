@@ -15,4 +15,11 @@ describe("matchesGlob", () => {
     expect(matchesGlob("*.md", "b.md")).toBe(true);
     expect(matchesGlob("CLAUDE.md", "claude.md")).toBe(false);
   });
+
+  it("double star matches paths containing line terminators", () => {
+    expect(matchesGlob(".claude/**", ".claude/agents/a\nb.md")).toBe(true);
+    expect(matchesGlob(".claude/**", ".claude/agents/a\rb.md")).toBe(true);
+    expect(matchesGlob(".claude/**", ".claude/agents/a\u2028b.md")).toBe(true);
+    expect(matchesGlob(".claude/**", ".claude/agents/a\u2029b.md")).toBe(true);
+  });
 });
