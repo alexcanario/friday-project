@@ -36,3 +36,12 @@ export {
 } from "./classify-risk.ts";
 export { decideGates, type GateDecision, type GateInput } from "./decide-gates.ts";
 export type { ToolDenied, ToolDenialSink } from "./tool-denial-sink.ts";
+export {
+  runQaStep,
+  QA_ALLOWED_TOOLS,
+  QA_ALLOWED_MCP,
+  type QaStepInput,
+  type QaStepDeps,
+  type QaStepOutcome,
+  type QaFailedCriterion,
+} from "./qa-step.ts";
