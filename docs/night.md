@@ -26,8 +26,8 @@ Três tarefas agendadas do Claude Code na nuvem (limite atual do plano: 3 sessõ
    - `pass` ⇒ aplicar o corpo e as labels e seguir as regras abaixo. Os `notes` vão num comentário da issue.
    - Sem pergunta de negócio e tamanho S/M ⇒ `status:ready`.
    - `gate:business` com pergunta ⇒ `status:needs-human`.
-   - Tamanho L ⇒ criar as sub-issues propostas (`status:backlog`, mesmo milestone), comentar a divisão e fechar a original como `not planned`, com link para as filhas.
-   - Tamanho S/M com `split` ⇒ criar as issues propostas com `owner-action` (`status:backlog`, mesmo milestone), comentar o link e seguir com a original pelas regras acima.
+   - Tamanho L ⇒ criar as sub-issues propostas (`status:backlog`, mesmo milestone), comentar a divisão e passar a original a `status:blocked`, aberta, como guarda-chuva: ela fecha com o PR da última filha, e assim quem depende dela continua esperando (D55).
+   - Tamanho S/M com `split` ⇒ criar as issues propostas (`status:backlog`, mesmo milestone), comentar o link e seguir com a original pelas regras acima. Só leva `owner-action` a entrada com `owner_action: true`; o resto é trabalho da noite (D55).
 4. Comentar na issue de relatório: "Fase A: refinadas #… ; revisão: passou #…, bloqueou #… ; aguardando você: #…".
 
 ## Fase B · Implementar (01:23)
