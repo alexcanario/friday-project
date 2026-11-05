@@ -104,6 +104,8 @@ function decideChecks(s: WorkflowSnapshot, input: WorkflowInput): Result<Next, T
       return ok(retry(s, "verifyRound", "VerifyRoundsExhausted"));
     case "VerifyTimedOut":
       return ok(hold("VerifyTimeout"));
+    case "VerifyHeadChanged":
+      return ok(hold("HeadChanged"));
     case "QaPassed":
       return ok({ state: "InReview" });
     case "QaFailed":

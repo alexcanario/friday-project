@@ -9,3 +9,10 @@ export {
   type Ticker,
   type TickerDeps,
 } from "./tick.ts";
+export {
+  gitHead,
+  runVerifyStep,
+  type VerifyStepDeps,
+  type VerifyStepInput,
+  type VerifyStepOutcome,
+} from "./verify-step.ts";

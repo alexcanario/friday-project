@@ -53,6 +53,7 @@ export type WorkflowInput =
   | { type: "VerifyPassed" }
   | { type: "VerifyFailed" }
   | { type: "VerifyTimedOut" }
+  | { type: "VerifyHeadChanged" }
   | { type: "QaPassed" }
   | { type: "QaFailed" }
   | { type: "QaModifiedCode" }
