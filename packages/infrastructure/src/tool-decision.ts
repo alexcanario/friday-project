@@ -135,6 +135,7 @@ export function decideToolCall(policy: ToolPolicy, call: ToolCall): ToolDecision
   if (toolName.startsWith("mcp__")) {
     return policy.allowedTools.includes(toolName) ? { allow: true } : deny("ferramenta MCP negada");
   }
+  if (toolName === "StructuredOutput" && policy.structuredOutput === true) return { allow: true };
   if (!policy.tools.includes(toolName)) return deny("ferramenta fora da ficha");
   return decideBuiltin(policy, toolName, toolInput as Record<string, unknown>);
 }

@@ -5,7 +5,7 @@ import { dirname, isAbsolute, join, parse, relative, resolve, sep } from "node:p
  * Resolves a path walking one segment at a time: existing parts go through realpath
  * (links and `..` after a link behave like the file system), the rest is completed lexically.
  */
-function resolveReal(path: string): string {
+export function resolveReal(path: string): string {
   const absolute = isAbsolute(path) ? path : resolve(path);
   const { root } = parse(absolute);
   let current = root;

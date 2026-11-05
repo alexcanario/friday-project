@@ -6,8 +6,8 @@ export function dedupeDenials(sink: ToolDenialSink): ToolDenialSink {
   return {
     record(denial) {
       if (seen.has(denial.toolUseId)) return;
-      seen.add(denial.toolUseId);
       sink.record(denial);
+      seen.add(denial.toolUseId);
     },
   };
 }

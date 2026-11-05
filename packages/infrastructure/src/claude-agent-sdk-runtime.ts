@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { query as sdkQuery, type Options, type SDKMessage } from "@anthropic-ai/claude-agent-sdk";
 import type { AgentRuntime, AgentRunRequest, ToolDenialSink } from "@friday/application";
 import type { RunFinished } from "@friday/contracts";
-import { isInside } from "./config-root-guard.ts";
+import { isInside, resolveReal } from "./config-root-guard.ts";
 import { dedupeDenials } from "./denial-dedup.ts";
 import { buildQueryOptions } from "./query-options.ts";
 import { buildRunEnv } from "./run-env.ts";
@@ -30,16 +30,14 @@ export class ClaudeAgentSdkRuntime implements AgentRuntime {
   }
 
   async run(request: AgentRunRequest): Promise<RunFinished> {
-    if (isInside(request.cwd, request.configRoot)) return emptyFinished("misconfigured", null);
+    const configRoot = resolveReal(request.configRoot);
+    if (isInside(request.cwd, configRoot)) return emptyFinished("misconfigured", null);
     const built = buildToolPolicy(request.agent, request.cwd);
     if (!built.ok) return emptyFinished("misconfigured", null);
     const sink = dedupeDenials(this.#sink);
     let systemPromptAppend: string;
     try {
-      systemPromptAppend = await readFile(
-        join(request.configRoot, request.agent.promptFile),
-        "utf8",
-      );
+      systemPromptAppend = await readFile(join(configRoot, request.agent.promptFile), "utf8");
     } catch {
       return emptyFinished("misconfigured", null);
     }
@@ -104,7 +102,11 @@ export class ClaudeAgentSdkRuntime implements AgentRuntime {
       } else if (message.type === "result") {
         obs.result = message;
         for (const d of message.permission_denials ?? []) {
-          sink.record({ toolName: d.tool_name, toolUseId: d.tool_use_id });
+          try {
+            sink.record({ toolName: d.tool_name, toolUseId: d.tool_use_id });
+          } catch {
+            // A failing sink must not hide the remaining denials or the result.
+          }
         }
       }
     }
