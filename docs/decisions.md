@@ -39,12 +39,17 @@ Fonte única das decisões em vigor. O histórico e o raciocínio estão em `pla
 | D37 | Roster check: ao menos um agente em `InProgress`, `QA` e `InReview`; `states` aceita só esses três; os 5 especialistas da triagem precisam de ficha com `InProgress` | fechada | 2026-11-04 |
 | D38 | Ferramentas aceitas numa ficha de agente: `Read`, `Glob`, `Grep`, `Bash`, `Edit` e `Write`, mais as 8 ferramentas MCP da #43; `WebFetch` e `WebSearch` ficam de fora | fechada | 2026-11-04 |
 | D39 | A tarefa C lê o `- risco:` da issue para escolher o Judge. Sem essa linha, usa `judge-strong`, o que amplia a D8. Se o `judge` devolver risco maior que o declarado, repete com `judge-strong` no mesmo `head_sha`, e esse veredito passa a valer; risco menor não muda nada | fechada | 2026-11-05 |
+| D40 | `RunFinished` da #16 fica em `packages/contracts`, fora de `ContractKind`, com `status`, `subtype`, `model`, `costUsd`, `tokens`, `numTurns`, `durationMs`, `output` e `violations`; custo, tokens, turnos e duração são `null` quando não há mensagem `result`. Amplia `RunFinished{status, costUsd, tokens, subtype}` de `planning/08-implementation-roadmap.md` §4.3 (*produto*) | fechada | 2026-11-05 |
+| D41 | O adaptador do Agent SDK usa `settingSources: []`: nenhuma configuração é lida da worktree, por R4. As regras do agente vêm do `prompt_file` do registro central, e o `CLAUDE.md` do projeto só é lido como texto. Prevalece sobre `["project"]` de `planning/08-implementation-roadmap.md` §4.6 (*produto*) | fechada | 2026-11-05 |
+| D42 | O teste real do adaptador com chave de API fica pulado sem `FRIDAY_LIVE=1`. Quem o executa é uma issue `owner-action` criada a partir da #16, que não trava as issues seguintes (*produto*) | fechada | 2026-11-05 |
+| D43 | O adaptador passa ao SDK o apelido de modelo da ficha (`haiku`, `sonnet`, `opus`), sem tabela de ids. A versão do SDK é fixa, e `RunFinished.model` registra o modelo real (*produto*) | fechada | 2026-11-05 |
 
 ## Siglas
 - **API:** Application Programming Interface.
 - **CI:** Continuous Integration.
 - **MCP:** Model Context Protocol.
 - **QA:** Quality Assurance.
+- **R4:** risco 4 da segunda opinião (`planning/13-second-opinion.md`).
 - **SDK:** Software Development Kit.
 - **WAL:** Write-Ahead Logging, modo de journal do SQLite.
 - **WASM:** WebAssembly.
