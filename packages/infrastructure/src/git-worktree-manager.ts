@@ -39,6 +39,20 @@ const fail = (code: WorktreeErrorCode, message: string): Result<never, WorktreeE
   error: { code, message },
 });
 
+const SAFE_REF = /^[A-Za-z0-9_][A-Za-z0-9._/-]*$/;
+
+/** Conservative subset of `git check-ref-format`: never empty, never starts with `-`. */
+export function isSafeBase(base: string): boolean {
+  return (
+    SAFE_REF.test(base) &&
+    !base.includes("..") &&
+    !base.includes("//") &&
+    !base.endsWith("/") &&
+    !base.endsWith(".") &&
+    !base.split("/").some((part) => part.startsWith(".") || part.endsWith(".lock"))
+  );
+}
+
 const defaultRemoveDir = (path: string) => rm(path, { recursive: true, force: true });
 const defaultSleep = (ms: number) => new Promise<void>((done) => setTimeout(done, ms));
 const errorCode = (e: unknown): string | undefined => (e as { code?: string } | null)?.code;
@@ -57,6 +71,8 @@ export class GitWorktreeManager implements WorktreeManager {
   async create(req: CreateWorktreeRequest): Promise<Result<{ path: string }, WorktreeError>> {
     const path = this.pathFor(req.root, req.project, req.issue);
     if (path === undefined) return fail("InvalidPath", "Caminho de worktree inválido.");
+    if (!isSafeBase(req.base))
+      return fail("WorktreeCreateFailed", `Branch base inválida: ${JSON.stringify(req.base)}.`);
     if (existsSync(path))
       return fail("WorktreeExists", `A worktree da issue ${req.issue} já existe.`);
     try {
@@ -109,7 +125,7 @@ export class GitWorktreeManager implements WorktreeManager {
   }
 
   async isClean(path: string, head: string): Promise<boolean> {
-    if (head === "") return false;
+    if (!/^[0-9a-f]{7,64}$/i.test(head)) return false;
     try {
       const status = await execa("git", ["status", "--porcelain"], { cwd: path });
       if (status.stdout.trim() !== "") return false;
