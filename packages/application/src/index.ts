@@ -36,3 +36,13 @@ export {
 } from "./classify-risk.ts";
 export { decideGates, type GateDecision, type GateInput } from "./decide-gates.ts";
 export type { ToolDenied, ToolDenialSink } from "./tool-denial-sink.ts";
+export {
+  checkResult,
+  RESULT_TOOLS,
+  type GateOutcome,
+  type GateRequest,
+  type ResultStore,
+  type ResultTool,
+  type RunLookup,
+} from "./result-gate.ts";
+export { FakeResultStore, FakeRunLookup } from "./fake-result-store.ts";

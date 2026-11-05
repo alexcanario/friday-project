@@ -1,6 +1,7 @@
 import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import type { Options } from "@anthropic-ai/claude-agent-sdk";
 import { contractJsonSchema } from "@friday/contracts";
 import type { AgentRunOptions, AgentRunRequest, ToolDenied } from "@friday/application";
 import { describe, expect, it } from "vitest";
@@ -137,5 +138,26 @@ describe("buildQueryOptions", () => {
     for (const key of ["allowedTools", "tools", "permissionMode", "settingSources"] as const) {
       expect(b[key]).toEqual(a[key]);
     }
+  });
+
+  it("passes mcpServers only when given", () => {
+    const req = request(null);
+    const built = buildToolPolicy(req.agent, req.cwd);
+    if (!built.ok) throw new Error("policy");
+    const base = {
+      request: req,
+      env: {},
+      systemPromptAppend: "t",
+      abortController: new AbortController(),
+      policy: built.policy,
+      sink: { record: () => undefined },
+    };
+    const server = { type: "sdk", name: "friday" } as unknown as NonNullable<
+      Options["mcpServers"]
+    >[string];
+    const withServer = buildQueryOptions({ ...base, mcpServers: { friday: server } });
+    expect(withServer.mcpServers).toEqual({ friday: server });
+    expect(withServer.strictMcpConfig).toBe(true);
+    expect("mcpServers" in buildQueryOptions(base)).toBe(false);
   });
 });

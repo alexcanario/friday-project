@@ -16,6 +16,7 @@ export interface QueryOptionsInput {
   abortController: AbortController;
   policy: ToolPolicy;
   sink: ToolDenialSink;
+  mcpServers?: Options["mcpServers"];
 }
 
 /** The hook is the real gate: native tools are pre-approved so it decides them, Bash only with a list. */
@@ -56,6 +57,7 @@ export function buildQueryOptions(input: QueryOptionsInput): Options {
       return { behavior: "deny", message: denialMessage(toolName) };
     },
   };
+  if (input.mcpServers !== undefined) options.mcpServers = input.mcpServers;
   if (agent.outputKind != null) {
     options.outputFormat = { type: "json_schema", schema: contractJsonSchema(agent.outputKind) };
   }
