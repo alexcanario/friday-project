@@ -8,10 +8,10 @@ describe("GitHubPort", () => {
   it("adapter satisfies GitHubPort and uses only REST routes", async () => {
     const fake = createGitHubFake();
     fake.issues = [{ number: 5, labels: ["friday"] }];
-    fake.pulls = [
-      { number: 30, head: "o:h", headRef: "h", base: "develop", sha: "abc" },
-    ];
-    fake.checkRuns.set("abc", [{ id: 1, name: "check", status: "completed", conclusion: "success" }]);
+    fake.pulls = [{ number: 30, head: "o:h", headRef: "h", base: "develop", sha: "abc" }];
+    fake.checkRuns.set("abc", [
+      { id: 1, name: "check", status: "completed", conclusion: "success" },
+    ]);
     fake.files.set(30, [{ filename: "a.ts", additions: 1, deletions: 0, patch: "x" }]);
     const adapter = new GitHubRestAdapter(createTestOctokit(fake.fetch), {
       owner: "o",
@@ -35,9 +35,9 @@ describe("GitHubPort", () => {
   });
 
   it("octokit is pinned", () => {
-    const pkg = JSON.parse(
-      readFileSync(new URL("../package.json", import.meta.url), "utf8"),
-    ) as { dependencies: Record<string, string> };
+    const pkg = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8")) as {
+      dependencies: Record<string, string>;
+    };
     expect(pkg.dependencies.octokit).toBe("5.0.5");
   });
 });

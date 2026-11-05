@@ -43,11 +43,18 @@ describe("GitHubRestAdapter pull requests", () => {
   it("getCiStatus maps check runs by name", async () => {
     const { fake, adapter } = setup();
     fake.pulls = [pr("abc")];
-    const state = async (runs: { id: number; name: string; status: string; conclusion: string | null }[]) => {
+    const state = async (
+      runs: { id: number; name: string; status: string; conclusion: string | null }[],
+    ) => {
       fake.checkRuns.set("abc", runs);
       return adapter.getCiStatus(30, "check");
     };
-    const done = (id: number, conclusion: string) => ({ id, name: "check", status: "completed", conclusion });
+    const done = (id: number, conclusion: string) => ({
+      id,
+      name: "check",
+      status: "completed",
+      conclusion,
+    });
     expect(await state([done(1, "success")])).toEqual({ headSha: "abc", state: "success" });
     expect((await state([done(1, "failure")])).state).toBe("failure");
     expect(
@@ -94,7 +101,10 @@ describe("GitHubRestAdapter pull requests", () => {
     fake.mergeStatus = 409;
     expect(await adapter.squashMerge(30, "abc")).toEqual({ merged: false, reason: "head_changed" });
     fake.mergeStatus = 405;
-    expect(await adapter.squashMerge(30, "abc")).toEqual({ merged: false, reason: "not_mergeable" });
+    expect(await adapter.squashMerge(30, "abc")).toEqual({
+      merged: false,
+      reason: "not_mergeable",
+    });
     fake.mergeStatus = 500;
     await expect(adapter.squashMerge(30, "abc")).rejects.toThrow();
     const before = puts().length;

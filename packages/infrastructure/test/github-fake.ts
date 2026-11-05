@@ -41,7 +41,6 @@ export type FakeGitHub = {
   pageSize: number;
 };
 
-const API = "https://api.github.com";
 const BASE = /^\/repos\/o\/r/;
 
 export function createTestOctokit(fetch: typeof globalThis.fetch): Octokit {
@@ -99,7 +98,9 @@ export function createGitHubFake(): FakeGitHub {
     const path = decodeURIComponent(url.pathname);
     const body = typeof init?.body === "string" ? JSON.parse(init.body) : undefined;
     fake.calls.push({ method, path, query: Object.fromEntries(url.searchParams), body });
-    return route(fake, method, path, url, body);
+    const res = route(fake, method, path, url, body);
+    Object.defineProperty(res, "url", { value: url.toString() });
+    return res;
   }) as typeof globalThis.fetch;
   return fake;
 }
@@ -108,7 +109,13 @@ function labelsOf(fake: FakeGitHub, n: number): FakeIssue | undefined {
   return fake.issues.find((i) => i.number === n);
 }
 
-function route(fake: FakeGitHub, method: string, path: string, url: URL, body: any): Response {
+function route(
+  fake: FakeGitHub,
+  method: string,
+  path: string,
+  url: URL,
+  body: { labels: string[]; body: string; head: string; base: string },
+): Response {
   if (!BASE.test(path)) return json({ message: "Not Found" }, 404);
   const rest = path.replace(BASE, "");
   let m: RegExpMatchArray | null;
@@ -129,7 +136,12 @@ function route(fake: FakeGitHub, method: string, path: string, url: URL, body: a
     const issue = labelsOf(fake, Number(m[1]));
     if (!issue) return json({ message: "Not Found" }, 404);
     issue.labels ??= [];
-    if (method === "GET" && !m[2]) return page(issue.labels.map((name) => ({ name })), url, fake.pageSize);
+    if (method === "GET" && !m[2])
+      return page(
+        issue.labels.map((name) => ({ name })),
+        url,
+        fake.pageSize,
+      );
     if (method === "POST" && !m[2]) {
       issue.labels.push(...body.labels);
       return json(issue.labels.map((name) => ({ name })));
@@ -141,7 +153,12 @@ function route(fake: FakeGitHub, method: string, path: string, url: URL, body: a
   }
   if ((m = rest.match(/^\/issues\/(\d+)\/comments$/))) {
     const list = fake.comments.get(Number(m[1])) ?? [];
-    if (method === "GET") return page(list.map((b, id) => ({ id, body: b })), url, fake.pageSize);
+    if (method === "GET")
+      return page(
+        list.map((b, id) => ({ id, body: b })),
+        url,
+        fake.pageSize,
+      );
     if (method === "POST") {
       fake.comments.set(Number(m[1]), [...list, body.body]);
       return json({ id: list.length, body: body.body }, 201);
@@ -176,7 +193,7 @@ function route(fake: FakeGitHub, method: string, path: string, url: URL, body: a
     return json({ merged: true, sha: fake.mergeSha, message: "ok" });
   }
   if ((m = rest.match(/^\/commits\/([^/]+)\/check-runs$/)) && method === "GET") {
-    const runs = fake.checkRuns.get(m[1]) ?? [];
+    const runs = fake.checkRuns.get(m[1] ?? "") ?? [];
     const n = Number(url.searchParams.get("page") ?? "1");
     const slice = runs.slice((n - 1) * fake.pageSize, n * fake.pageSize);
     const headers: Record<string, string> = {};
