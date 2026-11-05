@@ -21,12 +21,14 @@ Três tarefas agendadas do Claude Code na nuvem (limite atual do plano: 3 sessõ
 ## Fase A · Refinar (23:41)
 1. Primeiro, conferir o interruptor `night:stop`.
 2. Listar `status:backlog` sem `owner-action`, na ordem de prioridade de `process.md` §6; pegar no máximo 5.
-3. Para cada uma: subagente `refiner` → aplicar o corpo e as labels que ele devolver.
+3. Para cada uma: subagente `refiner` → subagente `refine-reviewer`, com o corpo proposto, antes de escrever qualquer coisa na issue (D48).
+   - `block` ⇒ chamar o `refiner` mais uma vez, com os `findings`, e revisar de novo. Se ainda vier `block`, aplicar o corpo, passar a `status:needs-human` e comentar os `findings` na issue.
+   - `pass` ⇒ aplicar o corpo e as labels e seguir as regras abaixo. Os `notes` vão num comentário da issue.
    - Sem pergunta de negócio e tamanho S/M ⇒ `status:ready`.
    - `gate:business` com pergunta ⇒ `status:needs-human`.
    - Tamanho L ⇒ criar as sub-issues propostas (`status:backlog`, mesmo milestone), comentar a divisão e fechar a original como `not planned`, com link para as filhas.
    - Tamanho S/M com `split` ⇒ criar as issues propostas com `owner-action` (`status:backlog`, mesmo milestone), comentar o link e seguir com a original pelas regras acima.
-4. Comentar na issue de relatório: "Fase A: refinadas #… ; aguardando você: #…".
+4. Comentar na issue de relatório: "Fase A: refinadas #… ; revisão: passou #…, bloqueou #… ; aguardando você: #…".
 
 ## Fase B · Implementar (01:23)
 1. Primeiro, conferir o interruptor `night:stop`.

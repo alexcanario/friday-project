@@ -10,7 +10,7 @@ Fonte única das decisões em vigor. O histórico e o raciocínio estão em `pla
 | D2 | GitHub Issues + GitHub Project como tracker; estado espelhado por labels `status:*` | fechada | 2026-11-04 |
 | D4 | Credencial do Friday produto: chave de API; a assinatura é tratada como bônus instável | fechada | 2026-11-04 |
 | D6′ | Merge automático em `develop` do que a IA validou (CI + QA + Judge), exceto com gate | fechada | 2026-11-04 |
-| D8 | Modelos por papel: Haiku relatório, Sonnet refinar/implementar/QA/Judge, Opus só no Judge com gate ou risco ≥ medium | fechada | 2026-11-04 |
+| D8 | Modelos por papel: Haiku relatório, Sonnet refinar/implementar/QA/Judge, Opus só no Judge com gate ou risco ≥ medium e no revisor do refinamento (D48) | fechada | 2026-11-04 |
 | D9 | SQLite (better-sqlite3) + Drizzle, WAL, um processo escritor (*produto*) | fechada | 2026-11-04 |
 | D13 | Painel: Blazor WASM + cliente C# gerado do OpenAPI (*produto*) | fechada | 2026-11-04 |
 | D14 | Multi-projeto com `project_id` desde o início; política de segurança fora do repositório do projeto (*produto*) | fechada | 2026-11-04 |
@@ -27,7 +27,7 @@ Fonte única das decisões em vigor. O histórico e o raciocínio estão em `pla
 | D25 | A #8 fica só em Ubuntu; a #14 acrescenta um job separado em Windows para o `better-sqlite3`, sem mudar o check obrigatório `check` | fechada | 2026-11-04 |
 | D26 | A rodada real do spike é a `owner-action` #31, com teto de 10 turnos e 0,5 USD na rodada normal; a #9 entrega o código testado sem chave | fechada | 2026-11-04 |
 | D27 | `develop` protegida pelo ruleset `develop-protection`, com GitHub Pro: check obrigatório `check`, só PR com squash, sem force-push nem exclusão | fechada | 2026-11-04 |
-| D28 | Tarefa noturna A ficou desligada de 04/11 a 05/11, até vermos o resultado da #8; religada pelo dono em 05/11, com primeira execução às 23:41 UTC, sem revisão independente à noite. As três tarefas estão ligadas | fechada | 2026-11-05 |
+| D28 | Tarefa noturna A ficou desligada de 04/11 a 05/11, até vermos o resultado da #8; religada pelo dono em 05/11, com primeira execução às 23:41 UTC, com a revisão da D48. As três tarefas estão ligadas | fechada | 2026-11-05 |
 | D29 | A máquina de estados da #13 usa os estados de `planning/12-target-diagrams.md` (b.1), mais `Canceled` e a saída `Held` → `InProgress` de (b.2); `Diagnose`, `Observing` e `Reverting` ficam para M5 e M6 | fechada | 2026-11-04 |
 | D30 | `StateChanged` é um tipo TypeScript em `@friday/domain`, com `type`, `issueId`, `from`, `to`, `trigger` e `heldReason`, sem Zod; `seq`, `runId`, `actor` e data ficam no envelope gravado pela #14 | fechada | 2026-11-04 |
 | D31 | O verify volta a `InProgress` até a 3ª falha, que leva a `Held{VerifyRoundsExhausted}`; mesmo teto de QA e Judge | fechada | 2026-11-04 |
@@ -47,6 +47,8 @@ Fonte única das decisões em vigor. O histórico e o raciocínio estão em `pla
 | D45 | Persistência da #14: `events` append-only substitui `transitions`; portas `EventStore`, `IssueRepository`, `RunRepository` e `LedgerRepository`; `better-sqlite3` 13.0.3, `drizzle-orm` 0.45.4, `drizzle-kit` 0.31.11 e `@types/better-sqlite3` 9.6.0; `busy_timeout` de 5000 ms; uma conexão de escrita por arquivo; `runs.phase` texto anulável; `run_results` entra na #14, `approvals` fica com a #24 e `breaker_state` com a #21 (*produto*) | fechada | 2026-11-05 |
 | D46 | Worktrees da #15: branch `friday/<issue>-<slug>`, com slug do título da issue e base de `repository.base`; remoção com 3 tentativas e 200 ms de espera; falha do Windows simulada em teste, só Ubuntu no CI; o comando `--orphans` fica para depois da #19. Prevalece sobre `fhp/<issue>` e `origin/main` de `planning/09-backlog.md` FHP-011 (*produto*) | fechada | 2026-11-05 |
 | D47 | Permissões da #17: `secrets` do `factory.yaml` serve só para o scanner da #30, e o ambiente da run continua com a lista fixa (R3); pasta do registro em `FRIDAY_HOME` ou, sem ela, em `~/.friday/registry`, nunca dentro de worktree; `ToolDenied` só com `toolName` e `toolUseId`; hook com prazo de 5 s; `Bash` nega `;`, `&`, `|`, `<`, `>`, crase, `$(` e quebra de linha, mesmo com glob que case; Judge sem `Bash` (*produto*) | fechada | 2026-11-05 |
+| D48 | A fase A só marca `status:ready` depois do `refine-reviewer` (Opus, só leitura). Com `block`, o `refiner` corrige uma vez; se ainda bloquear, a issue vai a `status:needs-human`. O motivo: a revisão independente achou defeitos que travariam a implementação nas quatro issues da primeira rodada sozinha. Amplia a D8 e substitui "sem revisão independente à noite" da D28 | fechada | 2026-11-05 |
+| D49 | A #19 espera a #59 com resultado aprovado: nenhuma run real é despachada antes da prova, com chave de API, de que o hook de permissões vence o `allowedTools`. Vale só para a #59: a #56 continua sem travar as seguintes (D42) (*produto*) | fechada | 2026-11-05 |
 
 ## Siglas
 - **API:** Application Programming Interface.

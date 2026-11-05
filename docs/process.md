@@ -8,6 +8,7 @@ Como uma issue vai da ideia ao merge, quem decide cada passo e onde o humano ent
 | Dono | Alex | Prioriza, responde os gates, faz as `owner-action`, decide o go/no-go. ~1 h/dia. |
 | Orquestrador | sessão agendada do Claude Code na nuvem | Escolhe as issues, chama os subagentes, aplica as regras, escreve labels e relatório. |
 | Refinador | subagente `refiner` (Sonnet) | Transforma a issue em item pronto: critérios testáveis, tabela critério → teste, gates. |
+| Revisor do refinamento | subagente `refine-reviewer` (Opus, só leitura; D48) | Lê o corpo refinado antes do `status:ready` e bloqueia o que pararia o implementador. |
 | Implementador | subagente `implementer` (Sonnet) | Testes primeiro, código, CI local, PR. |
 | QA | subagente `qa` (Sonnet, só leitura) | Confere cada critério contra um teste real e o CI. |
 | Judge | `judge` (Sonnet) ou `judge-strong` (Opus, só com gate, risco ≥ medium ou risco não declarado; D39) | Revisão independente, veredito preso ao `head_sha`. |
