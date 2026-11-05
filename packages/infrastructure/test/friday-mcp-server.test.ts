@@ -50,10 +50,7 @@ describe("createFridayMcpServer", () => {
     );
     const fresh = make(["qa_report"]).handlers;
     expect(await fresh.qa_report!(QA_BAD)).toEqual(
-      text(
-        "422: Relatório de QA com veredito pass exige ao menos um critério (criteria).",
-        true,
-      ),
+      text("422: Relatório de QA com veredito pass exige ao menos um critério (criteria).", true),
     );
     const inactive = make(["qa_report"], { active: [] }).handlers;
     expect(await inactive.qa_report!(QA_OK)).toEqual(text("404: A run não está ativa.", true));
