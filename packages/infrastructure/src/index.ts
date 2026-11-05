@@ -10,3 +10,7 @@ export {
   branchName,
   type GitWorktreeManagerDeps,
 } from "./git-worktree-manager.ts";
+export { createEventStore } from "./sqlite/event-store.ts";
+export { createIssueRepository } from "./sqlite/issue-repository.ts";
+export { createRunRepository } from "./sqlite/run-repository.ts";
+export { createLedgerRepository } from "./sqlite/ledger-repository.ts";

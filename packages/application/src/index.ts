@@ -12,3 +12,16 @@ export type {
   WorktreeProject,
   CreateWorktreeRequest,
 } from "./worktree-manager.ts";
+export type {
+  DaySum,
+  EventStore,
+  IssueRepository,
+  IssueRow,
+  LedgerEntry,
+  LedgerRepository,
+  NewEvent,
+  RunRecord,
+  RunRepository,
+  StateChangedPayload,
+  StoredEvent,
+} from "./persistence-ports.ts";
