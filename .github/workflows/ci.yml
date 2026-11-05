@@ -29,3 +29,18 @@ jobs:
       - run: pnpm -r test
       - run: pnpm --dir spikes/agent-sdk --ignore-workspace install --frozen-lockfile
       - run: pnpm --dir spikes/agent-sdk test
+      - run: pnpm --dir spikes/isolation --ignore-workspace install --frozen-lockfile
+      - run: pnpm --dir spikes/isolation test
+
+  sqlite-windows:
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 26
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @friday/infrastructure exec vitest run test/sqlite
