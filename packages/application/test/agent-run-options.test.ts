@@ -18,6 +18,7 @@ describe("toAgentRunOptions", () => {
   it("maps an agent file to run options", () => {
     expect(toAgentRunOptions(qa)).toEqual({
       model: "sonnet",
+      states: ["QA"],
       maxBudgetUsd: 1.5,
       maxTurns: 40,
       timeoutMs: 3600000,
