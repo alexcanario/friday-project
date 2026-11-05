@@ -20,6 +20,10 @@ import { classify, emptyFinished, type RunObservation } from "./run-result.ts";
 
 type QueryFn = (params: { prompt: string; options: Options }) => AsyncIterable<SDKMessage>;
 
+function newObservation(): RunObservation {
+  return { model: null, initSeen: false, toolViolation: false, result: null, timedOut: false };
+}
+
 export interface ClaudeAgentSdkRuntimeDeps {
   query?: QueryFn;
   env?: Record<string, string | undefined>;
@@ -61,13 +65,7 @@ export class ClaudeAgentSdkRuntime implements AgentRuntime {
       return emptyFinished("misconfigured", null);
     }
     const abortController = new AbortController();
-    const obs: RunObservation = {
-      model: null,
-      initSeen: false,
-      toolViolation: false,
-      result: null,
-      timedOut: false,
-    };
+    const obs = newObservation();
     const timer = setTimeout(() => {
       obs.timedOut = true;
       abortController.abort();
