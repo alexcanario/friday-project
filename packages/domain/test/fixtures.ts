@@ -31,6 +31,7 @@ export const INPUTS = {
   VerifyPassed: { type: "VerifyPassed" },
   VerifyFailed: { type: "VerifyFailed" },
   VerifyTimedOut: { type: "VerifyTimedOut" },
+  VerifyHeadChanged: { type: "VerifyHeadChanged" },
   QaPassed: { type: "QaPassed" },
   QaFailed: { type: "QaFailed" },
   QaModifiedCode: { type: "QaModifiedCode" },

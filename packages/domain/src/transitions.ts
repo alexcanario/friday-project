@@ -18,6 +18,7 @@ export const TRANSITIONS = [
   { from: "Verify", on: "VerifyPassed" },
   { from: "Verify", on: "VerifyFailed" },
   { from: "Verify", on: "VerifyTimedOut" },
+  { from: "Verify", on: "VerifyHeadChanged" },
   { from: "QA", on: "QaPassed" },
   { from: "QA", on: "QaFailed" },
   { from: "QA", on: "QaModifiedCode" },

@@ -16,3 +16,10 @@ export {
   type RunRecorderDeps,
 } from "./run-recorder.ts";
 export { reconcile, type ReconcileDeps, type ReconcileReport } from "./reconcile.ts";
+export {
+  gitHead,
+  runVerifyStep,
+  type VerifyStepDeps,
+  type VerifyStepInput,
+  type VerifyStepOutcome,
+} from "./verify-step.ts";
