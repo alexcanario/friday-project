@@ -201,6 +201,34 @@ describe("reconcile", () => {
     expect(events().list("p", 3)).toEqual([]);
   });
 
+  it("resumes after a crash between append and rebuild without a second event", async () => {
+    seedIssue("p", 16, "InProgress");
+    seedRun("ra16", "p", 16, "running", null);
+    events().append({
+      projectId: "p",
+      issueId: 16,
+      runId: "ra16",
+      type: "StateChanged",
+      actor: "daemon",
+      at: NOW,
+      payload: {
+        type: "StateChanged",
+        issueId: "16",
+        from: "InProgress",
+        to: "Held",
+        trigger: "RunHeld",
+        heldReason: "Reconciled",
+        verifyRound: 0,
+        qaRound: 0,
+        reviewIter: 0,
+      },
+    });
+    await run(fakeWorktrees({ orphans: [] }).manager);
+    expect(events().list("p", 16)).toHaveLength(2);
+    expect(issues().get("p", 16)).toMatchObject({ state: "Held", heldReason: "Reconciled" });
+    expect(runs().get("ra16")?.status).toBe("canceled_by_reconciliation");
+  });
+
   it("reports worktree failures without throwing", async () => {
     seedIssue("p", 16, "InProgress");
     seedRun("ra16", "p", 16, "running", null);
