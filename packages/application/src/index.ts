@@ -4,3 +4,11 @@ export { toAgentRunOptions, type AgentRunOptions } from "./agent-run-options.ts"
 export { type AgentRuntime, type AgentRunRequest } from "./agent-runtime.ts";
 export { heldReasonFor } from "./held-reason-for.ts";
 export { FakeAgentRuntime } from "./fake-agent-runtime.ts";
+export type {
+  WorktreeManager,
+  WorktreeError,
+  WorktreeErrorCode,
+  WorktreeInfo,
+  WorktreeProject,
+  CreateWorktreeRequest,
+} from "./worktree-manager.ts";
