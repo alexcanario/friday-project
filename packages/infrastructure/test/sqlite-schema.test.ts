@@ -24,12 +24,7 @@ describe("sqlite schema", () => {
     const projectCols = db.sqlite.pragma("table_info(projects)") as Array<{ name: string }>;
     expect(projectCols.map((c) => c.name)).not.toContain("project_id");
     expect(() =>
-      run(
-        "INSERT INTO issues (project_id, id, state) VALUES (?, ?, ?)",
-        "missing",
-        1,
-        "backlog",
-      ),
+      run("INSERT INTO issues (project_id, id, state) VALUES (?, ?, ?)", "missing", 1, "backlog"),
     ).toThrow(/FOREIGN KEY/);
   });
 

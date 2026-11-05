@@ -1,5 +1,5 @@
 import { spawnSync } from "node:child_process";
-import { readdirSync, readFileSync } from "node:fs";
+import { readdirSync, readFileSync, statSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
@@ -8,6 +8,7 @@ const drizzleDir = resolve(pkgDir, "drizzle");
 
 function snapshot(): string {
   return readdirSync(drizzleDir, { recursive: true })
+    .filter((f) => statSync(resolve(drizzleDir, String(f))).isFile())
     .map((f) => `${f}\n${readFileSync(resolve(drizzleDir, String(f)), "utf8")}`)
     .join("\n");
 }

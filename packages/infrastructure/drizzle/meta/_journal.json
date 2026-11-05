@@ -1,0 +1,13 @@
+{
+  "version": "7",
+  "dialect": "sqlite",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "6",
+      "when": 1793885713292,
+      "tag": "0000_majestic_the_hood",
+      "breakpoints": true
+    }
+  ]
+}
