@@ -74,10 +74,36 @@ describe("sqlite schema", () => {
 
   it("enforces one result per run and kind", () => {
     run("INSERT INTO projects (id) VALUES ('p')");
-    run("INSERT INTO run_results (project_id, run_id, kind) VALUES ('p', 'r', 'qa')");
+    run(
+      "INSERT INTO run_results (project_id, run_id, kind, value_json) VALUES ('p', 'r', 'qa', '{}')",
+    );
     expect(() =>
-      run("INSERT INTO run_results (project_id, run_id, kind) VALUES ('p', 'r', 'qa')"),
+      run(
+        "INSERT INTO run_results (project_id, run_id, kind, value_json) VALUES ('p', 'r', 'qa', '{}')",
+      ),
     ).toThrow(/UNIQUE/);
-    run("INSERT INTO run_results (project_id, run_id, kind) VALUES ('p', 'r', 'judge')");
+    run(
+      "INSERT INTO run_results (project_id, run_id, kind, value_json) VALUES ('p', 'r', 'judge', '{}')",
+    );
+  });
+
+  it("run_results requires value_json", () => {
+    const cols = db.sqlite.pragma("table_info(run_results)") as Array<{
+      name: string;
+      type: string;
+      notnull: number;
+    }>;
+    const col = cols.find((c) => c.name === "value_json");
+    expect(col?.type.toLowerCase()).toBe("text");
+    expect(col?.notnull).toBe(1);
+    run("INSERT INTO projects (id) VALUES ('p1')");
+    expect(() =>
+      run(
+        "INSERT INTO run_results (project_id, run_id, kind, value_json) VALUES ('p1', 'r1', 'qaReport', NULL)",
+      ),
+    ).toThrow();
+    run(
+      "INSERT INTO run_results (project_id, run_id, kind, value_json) VALUES ('p1', 'r1', 'qaReport', '{}')",
+    );
   });
 });

@@ -83,6 +83,7 @@ export const runResults = sqliteTable(
     projectId: projectId(),
     runId: text("run_id").notNull(),
     kind: text("kind").notNull(),
+    valueJson: text("value_json").notNull(),
   },
   (t) => [uniqueIndex("run_results_run_kind_idx").on(t.runId, t.kind)],
 );
