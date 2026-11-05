@@ -5,7 +5,7 @@ const filter = "label=friday-spike=isolation";
 
 describe.skipIf(skipDocker)("cleanup", () => {
   it("leaves no containers or networks behind", async () => {
-    // Other files run first or finish their teardown; wait for stragglers instead of racing them.
+    // vitest.config.ts runs this file last; the wait only covers containers still being removed.
     const deadline = Date.now() + 60000;
     let containers = "";
     let networks = "";

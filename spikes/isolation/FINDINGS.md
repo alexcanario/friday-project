@@ -13,12 +13,12 @@ Os testes de Docker chamam `docker run` com os argumentos de `buildDockerArgs` (
 
 ## Resultados
 
-Os testes C1 a C4 e C9 a C12 são unitários e rodam em qualquer máquina. Os de Docker foram escritos numa máquina sem daemon Docker; a primeira execução real é o job `check` do CI no PR.
+Os testes C1 a C4 e C9 a C12 são unitários e rodam em qualquer máquina. Os de Docker rodam de verdade no job `check` do CI, sem nenhum ignorado.
 
-- C5 (contêiner não lê segredos do host nem outros projetos): pendente, aguarda o CI.
-- C6 (controle negativo: o probe detecta um vazamento proposital): pendente, aguarda o CI.
-- C7 (proxy encaminha o host da allowlist e bloqueia os demais): pendente, aguarda o CI.
-- C8 (contêiner não tem saída direta): pendente, aguarda o CI.
+- C5 (contêiner não lê segredos do host nem outros projetos): passou.
+- C6 (controle negativo: o probe detecta um vazamento proposital): passou.
+- C7 (proxy encaminha o host da allowlist e bloqueia os demais): passou.
+- C8 (contêiner não tem saída direta): passou.
 
 ## O que exige o dono
 

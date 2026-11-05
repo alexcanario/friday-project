@@ -1,4 +1,5 @@
 import { homedir } from "node:os";
+import { dirname } from "node:path";
 import { describe, expect, it } from "vitest";
 import { buildDockerArgs } from "../src/docker-args.ts";
 
@@ -37,6 +38,11 @@ describe("buildDockerArgs", () => {
     for (const path of ["/var/run/docker.sock", "/home/a/.claude", "/home/a/.ssh", "/proj/.env", homedir()]) {
       expect(() => buildDockerArgs({ ...base, extraMounts: [path] })).toThrow(`montagem proibida: ${path}`);
     }
+    for (const path of ["/home/a/.claude/token", "/home/a/.ssh/id_rsa", "/proj/.env/x", dirname(homedir())]) {
+      expect(() => buildDockerArgs({ ...base, extraMounts: [path] })).toThrow(`montagem proibida: ${path}`);
+      expect(() => buildDockerArgs({ ...base, worktree: path })).toThrow(`montagem proibida: ${path}`);
+    }
+    expect(() => buildDockerArgs({ ...base, extraMounts: ["/home/a/.claude-notes"] })).not.toThrow();
     for (const key of ["ANTHROPIC_API_KEY", "GITHUB_TOKEN", "GH_TOKEN"]) {
       expect(() => buildDockerArgs({ ...base, env: { [key]: "x" } })).toThrow(`variável proibida: ${key}`);
     }

@@ -1,7 +1,7 @@
 // Minimal forward proxy: forwards only hosts in ALLOWLIST (comma separated), 403 for the rest.
 import http from "node:http";
 import net from "node:net";
-import { isAllowed } from "./allowlist.ts";
+import { connectPort, isAllowed } from "./allowlist.ts";
 
 const allowlist = (process.env.ALLOWLIST ?? "").split(",").filter(Boolean);
 const port = Number(process.env.PORT ?? 3128);
@@ -41,7 +41,12 @@ server.on("connect", (req, socket) => {
     socket.end("HTTP/1.1 403 Forbidden\r\n\r\n");
     return;
   }
-  const upstream = net.connect(Number(p) || 443, host, () => {
+  const targetPort = connectPort(p);
+  if (targetPort === null) {
+    socket.end("HTTP/1.1 400 Bad Request\r\n\r\n");
+    return;
+  }
+  const upstream = net.connect(targetPort, host, () => {
     socket.write("HTTP/1.1 200 Connection Established\r\n\r\n");
     upstream.pipe(socket);
     socket.pipe(upstream);

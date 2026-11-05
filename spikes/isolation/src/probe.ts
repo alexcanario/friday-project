@@ -58,14 +58,18 @@ function getProbe(url: string): void {
     path: proxy ? url : target.pathname + target.search,
     headers: { host: target.host },
   });
-  const fail = (err: unknown) => console.log(JSON.stringify({ ok: false, code: errorCode(err) }));
-  req.setTimeout(TIMEOUT, () => req.destroy(Object.assign(new Error("timeout"), { code: "ETIMEDOUT" })));
-  req.on("error", fail);
+  // One deadline for the whole attempt, DNS and connection included, and exactly one result.
+  const finish = (result: object) => {
+    console.log(JSON.stringify(result));
+    process.exit(0);
+  };
+  setTimeout(() => finish({ ok: false, code: "ETIMEDOUT" }), TIMEOUT);
+  req.on("error", (err) => finish({ ok: false, code: errorCode(err) }));
   req.on("response", (res) => {
     let body = "";
     res.setEncoding("utf8");
     res.on("data", (chunk) => (body += chunk));
-    res.on("end", () => console.log(JSON.stringify({ ok: true, status: res.statusCode, body })));
+    res.on("end", () => finish({ ok: true, status: res.statusCode, body }));
   });
   req.end();
 }

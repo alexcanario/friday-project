@@ -1,10 +1,10 @@
 import { homedir } from "node:os";
-import { resolve } from "node:path";
+import { isAbsolute, relative, resolve } from "node:path";
 
 export const IMAGE = "node:26-slim";
 export const LABEL = "friday-spike=isolation";
 const FORBIDDEN_ENV = ["ANTHROPIC_API_KEY", "GITHUB_TOKEN", "GH_TOKEN"];
-const FORBIDDEN_SUFFIXES = ["/.claude", "/.ssh", "/.env"];
+const FORBIDDEN_SEGMENTS = [".claude", ".ssh", ".env"];
 
 export interface DockerArgsOptions {
   worktree: string;
@@ -14,14 +14,21 @@ export interface DockerArgsOptions {
   extraMounts?: string[];
 }
 
+// The home folder itself or any folder above it would expose everything inside.
+function containsHome(path: string): boolean {
+  const fromPath = relative(path, resolve(homedir()));
+  return !fromPath.startsWith("..") && !isAbsolute(fromPath);
+}
+
 function assertMountAllowed(entry: string): void {
   const host = entry.split(":")[0] as string;
   const path = resolve(host);
+  const segments = path.split(/[\\/]/);
   const forbidden =
     path === "/var/run/docker.sock" ||
     path === "/run/docker.sock" ||
-    path === resolve(homedir()) ||
-    FORBIDDEN_SUFFIXES.some((suffix) => path.endsWith(suffix));
+    containsHome(path) ||
+    FORBIDDEN_SEGMENTS.some((segment) => segments.includes(segment));
   if (forbidden) throw new Error(`montagem proibida: ${host}`);
 }
 
