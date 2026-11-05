@@ -10,7 +10,11 @@ function globToRegExp(glob: string): RegExp {
   return new RegExp(`^${body}$`, "s");
 }
 
-const baseName = (t: string): string => t.slice(t.lastIndexOf("/") + 1);
+const baseName = (t: string): string =>
+  t
+    .slice(t.lastIndexOf("/") + 1)
+    .toLowerCase()
+    .replace(/\.(exe|cmd|bat|com)$/, "");
 
 function hasBlockedWord(command: string): boolean {
   const tokens = command.split(/\s+/).filter((t) => t !== "");
