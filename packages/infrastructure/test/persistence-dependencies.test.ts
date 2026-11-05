@@ -16,7 +16,7 @@ describe("persistence dependencies", () => {
 
   it("allows no esbuild build", () => {
     const ws = parse(readFileSync(resolve(repo, "pnpm-workspace.yaml"), "utf8"));
-    expect(ws.allowBuilds).toEqual({ esbuild: false });
+    expect(ws.allowBuilds.esbuild).toBe(false);
     expect(ws).not.toHaveProperty("onlyBuiltDependencies");
   });
 });

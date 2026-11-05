@@ -4,3 +4,4 @@ packages:
 saveExact: true
 allowBuilds:
   esbuild: false
+  better-sqlite3: false
