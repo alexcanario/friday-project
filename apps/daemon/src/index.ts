@@ -10,6 +10,12 @@ export {
   type TickerDeps,
 } from "./tick.ts";
 export {
+  createRunRecorder,
+  type RunContext,
+  type RunRecorder,
+  type RunRecorderDeps,
+} from "./run-recorder.ts";
+export {
   gitHead,
   runVerifyStep,
   type VerifyStepDeps,

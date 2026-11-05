@@ -11,6 +11,7 @@
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
+    "@friday/contracts": "workspace:*",
     "@friday/domain": "workspace:*",
     "@friday/application": "workspace:*",
     "@friday/infrastructure": "workspace:*"
