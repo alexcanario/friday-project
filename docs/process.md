@@ -26,7 +26,7 @@ Uma issue aberta tem exatamente um `status:*`. Uma GitHub Action espelha esse es
 | `status:needs-human` | Needs you | gate, estouro de teto ou dúvida | o dono responde |
 | `status:blocked` | Blocked | dependência aberta ou falha externa | a dependência fecha |
 | (fechada) | Done | merge squash com `Closes #n` | — |
-| (fechada como *not planned*) | Discarded | dividida em sub-issues ou descartada | — |
+| (fechada como *not planned*) | Discarded | descartada | — |
 
 ## 3. Definition of Ready
 - Corpo no formato do `refiner` (Resumo, Escopo, Critérios, Criterion → test, Arquivos, Risco e gates, Depende de, Tamanho).

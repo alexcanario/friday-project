@@ -51,10 +51,12 @@ export default tseslint.config(
   {
     files: ["packages/domain/**/*.ts"],
     rules: restrict(
-      [...outer, "zod", ...nodeBuiltins],
+      [...outer, "zod", "better-sqlite3", "drizzle-orm", ...nodeBuiltins],
       [
         ...outer.flatMap(pkg),
         ...pkg("zod"),
+        ...pkg("better-sqlite3"),
+        ...pkg("drizzle-orm"),
         rel("application"),
         rel("infrastructure"),
         rel("apps"),

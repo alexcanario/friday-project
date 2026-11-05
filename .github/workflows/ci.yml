@@ -33,3 +33,16 @@ jobs:
       - run: pnpm --dir spikes/isolation test
       - run: pnpm --dir spikes/agile-plugin --ignore-workspace install --frozen-lockfile
       - run: pnpm --dir spikes/agile-plugin test
+
+  sqlite-windows:
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 26
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @friday/infrastructure exec vitest run test/sqlite
