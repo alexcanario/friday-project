@@ -4,7 +4,7 @@ import type { Options } from "@anthropic-ai/claude-agent-sdk";
 import { describe, expect, it } from "vitest";
 import { mkdirSync, mkdtempSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import type { ToolDenied } from "@friday/application";
+import type { AgentRunOptions, ToolDenied } from "@friday/application";
 import { validateContract } from "@friday/contracts";
 import {
   buildQueryOptions,
@@ -249,7 +249,11 @@ describe("ClaudeAgentSdkRuntime", () => {
       expect(await attempt(root)).toEqual({ status: "misconfigured", calls: 0, denied: [] });
     }
     expect(await attempt(join(base, "sibling"))).toMatchObject({ status: "succeeded", calls: 1 });
-    const forbidden = { ...agent, states: ["InReview" as const], tools: ["Read", "Write"] };
+    const forbidden = {
+      ...agent,
+      states: ["InReview" as const],
+      tools: ["Read", "Write"] as AgentRunOptions["tools"],
+    };
     expect(await attempt(join(base, "sibling"), forbidden)).toEqual({
       status: "misconfigured",
       calls: 0,

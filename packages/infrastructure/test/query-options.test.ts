@@ -87,6 +87,7 @@ describe("buildQueryOptions", () => {
       {},
       {
         toolUseID: "t2",
+        requestId: "r",
         signal: new AbortController().signal,
       },
     );
@@ -98,7 +99,7 @@ describe("buildQueryOptions", () => {
   });
 
   it("builds allowedTools, hook and settings without reading the worktree", () => {
-    const base = {
+    const base: Partial<AgentRunOptions> = {
       tools: ["Read", "Bash"],
       allowedTools: ["mcp__friday__work_report"],
       bashAllow: ["pnpm test*"],

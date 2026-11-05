@@ -23,3 +23,10 @@ export { createEventStore } from "./sqlite/event-store.ts";
 export { createIssueRepository } from "./sqlite/issue-repository.ts";
 export { createRunRepository } from "./sqlite/run-repository.ts";
 export { createLedgerRepository } from "./sqlite/ledger-repository.ts";
+export {
+  buildPreToolUseHook,
+  HOOK_TIMEOUT_MS,
+  HOOK_TIMEOUT_SECONDS,
+  type PreToolUseHookInput,
+} from "./pre-tool-use-hook.ts";
+export { isInside } from "./config-root-guard.ts";
