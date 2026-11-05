@@ -31,3 +31,5 @@ jobs:
       - run: pnpm --dir spikes/agent-sdk test
       - run: pnpm --dir spikes/isolation --ignore-workspace install --frozen-lockfile
       - run: pnpm --dir spikes/isolation test
+      - run: pnpm --dir spikes/agile-plugin --ignore-workspace install --frozen-lockfile
+      - run: pnpm --dir spikes/agile-plugin test
