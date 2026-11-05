@@ -13,20 +13,44 @@ const PROTECTED_DIRS = [".friday", ".claude"];
 
 type PathModule = typeof posix;
 
-/** Resolves the deepest existing ancestor with realpath and appends the rest lexically. */
-function realOf(policy: ToolPolicy, p: PathModule, path: string): string {
+const MAX_LINK_HOPS = 16;
+
+/** Link target of `path`, or null when it is not a (dangling) symbolic link. */
+function linkTarget(policy: ToolPolicy, p: PathModule, path: string): string | null {
+  try {
+    return p.resolve(p.dirname(path), policy.readlink(path));
+  } catch {
+    return null;
+  }
+}
+
+/** Resolves the deepest existing ancestor with realpath, following dangling links. */
+function realOf(policy: ToolPolicy, p: PathModule, path: string, hops = 0): string {
   let current = path;
   const rest: string[] = [];
   for (;;) {
     try {
       return p.join(policy.realpath(current), ...rest);
     } catch {
+      const target = linkTarget(policy, p, current);
+      if (target !== null) {
+        if (hops >= MAX_LINK_HOPS) throw new Error("too many links");
+        return p.join(realOf(policy, p, target, hops + 1), ...rest);
+      }
       const parent = p.dirname(current);
       if (parent === current) return path;
       rest.unshift(p.basename(current));
       current = parent;
     }
   }
+}
+
+/** Windows ignores trailing dots/spaces and expands 8.3 short names. */
+function hasWin32Alias(raw: string): boolean {
+  return raw.split(/[\\/]/).some((seg) => {
+    if (seg === "." || seg === "..") return false;
+    return /[. ]$/.test(seg) || seg.includes("~");
+  });
 }
 
 function relativeInside(p: PathModule, root: string, target: string): string | null {
@@ -38,10 +62,17 @@ function relativeInside(p: PathModule, root: string, target: string): string | n
 
 function checkPath(policy: ToolPolicy, raw: string, write: boolean): ToolDecision {
   if (raw === "" || raw !== raw.trim() || raw.startsWith("~")) return deny("caminho inválido");
+  if (policy.style === "win32" && hasWin32Alias(raw)) return deny("caminho inválido");
   const p: PathModule = policy.style === "win32" ? win32 : posix;
   const lexical = p.resolve(policy.worktree, raw);
-  const real = realOf(policy, p, lexical);
-  const root = realOf(policy, p, p.resolve(policy.worktree));
+  let real: string;
+  let root: string;
+  try {
+    real = realOf(policy, p, lexical);
+    root = realOf(policy, p, p.resolve(policy.worktree));
+  } catch {
+    return deny("caminho não resolvido");
+  }
   const rel = relativeInside(p, root, real);
   if (rel === null || relativeInside(p, p.resolve(policy.worktree), lexical) === null) {
     return deny("caminho fora da worktree");
@@ -80,6 +111,7 @@ function decideBuiltin(policy: ToolPolicy, name: string, input: Record<string, u
   } else if (name === "Glob") {
     const pattern = str(input, "pattern");
     if (typeof pattern !== "string" || pattern.includes("{")) return deny("padrão inválido");
+    if (pattern.split(/[\\/]/).includes("..")) return deny("padrão inválido");
     checks.push(pattern, str(input, "path"));
   } else if (name === "Grep") {
     if (typeof str(input, "pattern") !== "string") return deny("entrada malformada");
@@ -96,12 +128,12 @@ function decideBuiltin(policy: ToolPolicy, name: string, input: Record<string, u
 
 export function decideToolCall(policy: ToolPolicy, call: ToolCall): ToolDecision {
   const { toolName, toolInput } = call;
+  if (typeof toolInput !== "object" || toolInput === null || Array.isArray(toolInput)) {
+    return deny("entrada malformada");
+  }
   if (toolName.startsWith("mcp__")) {
     return policy.allowedTools.includes(toolName) ? { allow: true } : deny("ferramenta MCP negada");
   }
   if (!policy.tools.includes(toolName)) return deny("ferramenta fora da ficha");
-  if (typeof toolInput !== "object" || toolInput === null || Array.isArray(toolInput)) {
-    return deny("entrada malformada");
-  }
   return decideBuiltin(policy, toolName, toolInput as Record<string, unknown>);
 }

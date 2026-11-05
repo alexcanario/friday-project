@@ -1,4 +1,4 @@
-import { realpathSync } from "node:fs";
+import { readlinkSync, realpathSync } from "node:fs";
 import type { AgentRunOptions } from "@friday/application";
 
 export type PathStyle = "win32" | "posix";
@@ -10,6 +10,8 @@ export interface ToolPolicy {
   worktree: string;
   style: PathStyle;
   realpath: (path: string) => string;
+  /** Throws when the path is not a symbolic link. */
+  readlink: (path: string) => string;
 }
 
 export type BuildToolPolicyResult =
@@ -35,7 +37,7 @@ export function styleOf(worktree: string): PathStyle {
 export function buildToolPolicy(
   agent: AgentRunOptions,
   worktree: string,
-  deps: { realpath?: (path: string) => string } = {},
+  deps: { realpath?: (path: string) => string; readlink?: (path: string) => string } = {},
 ): BuildToolPolicyResult {
   const profile = profileFor(agent.states);
   const forbiddenTools = agent.tools.filter((t) => !profile.includes(t));
@@ -49,6 +51,7 @@ export function buildToolPolicy(
       worktree,
       style: styleOf(worktree),
       realpath: deps.realpath ?? ((p) => realpathSync(p)),
+      readlink: deps.readlink ?? ((p) => readlinkSync(p)),
     },
   };
 }

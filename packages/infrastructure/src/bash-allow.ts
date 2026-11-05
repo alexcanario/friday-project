@@ -1,4 +1,4 @@
-const META = /[;&|<>`\n\r]|\$\(|\$[{A-Za-z]/;
+const META = /[;&|<>`\n\r'"\\?[]|\$\(|\$[{A-Za-z]/;
 const BLOCKED_WORDS = new Set(["gh", "curl"]);
 
 function globToRegExp(glob: string): RegExp {
@@ -9,11 +9,13 @@ function globToRegExp(glob: string): RegExp {
   return new RegExp(`^${body}$`, "s");
 }
 
+const baseName = (t: string): string => t.slice(t.lastIndexOf("/") + 1);
+
 function hasBlockedWord(command: string): boolean {
   const tokens = command.split(/\s+/).filter((t) => t !== "");
-  if (tokens.some((t) => BLOCKED_WORDS.has(t))) return true;
-  const git = tokens.indexOf("git");
-  return git !== -1 && tokens.slice(git + 1).includes("push");
+  if (tokens.some((t) => BLOCKED_WORDS.has(baseName(t)))) return true;
+  const git = tokens.findIndex((t) => baseName(t) === "git");
+  return git !== -1 && tokens.slice(git + 1).some((t) => t.includes("push"));
 }
 
 /** Deny-by-default check of a Bash command against the `bash_allow` globs. */
