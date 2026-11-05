@@ -1,3 +1,4 @@
+import type { RunRecordStatus } from "@friday/application";
 import { sql } from "drizzle-orm";
 import {
   check,
@@ -46,6 +47,7 @@ export const runs = sqliteTable("runs", {
   phase: text("phase"),
   startedAt: text("started_at"),
   finishedAt: text("finished_at"),
+  status: text("status").$type<RunRecordStatus>().notNull().default("running"),
 });
 
 export const events = sqliteTable(

@@ -15,6 +15,13 @@
       "when": 1793914596301,
       "tag": "0001_run_results_value_json",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1793919459765,
+      "tag": "0002_hot_the_leader",
+      "breakpoints": true
     }
   ]
 }

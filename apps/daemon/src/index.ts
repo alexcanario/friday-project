@@ -15,3 +15,4 @@ export {
   type RunRecorder,
   type RunRecorderDeps,
 } from "./run-recorder.ts";
+export { reconcile, type ReconcileDeps, type ReconcileReport } from "./reconcile.ts";

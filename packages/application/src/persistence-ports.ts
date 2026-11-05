@@ -43,6 +43,8 @@ export interface IssueRepository {
   rebuild(projectId: string): void;
 }
 
+export type RunRecordStatus = "running" | "succeeded" | "failed" | "canceled_by_reconciliation";
+
 export interface RunRecord {
   id: string;
   projectId: string;
@@ -50,11 +52,14 @@ export interface RunRecord {
   phase: string | null;
   startedAt: string | null;
   finishedAt: string | null;
+  status: RunRecordStatus;
 }
 
 export interface RunRepository {
   save(run: RunRecord): void;
   get(runId: string): RunRecord | null;
+  /** Runs of the project with `status` running and no `finishedAt`, ordered by id. */
+  listActive(projectId: string): RunRecord[];
 }
 
 export interface LedgerEntry {

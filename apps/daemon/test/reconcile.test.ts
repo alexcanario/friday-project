@@ -62,7 +62,15 @@ function seedRun(
   status: RunRecordStatus,
   finishedAt: string | null,
 ) {
-  runs().save({ id, projectId: project, issueId, phase: null, startedAt: null, finishedAt, status });
+  runs().save({
+    id,
+    projectId: project,
+    issueId,
+    phase: null,
+    startedAt: null,
+    finishedAt,
+    status,
+  });
 }
 
 type Call = { root: string; project: string; issue: number };

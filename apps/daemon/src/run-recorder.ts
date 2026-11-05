@@ -32,7 +32,7 @@ export type RunRecorder = {
   denialSink(ctx: RunContext): ToolDenialSink;
 };
 
-function snapshotOf(row: IssueRow): WorkflowSnapshot | null {
+export function snapshotOf(row: IssueRow): WorkflowSnapshot | null {
   const state = ISSUE_STATES.find((s) => s === row.state);
   if (state === undefined) return null;
   let heldReason: HeldReason | null = null;

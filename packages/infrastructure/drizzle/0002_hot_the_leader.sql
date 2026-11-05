@@ -1,0 +1,1 @@
+ALTER TABLE `runs` ADD `status` text DEFAULT 'running' NOT NULL;

@@ -11,7 +11,13 @@ describe("sqlite run repository", () => {
   it("stores the pack phase of a run", () => {
     db = openWithProjects("a");
     const repo = createRunRepository(db);
-    const base = { projectId: "a", issueId: 1, startedAt: null, finishedAt: null, status: "running" as const };
+    const base = {
+      projectId: "a",
+      issueId: 1,
+      startedAt: null,
+      finishedAt: null,
+      status: "running" as const,
+    };
     repo.save({ ...base, id: "r1", phase: "implement" });
     repo.save({ ...base, id: "r2", phase: null });
     expect(repo.get("r1")).toEqual({ ...base, id: "r1", phase: "implement" });
@@ -24,8 +30,12 @@ describe("sqlite run repository", () => {
     const repo = createRunRepository(db);
     const FINISHED = "2026-11-05T00:00:00Z";
     const base = { phase: null, startedAt: null };
-    const mk = (id: string, projectId: string, status: RunRecordStatus, finishedAt: string | null) =>
-      ({ ...base, id, projectId, issueId: 1, status, finishedAt }) satisfies RunRecord;
+    const mk = (
+      id: string,
+      projectId: string,
+      status: RunRecordStatus,
+      finishedAt: string | null,
+    ) => ({ ...base, id, projectId, issueId: 1, status, finishedAt }) satisfies RunRecord;
     const r1 = mk("r1", "a", "running", null);
     const r4 = mk("r4", "b", "running", null);
     repo.save(r1);
