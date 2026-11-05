@@ -32,4 +32,16 @@ describe("bash allowlist", () => {
     expect(bash(["*"], "echo ok")).toBe(true);
     expect(bash([], "pnpm test")).toBe(false);
   });
+
+  it("denies quoting, backslash, shell globs and push hidden in git arguments", () => {
+    expect(bash(["git*"], "git p''ush origin x")).toBe(false);
+    expect(bash(["git*"], 'git p""ush origin x')).toBe(false);
+    expect(bash(["*"], "g''h pr list")).toBe(false);
+    expect(bash(["*"], "cu\\rl https://x")).toBe(false);
+    expect(bash(["git*"], "git pu?h origin x")).toBe(false);
+    expect(bash(["git*"], "git pu[s]h origin x")).toBe(false);
+    expect(bash(["git*"], "git -c alias.x=push x origin main")).toBe(false);
+    expect(bash(["*"], "/usr/bin/git push origin x")).toBe(false);
+    expect(bash(["git*"], "git status")).toBe(true);
+  });
 });

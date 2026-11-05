@@ -81,4 +81,38 @@ describe("decideToolCall", () => {
     expect(w("Write", { file_path: "C:\\work\\wt\\17\\.claude\\x" })).toBe(false);
     expect(w("Write", { file_path: "C:\\WORK\\WT\\17\\.CLAUDE\\x" })).toBe(false);
   });
+
+  it("denies dangling links, glob dot-dot, malformed mcp input and win32 aliases", () => {
+    const W = "/work/wt/17";
+    const rp = (p: string): string => {
+      if (p === W || p === "/work" || p === "/") return p;
+      throw Object.assign(new Error("ENOENT"), { code: "ENOENT" });
+    };
+    const readlink = (p: string): string => {
+      if (p === `${W}/dangling`) return "/outside/missing";
+      if (p === `${W}/inside`) return "src/new";
+      throw Object.assign(new Error("EINVAL"), { code: "EINVAL" });
+    };
+    const d = (agent: AgentRunOptions, w: string, n: string, i: unknown, real = rp) => {
+      const r = buildToolPolicy(agent, w, { realpath: real, readlink });
+      if (!r.ok) throw new Error("policy");
+      return decideToolCall(r.policy, { toolName: n, toolInput: i }).allow;
+    };
+    expect(d(specialist(), W, "Write", { file_path: "dangling" })).toBe(false);
+    expect(d(specialist(), W, "Write", { file_path: "dangling/x" })).toBe(false);
+    expect(d(specialist(), W, "Write", { file_path: "inside" })).toBe(true);
+    expect(d(specialist(), W, "Glob", { pattern: "src/**/../../*" })).toBe(false);
+    expect(d(specialist(), W, "Glob", { pattern: "src/*/../*" })).toBe(false);
+    for (const bad of [null, "x", ["a"], 5]) {
+      expect(d(qa(), W, "mcp__friday__qa_report", bad)).toBe(false);
+    }
+    expect(d(qa(), W, "mcp__friday__qa_report", {})).toBe(true);
+    const w = (n: string, i: unknown) => d(specialist(), "C:\\work\\wt\\17", n, i, identity);
+    expect(w("Write", { file_path: ".claude.\\x" })).toBe(false);
+    expect(w("Write", { file_path: ".claude \\x" })).toBe(false);
+    expect(w("Write", { file_path: "CLAUDE~1\\x" })).toBe(false);
+    expect(w("Write", { file_path: ".FRIDAY.\\x" })).toBe(false);
+    expect(w("Write", { file_path: "src\\a.ts" })).toBe(true);
+    expect(w("Read", { file_path: "src\\..\\a.ts" })).toBe(true);
+  });
 });
