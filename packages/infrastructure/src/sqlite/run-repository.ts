@@ -11,6 +11,14 @@ export function createRunRepository(db: FridayDatabase): RunRepository {
     get(runId) {
       return db.orm.select().from(runs).where(eq(runs.id, runId)).get() ?? null;
     },
+    list(projectId) {
+      return db.orm
+        .select()
+        .from(runs)
+        .where(eq(runs.projectId, projectId))
+        .orderBy(asc(runs.startedAt), asc(runs.id))
+        .all();
+    },
     listActive(projectId) {
       return db.orm
         .select()

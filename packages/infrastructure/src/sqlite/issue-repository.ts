@@ -1,7 +1,19 @@
 import { and, asc, eq } from "drizzle-orm";
-import type { IssueRepository, StateChangedPayload } from "@friday/application";
+import type { IssueRepository, IssueRow, StateChangedPayload } from "@friday/application";
 import type { FridayDatabase } from "./database.ts";
 import { events, issues } from "./schema.ts";
+
+function toRow(r: typeof issues.$inferSelect): IssueRow {
+  return {
+    projectId: r.projectId,
+    issueId: r.id,
+    state: r.state,
+    heldReason: r.heldReason,
+    verifyRound: r.verifyRound,
+    qaRound: r.qaRound,
+    reviewIter: r.reviewIter,
+  };
+}
 
 export function createIssueRepository(db: FridayDatabase): IssueRepository {
   return {
@@ -11,16 +23,16 @@ export function createIssueRepository(db: FridayDatabase): IssueRepository {
         .from(issues)
         .where(and(eq(issues.projectId, projectId), eq(issues.id, issueId)))
         .get();
-      if (!r) return null;
-      return {
-        projectId: r.projectId,
-        issueId: r.id,
-        state: r.state,
-        heldReason: r.heldReason,
-        verifyRound: r.verifyRound,
-        qaRound: r.qaRound,
-        reviewIter: r.reviewIter,
-      };
+      return r ? toRow(r) : null;
+    },
+    list(projectId) {
+      const rows = db.orm
+        .select()
+        .from(issues)
+        .where(eq(issues.projectId, projectId))
+        .orderBy(asc(issues.id))
+        .all();
+      return rows.map(toRow);
     },
     rebuild(projectId) {
       db.orm.transaction((tx) => {

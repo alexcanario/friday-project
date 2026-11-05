@@ -67,10 +67,7 @@
       "indexes": {
         "events_project_issue_idx": {
           "name": "events_project_issue_idx",
-          "columns": [
-            "project_id",
-            "issue_id"
-          ],
+          "columns": ["project_id", "issue_id"],
           "isUnique": false
         }
       },
@@ -79,12 +76,8 @@
           "name": "events_project_id_projects_id_fk",
           "tableFrom": "events",
           "tableTo": "projects",
-          "columnsFrom": [
-            "project_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["project_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -155,22 +148,15 @@
           "name": "issues_project_id_projects_id_fk",
           "tableFrom": "issues",
           "tableTo": "projects",
-          "columnsFrom": [
-            "project_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["project_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {
         "issues_project_id_id_pk": {
-          "columns": [
-            "project_id",
-            "id"
-          ],
+          "columns": ["project_id", "id"],
           "name": "issues_project_id_id_pk"
         }
       },
@@ -262,12 +248,8 @@
           "name": "ledger_project_id_projects_id_fk",
           "tableFrom": "ledger",
           "tableTo": "projects",
-          "columnsFrom": [
-            "project_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["project_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -348,10 +330,7 @@
       "indexes": {
         "run_results_run_kind_idx": {
           "name": "run_results_run_kind_idx",
-          "columns": [
-            "run_id",
-            "kind"
-          ],
+          "columns": ["run_id", "kind"],
           "isUnique": true
         }
       },
@@ -360,12 +339,8 @@
           "name": "run_results_project_id_projects_id_fk",
           "tableFrom": "run_results",
           "tableTo": "projects",
-          "columnsFrom": [
-            "project_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["project_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -426,12 +401,8 @@
           "name": "runs_project_id_projects_id_fk",
           "tableFrom": "runs",
           "tableTo": "projects",
-          "columnsFrom": [
-            "project_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["project_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
