@@ -15,6 +15,9 @@ export class AlreadyRunningError extends Error {
 export interface ProcessLockDeps {
   pid?: number;
   kill?: (pid: number, signal: 0) => void;
+  /** Test seams for races. */
+  beforeCreate?: () => void;
+  onStale?: () => void;
 }
 
 function readPid(file: string): number | null {
@@ -45,12 +48,26 @@ export function acquireProcessLock(root: string, deps: ProcessLockDeps = {}): { 
   const dir = join(root, ".friday");
   const file = join(dir, "daemon.lock");
   mkdirSync(dir, { recursive: true });
-  const holder = readPid(file);
-  if (holder !== null && isAlive(holder, kill)) throw new AlreadyRunningError(holder);
-  writeFileSync(file, String(pid));
-  return {
-    release() {
-      rmSync(file, { force: true });
-    },
-  };
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    deps.beforeCreate?.();
+    try {
+      writeFileSync(file, String(pid), { flag: "wx" });
+      return {
+        release() {
+          rmSync(file, { force: true });
+        },
+      };
+    } catch (error) {
+      if ((error as { code?: string }).code !== "EEXIST") throw error;
+    }
+    const holder = readPid(file);
+    // A holder with our own PID is stale: in a container PID 1 repeats across restarts.
+    if (holder !== null && holder !== pid && isAlive(holder, kill)) {
+      throw new AlreadyRunningError(holder);
+    }
+    deps.onStale?.();
+    // Remove only if nobody replaced the stale lock meanwhile.
+    if (readPid(file) === holder) rmSync(file, { force: true });
+  }
+  throw new AlreadyRunningError(readPid(file) ?? 0);
 }

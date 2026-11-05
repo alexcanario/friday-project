@@ -22,6 +22,7 @@ export interface TickerDeps {
   buildRequest: RunRequestBuilder;
   runtime: AgentRuntime;
   events: EventStore;
+  log?: (message: string) => void;
 }
 
 export interface Ticker {
@@ -33,24 +34,36 @@ export interface Ticker {
 export function createTicker(deps: TickerDeps): Ticker {
   const active = new Map<number, Promise<void>>();
 
+  function logError(message: string, error: unknown): void {
+    const detail = error instanceof Error ? error.message : String(error);
+    deps.log?.(`${message}: ${detail}`);
+  }
+
   function dispatch(issueId: number): void {
+    let request: AgentRunRequest;
+    try {
+      request = deps.buildRequest(issueId);
+      deps.events.append({
+        projectId: deps.projectId,
+        issueId,
+        runId: null,
+        type: "RunDispatched",
+        payload: {},
+        actor: "daemon",
+        at: new Date(deps.clock.now()).toISOString(),
+      });
+    } catch (error) {
+      logError(`Falha ao despachar a issue ${issueId}`, error);
+      return;
+    }
     const run = Promise.resolve()
-      .then(() => deps.runtime.run(deps.buildRequest(issueId)))
+      .then(() => deps.runtime.run(request))
       .then(
         () => undefined,
-        () => undefined,
+        (error: unknown) => logError(`Falha na run da issue ${issueId}`, error),
       )
       .finally(() => active.delete(issueId));
     active.set(issueId, run);
-    deps.events.append({
-      projectId: deps.projectId,
-      issueId,
-      runId: null,
-      type: "RunDispatched",
-      payload: {},
-      actor: "daemon",
-      at: new Date(deps.clock.now()).toISOString(),
-    });
   }
 
   async function tick(): Promise<void> {
@@ -58,7 +71,9 @@ export function createTicker(deps: TickerDeps): Ticker {
     if (config === null || !config.enabled) return;
     const ready = await deps.issues.listReady();
     const slots = config.maxConcurrentRuns - active.size;
-    for (const issueId of ready.filter((id) => !active.has(id)).slice(0, Math.max(0, slots))) {
+    for (const issueId of [...new Set(ready)]
+      .filter((id) => !active.has(id))
+      .slice(0, Math.max(0, slots))) {
       dispatch(issueId);
     }
   }
