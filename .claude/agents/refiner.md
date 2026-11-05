@@ -57,7 +57,9 @@ Sources:
 
 Gates and dependencies:
 - Gate rules apply to throwaway and spike code too.
+- Before a criterion names a type, signature, column, method or command, confirm it in the code at `develop`, or say in the criterion that this issue creates it. Criteria built on names that do not exist are the most common reason `refine-reviewer` blocks.
+- In `split`, `owner_action` is true only for work that needs the owner, a key or a real account. Implementation work is false.
 - Keep the section `## Notas de outras issues` of the original body, or carry each note into the scope: it holds what earlier issues left for this one.
 - A spike folder with its own `package.json` sets `packageManager` to the same value as the root one.
 - `## Depende de` lists GitHub issue numbers only, including every issue that creates a file or package this one needs.
-- Return only the final body and the label changes as JSON: `{"body": "...", "add": [...], "remove": [...], "split": [{"title": "...", "summary": "..."}]}`.
+- Return only the final body and the label changes as JSON: `{"body": "...", "add": [...], "remove": [...], "split": [{"title": "...", "summary": "...", "owner_action": true|false}]}`.
