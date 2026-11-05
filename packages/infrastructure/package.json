@@ -12,6 +12,8 @@
   },
   "dependencies": {
     "@friday/domain": "workspace:*",
-    "@friday/application": "workspace:*"
+    "@friday/application": "workspace:*",
+    "@friday/contracts": "workspace:*",
+    "yaml": "2.9.1"
   }
 }

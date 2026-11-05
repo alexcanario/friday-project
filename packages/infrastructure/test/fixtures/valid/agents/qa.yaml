@@ -1,0 +1,11 @@
+role: qa
+states: [QA]
+model: sonnet
+max_budget_usd: 1.5
+max_turns: 40
+timeout_s: 3600
+tools: [Read, Glob, Grep, Bash]
+mcp_tools:
+  - qa_report
+  - issue_comment
+prompt_file: prompts/qa.md
