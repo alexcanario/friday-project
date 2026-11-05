@@ -68,24 +68,54 @@ describe("acquireProcessLock", () => {
     expect(readFileSync(file, "utf8")).toBe("4242");
   });
 
-  it("lets only one of two concurrent processes replace a stale lock", () => {
+  const staleKill = (p: number): void => {
+    if (p === 999999) errno("ESRCH")();
+  };
+  function race(pid: number, root: string, deps: object, results: string[]): void {
+    try {
+      acquireProcessLock(root, { pid, kill: staleKill, ...deps });
+      results.push(`ok${pid}`);
+    } catch (e) {
+      if (!(e instanceof AlreadyRunningError)) throw e;
+      results.push(`busy${pid}`);
+    }
+  }
+
+  it("lets only one process replace a stale lock when the 2nd runs between the last read and the removal", () => {
     const { root, file } = tmpRoot("999999");
-    const kill = (p: number): void => {
-      if (p === 999999) errno("ESRCH")();
-    };
     const results: string[] = [];
-    const attempt = (pid: number, deps: object = {}): void => {
-      try {
-        acquireProcessLock(root, { pid, kill, ...deps });
-        results.push(`ok${pid}`);
-      } catch (e) {
-        if (!(e instanceof AlreadyRunningError)) throw e;
-        results.push(`busy${pid}`);
-      }
-    };
-    attempt(111, { onStale: () => attempt(222) });
+    race(111, root, { beforeRemove: () => race(222, root, { attempts: 2 }, results) }, results);
+    expect(results.filter((r) => r.startsWith("ok"))).toEqual(["ok111"]);
+    expect(readFileSync(file, "utf8")).toBe("111");
+  });
+
+  it("never exposes an empty lock: a 2nd process between creation and PID write loses", () => {
+    const { root, file } = tmpRoot();
+    const results: string[] = [];
+    race(111, root, { beforeCreate: () => race(222, root, {}, results) }, results);
     expect(results.filter((r) => r.startsWith("ok"))).toEqual(["ok222"]);
     expect(readFileSync(file, "utf8")).toBe("222");
+    expect(results).toContain("busy111");
+  });
+
+  it("never deletes a fresh lock created after the stale one was read", () => {
+    const { root, file } = tmpRoot("999999");
+    const results: string[] = [];
+    let swapped = false;
+    race(
+      111,
+      root,
+      {
+        beforeCreate: () => {
+          if (swapped) return;
+          swapped = true;
+          writeFileSync(file, "4242");
+        },
+      },
+      results,
+    );
+    expect(results).toEqual(["busy111"]);
+    expect(readFileSync(file, "utf8")).toBe("4242");
   });
 
   it("treats a lock holding its own PID as stale", () => {
