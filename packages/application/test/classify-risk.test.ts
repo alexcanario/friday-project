@@ -24,13 +24,23 @@ const diff = (paths: string[], changedLines = 1, diffBytes = 100): PrDiff => ({
 
 describe("classifyRisk", () => {
   it("ci paths are high", () => {
-    for (const p of [".github/workflows/ci.yml", ".gitlab-ci.yml", ".circleci/config.yml", "ops/Jenkinsfile"]) {
+    for (const p of [
+      ".github/workflows/ci.yml",
+      ".gitlab-ci.yml",
+      ".circleci/config.yml",
+      "ops/Jenkinsfile",
+    ]) {
       expect(classifyRisk(diff([p]), cfg(["ci"]))).toEqual({ risk: "high", rules: ["ci"] });
     }
   });
 
   it("migration paths are high", () => {
-    for (const p of ["src/migrations/001.sql", "db/migrate/2.rb", "alembic/env.py", "app/schema.rb"]) {
+    for (const p of [
+      "src/migrations/001.sql",
+      "db/migrate/2.rb",
+      "alembic/env.py",
+      "app/schema.rb",
+    ]) {
       expect(classifyRisk(diff([p]), cfg(["migrations"]))).toEqual({
         risk: "high",
         rules: ["migrations"],
@@ -65,12 +75,18 @@ describe("classifyRisk", () => {
     const many = (n: number) => diff(Array.from({ length: n }, (_, i) => `f${i}.ts`));
     expect(classifyRisk(many(51), c).risk).toBe("high");
     expect(classifyRisk(many(50), c).risk).toBe("unclassified");
-    const noPatch: PrDiff = { files: [{ path: "a.png", changedLines: 0, hasPatch: false }], diffBytes: 10 };
+    const noPatch: PrDiff = {
+      files: [{ path: "a.png", changedLines: 0, hasPatch: false }],
+      diffBytes: 10,
+    };
     expect(classifyRisk(noPatch, c).risk).toBe("high");
   });
 
   it("diff over the byte limit is high even with size off", () => {
-    expect(classifyRisk(diff(["a.ts"], 1, 102401), cfg([]))).toEqual({ risk: "high", rules: ["size"] });
+    expect(classifyRisk(diff(["a.ts"], 1, 102401), cfg([]))).toEqual({
+      risk: "high",
+      rules: ["size"],
+    });
     expect(classifyRisk(diff(["a.ts"], 1, 102400), cfg([])).risk).toBe("unclassified");
     expect(classifyRisk(diff(["a.ts"], 5000), cfg([])).risk).toBe("unclassified");
   });

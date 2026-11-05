@@ -50,10 +50,12 @@ describe("decideGates", () => {
 
   it("screen paths add gate:screen", () => {
     const screenPaths = ["apps/panel/**"];
-    expect(decideGates({ ...base, screenPaths, changedPaths: ["apps/panel/index.html"] }).gates).toEqual([
-      "gate:screen",
-    ]);
-    expect(decideGates({ ...base, screenPaths, changedPaths: ["docs/readme.md"] }).gates).toEqual([]);
+    expect(
+      decideGates({ ...base, screenPaths, changedPaths: ["apps/panel/index.html"] }).gates,
+    ).toEqual(["gate:screen"]);
+    expect(decideGates({ ...base, screenPaths, changedPaths: ["docs/readme.md"] }).gates).toEqual(
+      [],
+    );
   });
 
   it("merges issue gates, deduplicated and sorted", () => {
