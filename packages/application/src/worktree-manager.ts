@@ -33,6 +33,6 @@ export interface WorktreeManager {
   listOrphans(
     request: WorktreeProject & { activeIssues: number[] },
   ): Promise<Result<WorktreeInfo[], WorktreeError>>;
-  /** True when the tree has no changes and `HEAD` starts with `head`. */
+  /** True when the tree has no changes, untracked files included, and `head` resolves to the commit at `HEAD`. */
   isClean(path: string, head: string): Promise<boolean>;
 }

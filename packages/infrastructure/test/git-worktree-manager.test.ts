@@ -1,4 +1,5 @@
-import { existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, symlinkSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { GitWorktreeManager, branchName } from "../src/git-worktree-manager.ts";
@@ -40,6 +41,9 @@ describe("GitWorktreeManager", () => {
     expect(git(p, "rev-parse", "HEAD")).toBe(dev);
     expect(dev).not.toBe(git(fx.repoDir, "rev-parse", "origin/main"));
     const newer = commitOnDevelop(fx, "c.txt");
+    // Local ref back to the old commit: only a real fetch can bring the new one.
+    git(fx.repoDir, "update-ref", "refs/remotes/origin/develop", dev);
+    expect(git(fx.repoDir, "rev-parse", "origin/develop")).toBe(dev);
     const r2 = await mgr.create(req(16, "Outra"));
     if (!r2.ok) throw new Error("create failed");
     expect(git(r2.value.path, "rev-parse", "HEAD")).toBe(newer);
@@ -127,6 +131,51 @@ describe("GitWorktreeManager", () => {
     await m.create(req(15));
     await m.remove({ root: fx.root, project: fx.project, issue: 15 });
     expect(sleep.mock.calls).toEqual([[200], [200]]);
+  });
+
+  it("isClean sees untracked files even when git config hides them", async () => {
+    const c = await mgr.create(req(15));
+    if (!c.ok) throw new Error("create failed");
+    const p = c.value.path;
+    const head = git(p, "rev-parse", "HEAD");
+    git(p, "config", "status.showUntrackedFiles", "no");
+    writeFileSync(join(p, "novo.txt"), "x");
+    expect(await mgr.isClean(p, head)).toBe(false);
+  });
+
+  it("isClean accepts the commit by short or full sha and refuses a bare prefix of another", async () => {
+    const c = await mgr.create(req(15));
+    if (!c.ok) throw new Error("create failed");
+    const p = c.value.path;
+    const head = git(p, "rev-parse", "HEAD");
+    expect(await mgr.isClean(p, head)).toBe(true);
+    expect(await mgr.isClean(p, head.slice(0, 7))).toBe(true);
+    expect(await mgr.isClean(p, "abcdef0")).toBe(head.startsWith("abcdef0"));
+  });
+
+  it("list keeps a worktree under a root with accents", async () => {
+    const root = join(mkdtempSync(join(tmpdir(), "friday-wt-")), "ação");
+    const created = await mgr.create({ ...req(15), root });
+    if (!created.ok) throw new Error("create failed");
+    const r = await mgr.list({ root, project: fx.project });
+    expect(r.ok && r.value.map((w) => w.issue)).toEqual([15]);
+  });
+
+  it("refuses a project folder that is a link out of the root", async () => {
+    const outside = mkdtempSync(join(tmpdir(), "friday-out-"));
+    const victim = join(outside, "15");
+    mkdirSync(victim);
+    writeFileSync(join(victim, "keep.txt"), "x");
+    mkdirSync(fx.root, { recursive: true });
+    symlinkSync(outside, join(fx.root, fx.project), "junction");
+    const removed = await mgr.remove({ root: fx.root, project: fx.project, issue: 15 });
+    expect(removed.ok).toBe(false);
+    if (!removed.ok) expect(removed.error.code).toBe("InvalidPath");
+    expect(existsSync(join(victim, "keep.txt"))).toBe(true);
+    const created = await mgr.create(req(16));
+    expect(created.ok).toBe(false);
+    if (!created.ok) expect(created.error.code).toBe("InvalidPath");
+    expect(existsSync(join(outside, "16"))).toBe(false);
   });
 
   it("refuses a path outside the project folder", async () => {

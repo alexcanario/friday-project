@@ -1,4 +1,4 @@
-import { mkdir, rm } from "node:fs/promises";
+import { mkdir, realpath, rm } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { dirname, join, relative, resolve, sep } from "node:path";
 import { execa } from "execa";
@@ -57,6 +57,26 @@ const defaultRemoveDir = (path: string) => rm(path, { recursive: true, force: tr
 const defaultSleep = (ms: number) => new Promise<void>((done) => setTimeout(done, ms));
 const errorCode = (e: unknown): string | undefined => (e as { code?: string } | null)?.code;
 
+async function realpathOrNull(path: string): Promise<string | null> {
+  try {
+    return await realpath(path);
+  } catch (e) {
+    if (errorCode(e) === "ENOENT") return null;
+    throw e;
+  }
+}
+
+/** True when a link under `root` leads elsewhere: the physical path differs from the textual one. */
+async function leavesRoot(root: string, target: string): Promise<boolean> {
+  const physicalRoot = await realpathOrNull(root);
+  if (physicalRoot === null) return false;
+  for (let current = target; current !== root; current = dirname(current)) {
+    const physical = await realpathOrNull(current);
+    if (physical !== null) return physical !== join(physicalRoot, relative(root, current));
+  }
+  return false;
+}
+
 export class GitWorktreeManager implements WorktreeManager {
   private readonly repoDir: string;
   private readonly removeDir: (path: string) => Promise<void>;
@@ -76,6 +96,8 @@ export class GitWorktreeManager implements WorktreeManager {
     if (existsSync(path))
       return fail("WorktreeExists", `A worktree da issue ${req.issue} já existe.`);
     try {
+      if (await leavesRoot(resolve(req.root), path))
+        return fail("InvalidPath", "Caminho de worktree inválido.");
       await mkdir(dirname(path), { recursive: true });
       await this.git("fetch", "origin", req.base);
       await this.git(
@@ -96,6 +118,8 @@ export class GitWorktreeManager implements WorktreeManager {
     const path = this.pathFor(req.root, req.project, req.issue);
     if (path === undefined) return fail("InvalidPath", "Caminho de worktree inválido.");
     try {
+      if (await leavesRoot(resolve(req.root), path))
+        return fail("InvalidPath", "Caminho de worktree inválido.");
       await this.removeWithRetry(path);
       await this.git("worktree", "prune");
       return { ok: true, value: undefined };
@@ -108,7 +132,7 @@ export class GitWorktreeManager implements WorktreeManager {
     const dir = this.projectDir(req.root, req.project);
     if (dir === undefined) return fail("InvalidPath", "Caminho de worktree inválido.");
     try {
-      const { stdout } = await this.git("worktree", "list", "--porcelain");
+      const { stdout } = await this.git("worktree", "list", "--porcelain", "-z");
       return { ok: true, value: parseWorktrees(stdout, dir) };
     } catch (e) {
       return fail("WorktreeCreateFailed", `Não foi possível listar as worktrees: ${describe(e)}`);
@@ -127,10 +151,15 @@ export class GitWorktreeManager implements WorktreeManager {
   async isClean(path: string, head: string): Promise<boolean> {
     if (!/^[0-9a-f]{7,64}$/i.test(head)) return false;
     try {
-      const status = await execa("git", ["status", "--porcelain"], { cwd: path });
+      const status = await execa("git", ["status", "--porcelain", "--untracked-files=all"], {
+        cwd: path,
+      });
       if (status.stdout.trim() !== "") return false;
       const current = await execa("git", ["rev-parse", "HEAD"], { cwd: path });
-      return current.stdout.trim().startsWith(head);
+      const expected = await execa("git", ["rev-parse", "--verify", `${head}^{commit}`], {
+        cwd: path,
+      });
+      return current.stdout.trim() === expected.stdout.trim();
     } catch {
       return false;
     }
@@ -170,9 +199,11 @@ export class GitWorktreeManager implements WorktreeManager {
 
 function parseWorktrees(porcelain: string, projectDir: string): WorktreeInfo[] {
   const found: WorktreeInfo[] = [];
-  for (const block of porcelain.split(/\n\s*\n/)) {
-    const path = /^worktree (.+)$/m.exec(block)?.[1];
-    const head = /^HEAD (\S+)$/m.exec(block)?.[1];
+  // With -z, fields end in NUL and records in a second NUL; paths come unquoted.
+  for (const record of porcelain.split("\0\0")) {
+    const fields = record.split("\0");
+    const path = fields.find((f) => f.startsWith("worktree "))?.slice("worktree ".length);
+    const head = fields.find((f) => f.startsWith("HEAD "))?.slice("HEAD ".length);
     if (path === undefined || head === undefined) continue;
     const rel = relative(projectDir, resolve(path));
     if (rel === "" || rel.startsWith("..") || rel.includes(sep) || !/^[1-9]\d*$/.test(rel))
