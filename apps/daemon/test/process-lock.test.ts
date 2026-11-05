@@ -54,4 +54,43 @@ describe("acquireProcessLock", () => {
     acquireProcessLock(junk.root, { pid: 111, kill: alive });
     expect(readFileSync(junk.file, "utf8")).toBe("111");
   });
+
+  it("never overwrites a lock created by another process after the read", () => {
+    const { root, file } = tmpRoot();
+    mkdirSync(join(root, ".friday"));
+    expect(() =>
+      acquireProcessLock(root, {
+        pid: 111,
+        kill: alive,
+        beforeCreate: () => writeFileSync(file, "4242"),
+      }),
+    ).toThrow(AlreadyRunningError);
+    expect(readFileSync(file, "utf8")).toBe("4242");
+  });
+
+  it("lets only one of two concurrent processes replace a stale lock", () => {
+    const { root, file } = tmpRoot("999999");
+    const kill = (p: number): void => {
+      if (p === 999999) errno("ESRCH")();
+    };
+    const results: string[] = [];
+    const attempt = (pid: number, deps: object = {}): void => {
+      try {
+        acquireProcessLock(root, { pid, kill, ...deps });
+        results.push(`ok${pid}`);
+      } catch (e) {
+        if (!(e instanceof AlreadyRunningError)) throw e;
+        results.push(`busy${pid}`);
+      }
+    };
+    attempt(111, { onStale: () => attempt(222) });
+    expect(results.filter((r) => r.startsWith("ok"))).toEqual(["ok222"]);
+    expect(readFileSync(file, "utf8")).toBe("222");
+  });
+
+  it("treats a lock holding its own PID as stale", () => {
+    const { root, file } = tmpRoot("1");
+    acquireProcessLock(root, { pid: 1, kill: alive });
+    expect(readFileSync(file, "utf8")).toBe("1");
+  });
 });
