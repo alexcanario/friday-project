@@ -18,6 +18,7 @@ export function makeRequest(over: Partial<AgentRunOptions> = {}): AgentRunReques
     configRoot,
     agent: {
       model: "sonnet",
+      states: ["InProgress"],
       maxBudgetUsd: 0.5,
       maxTurns: 10,
       timeoutMs: 60000,

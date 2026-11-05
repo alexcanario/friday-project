@@ -26,6 +26,7 @@ function setup() {
 
 const agent = (over: Partial<AgentRunOptions>): AgentRunOptions => ({
   model: "haiku",
+  states: ["InProgress"],
   maxBudgetUsd: 0.05,
   maxTurns: 5,
   timeoutMs: 120000,

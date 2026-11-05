@@ -19,6 +19,7 @@ const request = (prompt: string): AgentRunRequest => ({
   configRoot: "/c",
   agent: {
     model: "sonnet",
+    states: ["InProgress"],
     maxBudgetUsd: 1,
     maxTurns: 1,
     timeoutMs: 1,
