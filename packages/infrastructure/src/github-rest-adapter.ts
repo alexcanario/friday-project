@@ -118,11 +118,17 @@ export class GitHubRestAdapter implements GitHubPort {
       },
     );
     return {
-      files: files.map((f) => ({
-        path: f.filename,
-        changedLines: f.additions + f.deletions,
-        hasPatch: f.patch !== undefined,
-      })),
+      files: files.flatMap((f) => [
+        {
+          path: f.filename,
+          changedLines: f.additions + f.deletions,
+          hasPatch: f.patch !== undefined,
+        },
+        // A rename leaves its origin path too: gates must see protected paths moved away.
+        ...(f.previous_filename === undefined
+          ? []
+          : [{ path: f.previous_filename, changedLines: 0, hasPatch: true }]),
+      ]),
       diffBytes: files.reduce(
         (sum, f) => sum + (f.patch === undefined ? 0 : Buffer.byteLength(f.patch, "utf8")),
         0,
