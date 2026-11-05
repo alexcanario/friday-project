@@ -25,3 +25,13 @@ export type {
   StateChangedPayload,
   StoredEvent,
 } from "./persistence-ports.ts";
+export { matchesGlob } from "./glob-match.ts";
+export type { PrDiff } from "./pr-diff.ts";
+export {
+  classifyRisk,
+  MAX_DIFF_BYTES,
+  RISK_RULE_GLOBS,
+  type RiskRuleName,
+  type RiskVerdict,
+} from "./classify-risk.ts";
+export { decideGates, type GateDecision, type GateInput } from "./decide-gates.ts";
