@@ -19,3 +19,7 @@ export {
 export { decideToolCall, type ToolCall, type ToolDecision } from "./tool-decision.ts";
 export { isBashAllowed } from "./bash-allow.ts";
 export { resolveRegistryRoot } from "./registry-root.ts";
+export { createEventStore } from "./sqlite/event-store.ts";
+export { createIssueRepository } from "./sqlite/issue-repository.ts";
+export { createRunRepository } from "./sqlite/run-repository.ts";
+export { createLedgerRepository } from "./sqlite/ledger-repository.ts";
