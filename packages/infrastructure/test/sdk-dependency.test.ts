@@ -18,6 +18,8 @@ describe("sdk dependency", () => {
       "held-reason-for",
       "fake-agent-runtime",
       "tool-denial-sink",
+      "result-gate",
+      "fake-result-store",
     ]) {
       const src = read(`../../application/src/${file}.ts`);
       expect(src).not.toMatch(
