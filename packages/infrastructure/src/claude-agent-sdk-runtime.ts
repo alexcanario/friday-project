@@ -79,7 +79,8 @@ export class ClaudeAgentSdkRuntime implements AgentRuntime {
     ]);
     for await (const message of messages) {
       if (message.type === "system" && message.subtype === "init") {
-        obs.initSeen = true;
+        // An init that arrives after a result does not count: order matters.
+        if (obs.result === null) obs.initSeen = true;
         obs.model = message.model;
         if (message.tools.some((tool) => !permitted.has(tool))) {
           obs.toolViolation = true;

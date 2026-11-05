@@ -60,7 +60,7 @@ export function classify(obs: RunObservation, agent: AgentRunOptions): RunFinish
   const { result, model } = obs;
   if (result === null) {
     return emptyFinished(
-      obs.timedOut ? "timeout" : obs.toolViolation ? "misconfigured" : "failed",
+      obs.toolViolation ? "misconfigured" : obs.timedOut ? "timeout" : "failed",
       model,
     );
   }
