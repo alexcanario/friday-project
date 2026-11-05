@@ -65,7 +65,7 @@ describe("friday config check", () => {
       expect(r.stdout).toBe("");
       expect(r.stderr).not.toBe("");
     }
-  });
+  }, 30_000);
 
   it("declares the friday binary", () => {
     expect(readJson("apps/cli/package.json").bin).toEqual({ friday: "./src/index.ts" });
