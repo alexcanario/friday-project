@@ -35,6 +35,7 @@ export const factoryConfigSchema = z.strictObject({
     per_issue_usd: positive,
     per_day_usd: positive,
     approval_expires_min: positiveInt,
+    max_concurrent_runs: positiveInt.optional(),
   }),
   secrets: z.array(z.string().regex(/^[A-Z][A-Z0-9_]*$/)),
 });
