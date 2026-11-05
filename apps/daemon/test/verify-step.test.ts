@@ -9,7 +9,7 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import { createWorkflow, transition } from "@friday/domain";
 import type { IssueState, WorkflowInput, WorkflowSnapshot } from "@friday/domain";
 import * as daemon from "../src/index.ts";
@@ -156,6 +156,52 @@ describe("runVerifyStep", () => {
     const quick = await run(`node -e "process.exit(0)"`, { timeoutS: 1 });
     expect(quick.input.type).not.toBe("VerifyTimedOut");
   }, 15000);
+
+  describe("detached grandchild holding the pipes", () => {
+    const leaked: number[] = [];
+    const holder = (parentTail: string) =>
+      `node -e "const c=require('node:child_process').spawn(process.execPath,['-e','setTimeout(()=>{},60000)'],{detached:true,stdio:'inherit'});require('node:fs').writeFileSync('holder.pid',String(c.pid));${parentTail}"`;
+    const remember = (worktree: string): void => {
+      try {
+        leaked.push(Number(readFileSync(join(worktree, "holder.pid"), "utf8")));
+      } catch {
+        // the pid file was never written
+      }
+    };
+    afterEach(() => {
+      for (const pid of leaked.splice(0)) {
+        try {
+          process.kill(pid, "SIGKILL");
+        } catch {
+          // already gone
+        }
+      }
+    });
+
+    it("returns VerifyTimedOut within 5000 ms when a detached grandchild keeps the pipes open", async () => {
+      const worktree = tmp();
+      const started = Date.now();
+      try {
+        const out = await run(holder("setTimeout(()=>{},60000)"), { timeoutS: 1, worktree });
+        expect(out.input).toEqual({ type: "VerifyTimedOut" });
+        expect(Date.now() - started).toBeLessThan(5000);
+      } finally {
+        remember(worktree);
+      }
+    }, 30000);
+
+    it("returns VerifyPassed when the command exits 0 and leaves a grandchild holding the pipes", async () => {
+      const worktree = tmp();
+      const started = Date.now();
+      try {
+        const out = await run(holder("process.exit(0)"), { timeoutS: 3, worktree });
+        expect(out.input).toEqual({ type: "VerifyPassed" });
+        expect(Date.now() - started).toBeLessThan(3000);
+      } finally {
+        remember(worktree);
+      }
+    }, 30000);
+  });
 
   it("returns the last 4000 characters of stdout and stderr only on failure", async () => {
     const a = await run(`node -e "console.error('boom-marker');process.exit(2)"`);
