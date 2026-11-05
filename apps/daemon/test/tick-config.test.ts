@@ -1,0 +1,23 @@
+import { cpSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { describe, expect, it } from "vitest";
+import { readTickConfig } from "../src/index.ts";
+
+const fixture = join(import.meta.dirname, "../../../packages/infrastructure/test/fixtures/valid");
+
+describe("readTickConfig", () => {
+  it("rereads factory.yaml and defaults max_concurrent_runs to 1", () => {
+    const dir = mkdtempSync(join(tmpdir(), "friday-tick-"));
+    cpSync(fixture, dir, { recursive: true });
+    const file = join(dir, "factory.yaml");
+    const original = readFileSync(file, "utf8");
+    expect(readTickConfig(dir)).toEqual({ enabled: true, maxConcurrentRuns: 1 });
+    writeFileSync(file, original.replace("enabled: true", "enabled: false"));
+    expect(readTickConfig(dir)?.enabled).toBe(false);
+    writeFileSync(file, original.replace("limits:\n", "limits:\n  max_concurrent_runs: 2\n"));
+    expect(readTickConfig(dir)).toEqual({ enabled: true, maxConcurrentRuns: 2 });
+    writeFileSync(file, "enabled: [");
+    expect(readTickConfig(dir)).toBeNull();
+  });
+});

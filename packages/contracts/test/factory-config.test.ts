@@ -89,4 +89,17 @@ describe("factoryConfigSchema", () => {
       );
     }
   });
+
+  it("accepts max_concurrent_runs as an optional positive integer", () => {
+    expect(factoryConfigSchema.safeParse(valid()).success).toBe(true);
+    const withLimit = (v: unknown): Json => {
+      const c = valid();
+      c["limits"]["max_concurrent_runs"] = v;
+      return c;
+    };
+    expect(factoryConfigSchema.safeParse(withLimit(2)).success).toBe(true);
+    for (const bad of [0, -1, 1.5]) {
+      expect(factoryConfigSchema.safeParse(withLimit(bad)).success, String(bad)).toBe(false);
+    }
+  });
 });
