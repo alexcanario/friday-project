@@ -19,7 +19,7 @@ const toRegExp = (pattern: string): RegExp => {
       i += 1;
     }
   }
-  return new RegExp("^" + source + "$");
+  return new RegExp("^" + source + "$", "s");
 };
 
 // Anchored, case-sensitive glob match: a single star stops at a slash; a double star plus slash is zero or more directories.
