@@ -33,18 +33,21 @@ export async function runSpike(input: RunSpikeInput): Promise<{ worktree: string
   });
 
   const lines: string[] = [];
-  for await (const message of input.query({ prompt: preset.prompt, options })) {
-    lines.push(JSON.stringify(message));
+  try {
+    for await (const message of input.query({ prompt: preset.prompt, options })) {
+      lines.push(JSON.stringify(message));
+    }
+  } finally {
+    // O SDK lança depois de entregar um resultado de erro; os logs precisam sobreviver a isso.
+    mkdirSync(input.outDir, { recursive: true });
+    writeFileSync(
+      join(input.outDir, `${input.mode}.messages.jsonl`),
+      lines.map((line) => `${line}\n`).join(""),
+    );
+    writeFileSync(
+      join(input.outDir, `${input.mode}.can-use-tool.json`),
+      `${JSON.stringify(canUseCalls, null, 2)}\n`,
+    );
   }
-
-  mkdirSync(input.outDir, { recursive: true });
-  writeFileSync(
-    join(input.outDir, `${input.mode}.messages.jsonl`),
-    lines.map((line) => `${line}\n`).join(""),
-  );
-  writeFileSync(
-    join(input.outDir, `${input.mode}.can-use-tool.json`),
-    `${JSON.stringify(canUseCalls, null, 2)}\n`,
-  );
   return { worktree };
 }
