@@ -1,10 +1,18 @@
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { query as sdkQuery, type Options, type SDKMessage } from "@anthropic-ai/claude-agent-sdk";
-import type { AgentRuntime, AgentRunRequest, ToolDenialSink } from "@friday/application";
+import type {
+  AgentRuntime,
+  AgentRunRequest,
+  ResultStore,
+  RunLookup,
+  ToolDenialSink,
+} from "@friday/application";
 import type { RunFinished } from "@friday/contracts";
 import { isInside, resolveReal } from "./config-root-guard.ts";
 import { dedupeDenials } from "./denial-dedup.ts";
+import { buildFridayMcpServers } from "./friday-mcp-option.ts";
+import { createFridayMcpServer } from "./friday-mcp-server.ts";
 import { buildQueryOptions } from "./query-options.ts";
 import { buildRunEnv } from "./run-env.ts";
 import { buildToolPolicy } from "./tool-policy.ts";
@@ -16,17 +24,22 @@ export interface ClaudeAgentSdkRuntimeDeps {
   query?: QueryFn;
   env?: Record<string, string | undefined>;
   sink?: ToolDenialSink;
+  runs?: RunLookup;
+  results?: ResultStore;
+  createMcpServer?: typeof createFridayMcpServer;
 }
 
 export class ClaudeAgentSdkRuntime implements AgentRuntime {
   readonly #query: QueryFn;
   readonly #env: Record<string, string | undefined>;
   readonly #sink: ToolDenialSink;
+  readonly #deps: ClaudeAgentSdkRuntimeDeps;
 
   constructor(deps: ClaudeAgentSdkRuntimeDeps = {}) {
     this.#query = deps.query ?? sdkQuery;
     this.#env = deps.env ?? process.env;
     this.#sink = deps.sink ?? { record: () => undefined };
+    this.#deps = deps;
   }
 
   async run(request: AgentRunRequest): Promise<RunFinished> {
@@ -34,6 +47,12 @@ export class ClaudeAgentSdkRuntime implements AgentRuntime {
     if (isInside(request.cwd, configRoot)) return emptyFinished("misconfigured", null);
     const built = buildToolPolicy(request.agent, request.cwd);
     if (!built.ok) return emptyFinished("misconfigured", null);
+    const mcpServers = buildFridayMcpServers(request, {
+      runs: this.#deps.runs,
+      results: this.#deps.results,
+      createMcpServer: this.#deps.createMcpServer ?? createFridayMcpServer,
+    });
+    if (mcpServers === null) return emptyFinished("misconfigured", null);
     const sink = dedupeDenials(this.#sink);
     let systemPromptAppend: string;
     try {
@@ -61,6 +80,7 @@ export class ClaudeAgentSdkRuntime implements AgentRuntime {
         abortController,
         policy: built.policy,
         sink,
+        ...(mcpServers !== undefined ? { mcpServers } : {}),
       });
       await this.#consume(
         this.#query({ prompt: request.prompt, options }),

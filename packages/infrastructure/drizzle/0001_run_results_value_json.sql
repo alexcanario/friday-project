@@ -1,0 +1,1 @@
+ALTER TABLE `run_results` ADD `value_json` text NOT NULL;

@@ -22,6 +22,8 @@ export { resolveRegistryRoot } from "./registry-root.ts";
 export { createEventStore } from "./sqlite/event-store.ts";
 export { createIssueRepository } from "./sqlite/issue-repository.ts";
 export { createRunRepository } from "./sqlite/run-repository.ts";
+export { createRunLookup } from "./sqlite/sqlite-run-lookup.ts";
+export { createResultStore } from "./sqlite/sqlite-result-store.ts";
 export { createLedgerRepository } from "./sqlite/ledger-repository.ts";
 export {
   buildPreToolUseHook,

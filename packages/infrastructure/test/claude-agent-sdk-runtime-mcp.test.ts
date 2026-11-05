@@ -1,7 +1,12 @@
 import type { Options, SDKMessage } from "@anthropic-ai/claude-agent-sdk";
 import { FakeResultStore, FakeRunLookup, type AgentRunRequest } from "@friday/application";
 import { afterEach, describe, expect, it } from "vitest";
-import { ClaudeAgentSdkRuntime, createFridayMcpServer, createResultStore, createRunLookup } from "../src/index.ts";
+import {
+  ClaudeAgentSdkRuntime,
+  createFridayMcpServer,
+  createResultStore,
+  createRunLookup,
+} from "../src/index.ts";
 import type { FridayDatabase } from "../src/sqlite/database.ts";
 import { runResults, runs } from "../src/sqlite/schema.ts";
 import { init, makeRequest, result } from "./runtime-helpers.ts";
@@ -147,9 +152,14 @@ describe("ClaudeAgentSdkRuntime friday server", () => {
     const deps = { runs: new FakeRunLookup(["r1"]), results: new FakeResultStore() };
     const cap = capturing();
     const s = spy();
-    const runtime = new ClaudeAgentSdkRuntime({ query: s.query, ...deps, createMcpServer: cap.createMcpServer });
+    const runtime = new ClaudeAgentSdkRuntime({
+      query: s.query,
+      ...deps,
+      createMcpServer: cap.createMcpServer,
+    });
     await runtime.run(withFriday());
-    const friday = (o: Options) => (o.allowedTools ?? []).filter((t) => t.startsWith("mcp__friday__")).sort();
+    const friday = (o: Options) =>
+      (o.allowedTools ?? []).filter((t) => t.startsWith("mcp__friday__")).sort();
     expect([...cap.created[0]!.toolNames].sort()).toEqual(["mcp__friday__qa_report"]);
     expect(friday(s.calls[0]!)).toEqual(["mcp__friday__qa_report"]);
 
