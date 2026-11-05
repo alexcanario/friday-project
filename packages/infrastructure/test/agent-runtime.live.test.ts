@@ -5,7 +5,14 @@ import type { AgentRunOptions } from "@friday/application";
 import { describe, expect, it } from "vitest";
 import { ClaudeAgentSdkRuntime } from "../src/index.ts";
 
-const KINDS = ["qaReport", "reviewVerdict", "triage", "criteria", "workReport", "diagnosis"] as const;
+const KINDS = [
+  "qaReport",
+  "reviewVerdict",
+  "triage",
+  "criteria",
+  "workReport",
+  "diagnosis",
+] as const;
 
 function setup() {
   const cwd = mkdtempSync(join(tmpdir(), "friday-live-cwd-"));

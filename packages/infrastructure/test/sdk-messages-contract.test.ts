@@ -31,7 +31,9 @@ function request(): AgentRunRequest {
 }
 
 async function replay(name: string, fails: boolean) {
-  const lines = readFileSync(join(dir, `${name}.messages.jsonl`), "utf8").trim().split("\n");
+  const lines = readFileSync(join(dir, `${name}.messages.jsonl`), "utf8")
+    .trim()
+    .split("\n");
   const messages = lines.map((l) => JSON.parse(l) as SDKMessage);
   const query = fakeQuery(messages, fails ? new Error("exit 1") : undefined);
   return new ClaudeAgentSdkRuntime({ query, env: {} }).run(request());

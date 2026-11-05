@@ -15,7 +15,9 @@ describe("sdk dependency", () => {
     expect(JSON.stringify(app)).not.toContain("claude-agent-sdk");
     for (const file of ["agent-runtime", "held-reason-for", "fake-agent-runtime"]) {
       const src = read(`../../application/src/${file}.ts`);
-      expect(src).not.toMatch(/from "(node:|fs|child_process|yaml|@anthropic-ai\/claude-agent-sdk)/);
+      expect(src).not.toMatch(
+        /from "(node:|fs|child_process|yaml|@anthropic-ai\/claude-agent-sdk)/,
+      );
     }
   });
 });

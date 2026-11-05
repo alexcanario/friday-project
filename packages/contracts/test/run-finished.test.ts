@@ -36,8 +36,8 @@ describe("runFinishedSchema", () => {
     expect(ok({ ...full, tokens: { ...full.tokens, x: 1 } })).toBe(false);
     expect(ok({ ...full, x: 1 })).toBe(false);
     for (const key of Object.keys(full)) {
-      const { [key]: _removed, ...rest } = full as Record<string, unknown>;
-      expect(ok(rest), key).toBe(false);
+      const rest = Object.entries(full).filter(([name]) => name !== key);
+      expect(ok(Object.fromEntries(rest)), key).toBe(false);
     }
     expect(ok({ ...full, violations: [{ code: "a" }] })).toBe(false);
   });

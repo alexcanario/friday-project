@@ -115,7 +115,8 @@ describe("ClaudeAgentSdkRuntime", () => {
 
   it("aborts on a tool outside the agent file", async () => {
     let signal: AbortSignal | undefined;
-    const spy = (messages: ReturnType<typeof init>[]): QueryFn =>
+    const spy =
+      (messages: ReturnType<typeof init>[]): QueryFn =>
       (p) => {
         signal = p.options.abortController?.signal;
         return fakeQuery(messages)(p);
