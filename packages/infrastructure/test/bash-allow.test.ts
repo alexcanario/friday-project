@@ -44,4 +44,16 @@ describe("bash allowlist", () => {
     expect(bash(["*"], "/usr/bin/git push origin x")).toBe(false);
     expect(bash(["git*"], "git status")).toBe(true);
   });
+
+  it("denies every expansion the shell would turn into a blocked word", () => {
+    expect(bash(["git*"], "git pu$@sh origin x")).toBe(false);
+    expect(bash(["git*"], "git pu$1sh origin x")).toBe(false);
+    expect(bash(["*"], "(gh pr list)")).toBe(false);
+    expect(bash(["*"], "{gh,} pr list")).toBe(false);
+    expect(bash(["*"], "/usr/bin/g* pr list")).toBe(false);
+    expect(bash(["git*"], "git pu*h origin x")).toBe(false);
+    expect(bash(["*"], "echo ~root")).toBe(false);
+    expect(bash(["*"], "echo #x")).toBe(false);
+    expect(bash(["pnpm test*"], "pnpm test --filter=@friday/domain -- a/b.ts")).toBe(true);
+  });
 });

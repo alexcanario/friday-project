@@ -111,6 +111,9 @@ describe("decideToolCall", () => {
     expect(w("Write", { file_path: ".claude.\\x" })).toBe(false);
     expect(w("Write", { file_path: ".claude \\x" })).toBe(false);
     expect(w("Write", { file_path: "CLAUDE~1\\x" })).toBe(false);
+    expect(w("Write", { file_path: ".claude::$INDEX_ALLOCATION\\x" })).toBe(false);
+    expect(w("Write", { file_path: "src\\a.ts:hidden" })).toBe(false);
+    expect(w("Read", { file_path: "C:\\work\\wt\\17\\a.ts:hidden" })).toBe(false);
     expect(w("Write", { file_path: ".FRIDAY.\\x" })).toBe(false);
     expect(w("Write", { file_path: "src\\a.ts" })).toBe(true);
     expect(w("Read", { file_path: "src\\..\\a.ts" })).toBe(true);

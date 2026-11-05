@@ -45,8 +45,9 @@ function realOf(policy: ToolPolicy, p: PathModule, path: string, hops = 0): stri
   }
 }
 
-/** Windows ignores trailing dots/spaces and expands 8.3 short names. */
+/** Windows ignores trailing dots/spaces, expands 8.3 short names and opens streams after `:`. */
 function hasWin32Alias(raw: string): boolean {
+  if (raw.replace(/^[A-Za-z]:/, "").includes(":")) return true;
   return raw.split(/[\\/]/).some((seg) => {
     if (seg === "." || seg === "..") return false;
     return /[. ]$/.test(seg) || seg.includes("~");

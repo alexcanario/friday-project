@@ -1,4 +1,5 @@
-const META = /[;&|<>`\n\r'"\\?[]|\$\(|\$[{A-Za-z]/;
+// Only characters the shell takes literally: no operator, quote, expansion, brace or glob.
+const LITERAL_COMMAND = /^[A-Za-z0-9 _./=:,@+%-]*$/;
 const BLOCKED_WORDS = new Set(["gh", "curl"]);
 
 function globToRegExp(glob: string): RegExp {
@@ -21,6 +22,6 @@ function hasBlockedWord(command: string): boolean {
 /** Deny-by-default check of a Bash command against the `bash_allow` globs. */
 export function isBashAllowed(command: string, bashAllow: readonly string[]): boolean {
   if (bashAllow.length === 0) return false;
-  if (META.test(command) || hasBlockedWord(command)) return false;
+  if (!LITERAL_COMMAND.test(command) || hasBlockedWord(command)) return false;
   return bashAllow.some((glob) => globToRegExp(glob).test(command));
 }
