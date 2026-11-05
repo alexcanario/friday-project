@@ -136,4 +136,36 @@ describe("GitWorktreeManager", () => {
     if (!r.ok) expect(r.error.code).toBe("InvalidPath");
     expect(existsSync(join(fx.root, fx.project, "15"))).toBe(true);
   });
+
+  it.each([
+    "--upload-pack=touch x",
+    "",
+    "-x",
+    "a..b",
+    "a b",
+    "a;b",
+    "/develop",
+    "develop/",
+    "a.lock",
+  ])("create refuses the invalid base %j and runs nothing", async (base) => {
+    const r = await mgr.create({ ...req(15), base });
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.error.code).toBe("WorktreeCreateFailed");
+    expect(existsSync(join(fx.root, fx.project, "15"))).toBe(false);
+    expect(existsSync(join(fx.root, fx.project))).toBe(false);
+    expect(existsSync(join(fx.repoDir, "x"))).toBe(false);
+  });
+
+  it("create accepts a base with slashes", async () => {
+    git(fx.repoDir, "push", "origin", "develop:refs/heads/release/1.0");
+    const r = await mgr.create({ ...req(15), base: "release/1.0" });
+    expect(r.ok).toBe(true);
+  });
+
+  it("isClean is false for a head that is not 7 or more hex digits", async () => {
+    const c = await mgr.create(req(15));
+    if (!c.ok) throw new Error("setup");
+    expect(await mgr.isClean(c.value.path, "a")).toBe(false);
+    expect(await mgr.isClean(c.value.path, "--foo")).toBe(false);
+  });
 });
