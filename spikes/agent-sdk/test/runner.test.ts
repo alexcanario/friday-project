@@ -51,4 +51,20 @@ describe("runSpike", () => {
     expect(JSON.parse(readFileSync(join(outDir, "normal.can-use-tool.json"), "utf8"))).toEqual([]);
     expect(seen[2].cwd).not.toBe(seen[0].cwd);
   });
+
+  it("keeps the logs and rethrows when query throws after an error result", async () => {
+    const repo = makeRepo();
+    const outDir = makeTmp("spike-out-");
+    const errorResult = { type: "result", subtype: "error_max_budget_usd", is_error: true };
+    const throwingQuery = async function* () {
+      yield errorResult;
+      throw new Error("Claude Code returned an error result");
+    };
+    await expect(
+      runSpike({ repo, mode: "budget", outDir, env: {}, query: throwingQuery as any }),
+    ).rejects.toThrow("error result");
+    const logged = lines(join(outDir, "budget.messages.jsonl")).map((l) => JSON.parse(l));
+    expect(logged).toEqual([errorResult]);
+    expect(JSON.parse(readFileSync(join(outDir, "budget.can-use-tool.json"), "utf8"))).toEqual([]);
+  });
 });
