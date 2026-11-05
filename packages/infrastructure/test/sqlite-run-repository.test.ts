@@ -66,4 +66,29 @@ describe("sqlite run repository", () => {
     const count = db.sqlite.prepare("SELECT COUNT(*) AS n FROM runs WHERE id = 'r2'").get();
     expect(count).toEqual({ n: 1 });
   });
+
+  it("list returns only the project runs ordered by startedAt then id and [] for an unknown project", () => {
+    db = openWithProjects("a", "b");
+    const repo = createRunRepository(db);
+    const mk = (id: string, projectId: string, startedAt: string | null): RunRecord => ({
+      id,
+      projectId,
+      issueId: 1,
+      phase: null,
+      startedAt,
+      finishedAt: null,
+      status: "running",
+    });
+    const early = "2026-11-05T01:00:00Z";
+    const late = "2026-11-05T02:00:00Z";
+    repo.save(mk("r5", "a", late));
+    repo.save(mk("r3", "a", early));
+    repo.save(mk("r2", "a", early));
+    repo.save(mk("r9", "a", null));
+    repo.save(mk("r1", "a", null));
+    repo.save(mk("r4", "b", early));
+    expect(repo.list("a").map((r) => r.id)).toEqual(["r1", "r9", "r2", "r3", "r5"]);
+    expect(repo.list("b").map((r) => r.id)).toEqual(["r4"]);
+    expect(repo.list("desconhecido")).toEqual([]);
+  });
 });
