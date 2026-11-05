@@ -45,3 +45,13 @@ export {
   type QaStepOutcome,
   type QaFailedCriterion,
 } from "./qa-step.ts";
+export {
+  checkResult,
+  RESULT_TOOLS,
+  type GateOutcome,
+  type GateRequest,
+  type ResultStore,
+  type ResultTool,
+  type RunLookup,
+} from "./result-gate.ts";
+export { FakeResultStore, FakeRunLookup } from "./fake-result-store.ts";

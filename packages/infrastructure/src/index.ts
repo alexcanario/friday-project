@@ -30,3 +30,8 @@ export {
   type PreToolUseHookInput,
 } from "./pre-tool-use-hook.ts";
 export { isInside } from "./config-root-guard.ts";
+export {
+  createFridayMcpServer,
+  type FridayMcpServerInput,
+  type ToolResponse,
+} from "./friday-mcp-server.ts";
