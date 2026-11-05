@@ -154,6 +154,22 @@ describe("run recorder", () => {
     expect(events.appended.map((e) => e.type)).toEqual(["ToolDenied", "ToolDenied"]);
   });
 
+  it("does not mark a denial as seen when the append throws", () => {
+    const { events, recorder } = setup();
+    const realAppend = events.append.bind(events);
+    let failing = true;
+    events.append = (event) => {
+      if (failing) throw new Error("disk full");
+      return realAppend(event);
+    };
+    const sink = recorder.denialSink(CTX);
+    expect(() => sink.record({ toolName: "Bash", toolUseId: "t1" })).toThrow("disk full");
+    failing = false;
+    sink.record({ toolName: "Bash", toolUseId: "t1" });
+    sink.record({ toolName: "Bash", toolUseId: "t1" });
+    expect(events.appended.filter((e) => e.type === "ToolDenied")).toHaveLength(1);
+  });
+
   it("is exported by the package index and declares the contracts dependency", () => {
     expect(typeof createRunRecorder).toBe("function");
     const pkg = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8")) as {
