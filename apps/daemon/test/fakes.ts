@@ -110,13 +110,17 @@ export class FakeIssueRepository implements IssueRepository {
   row: IssueRow | null = null;
   readonly rebuilds: { projectId: string; appendedCount: number }[] = [];
 
-  constructor(private readonly events: FakeEvents) {}
+  readonly #events: FakeEvents;
+
+  constructor(events: FakeEvents) {
+    this.#events = events;
+  }
 
   get(): IssueRow | null {
     return this.row;
   }
 
   rebuild(projectId: string): void {
-    this.rebuilds.push({ projectId, appendedCount: this.events.appended.length });
+    this.rebuilds.push({ projectId, appendedCount: this.#events.appended.length });
   }
 }
