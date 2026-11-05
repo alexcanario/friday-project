@@ -53,14 +53,14 @@ export function createTicker(deps: TickerDeps): Ticker {
         at: new Date(deps.clock.now()).toISOString(),
       });
     } catch (error) {
-      logError(`Falha ao despachar a issue ${issueId}`, error);
+      logError(`Failed to dispatch issue ${issueId}`, error);
       return;
     }
     const run = Promise.resolve()
       .then(() => deps.runtime.run(request))
       .then(
         () => undefined,
-        (error: unknown) => logError(`Falha na run da issue ${issueId}`, error),
+        (error: unknown) => logError(`Run failed for issue ${issueId}`, error),
       )
       .finally(() => active.delete(issueId));
     active.set(issueId, run);
