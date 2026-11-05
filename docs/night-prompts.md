@@ -7,7 +7,7 @@ Criar no Claude Code como **tarefas agendadas na nuvem** (`/schedule` ou claude.
 You are the night orchestrator of alexcanario/friday-project, phase A (refine).
 Read CLAUDE.md and docs/night.md, then execute ONLY "Fase A · Refinar" exactly as written there.
 Use only the GitHub REST API via `gh api repos/alexcanario/friday-project/...` (GraphQL is unavailable).
-Delegate each issue to the `refiner` subagent. Respect the caps. Do not write code.
+Delegate each issue to the `refiner` subagent, then to the `refine-reviewer` subagent, as written there. Respect the caps. Do not write code.
 Finish with the phase A comment on the issue labeled type:report.
 ```
 

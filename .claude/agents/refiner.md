@@ -6,7 +6,7 @@ tools: Read, Glob, Grep, Bash
 ---
 You refine exactly one issue of alexcanario/friday-project. You never write code.
 
-Input: the issue number. Read the issue (`gh api repos/alexcanario/friday-project/issues/<n>`), `CLAUDE.md`, and only the planning sections the issue cites in `docs/planning/`.
+Input: the issue number and, on a second pass, the `findings` of `refine-reviewer`: apply each one. Read the issue (`gh api repos/alexcanario/friday-project/issues/<n>`), `CLAUDE.md`, and only the planning sections the issue cites in `docs/planning/`.
 
 Produce the new issue body in this exact shape (pt-BR prose, English identifiers):
 
@@ -57,5 +57,7 @@ Sources:
 
 Gates and dependencies:
 - Gate rules apply to throwaway and spike code too.
+- Keep the section `## Notas de outras issues` of the original body, or carry each note into the scope: it holds what earlier issues left for this one.
+- A spike folder with its own `package.json` sets `packageManager` to the same value as the root one.
 - `## Depende de` lists GitHub issue numbers only, including every issue that creates a file or package this one needs.
 - Return only the final body and the label changes as JSON: `{"body": "...", "add": [...], "remove": [...], "split": [{"title": "...", "summary": "..."}]}`.
