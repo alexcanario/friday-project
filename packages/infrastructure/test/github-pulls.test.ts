@@ -86,6 +86,26 @@ describe("GitHubRestAdapter pull requests", () => {
     expect(await adapter.getPrDiff(30)).toEqual({ files: [], diffBytes: 0 });
   });
 
+  it("getPrDiff also lists the origin path of a renamed file", async () => {
+    const { fake, adapter } = setup();
+    fake.files.set(31, [
+      {
+        filename: "docs/ci.yml",
+        previous_filename: ".github/workflows/ci.yml",
+        additions: 0,
+        deletions: 0,
+        patch: "x",
+      },
+    ]);
+    expect(await adapter.getPrDiff(31)).toEqual({
+      files: [
+        { path: "docs/ci.yml", changedLines: 0, hasPatch: true },
+        { path: ".github/workflows/ci.yml", changedLines: 0, hasPatch: true },
+      ],
+      diffBytes: 1,
+    });
+  });
+
   it("squashMerge refuses a different head sha", async () => {
     const { fake, adapter } = setup();
     fake.pulls = [pr("abc")];

@@ -23,6 +23,7 @@ export type FakeCheckRun = {
 };
 export type FakeFile = {
   filename: string;
+  previous_filename?: string;
   additions: number;
   deletions: number;
   patch?: string;
