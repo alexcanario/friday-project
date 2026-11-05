@@ -28,6 +28,7 @@ const allowed: Case[] = [
   ["Verify", INPUTS.VerifyPassed, "QA"],
   ["Verify", INPUTS.VerifyFailed, "InProgress"],
   ["Verify", INPUTS.VerifyTimedOut, "Held"],
+  ["Verify", INPUTS.VerifyHeadChanged, "Held"],
   ["QA", INPUTS.QaPassed, "InReview"],
   ["QA", INPUTS.QaFailed, "InProgress"],
   ["QA", INPUTS.QaModifiedCode, "Held"],
@@ -45,14 +46,33 @@ const allowed: Case[] = [
 ];
 
 describe("issue workflow", () => {
+  it("holds with HeadChanged on VerifyHeadChanged only from Verify", () => {
+    const r = transition(snap("Verify"), INPUTS.VerifyHeadChanged);
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.value.snapshot.state).toBe("Held");
+      expect(r.value.snapshot.heldReason).toBe("HeadChanged");
+      expect(r.value.event).toMatchObject({
+        type: "StateChanged",
+        trigger: "VerifyHeadChanged",
+      });
+    }
+    for (const state of ["Triage", "InProgress", "QA"] as const) {
+      expect(transition(snap(state), INPUTS.VerifyHeadChanged)).toEqual({
+        ok: false,
+        error: "InvalidTransition",
+      });
+    }
+  });
+
   it("exposes the states and held reasons", () => {
     expect(ISSUE_STATES).toHaveLength(13);
     expect(new Set(ISSUE_STATES).size).toBe(13);
     expect(HELD_REASONS).toHaveLength(23);
     expect(new Set(HELD_REASONS).size).toBe(23);
-    expect(TRANSITIONS).toHaveLength(29);
-    expect(allowed).toHaveLength(29);
-    expect(INPUT_TYPES).toHaveLength(24);
+    expect(TRANSITIONS).toHaveLength(30);
+    expect(allowed).toHaveLength(30);
+    expect(INPUT_TYPES).toHaveLength(25);
   });
 
   it.each(allowed)("applies every allowed transition %s %j -> %s", (from, input, to, extra) => {
@@ -66,7 +86,7 @@ describe("issue workflow", () => {
   const forbidden = pairs.filter(([s, t]) => !allowedKeys.has(`${s}:${t}`));
 
   it("rejects every other state and input pair", () => {
-    expect(forbidden).toHaveLength(283);
+    expect(forbidden).toHaveLength(295);
     for (const [state, type] of forbidden) {
       const result = transition(snap(state), INPUTS[type]);
       expect(result, `${state} ${type}`).toEqual({ ok: false, error: "InvalidTransition" });
@@ -108,6 +128,7 @@ describe("issue workflow", () => {
     const cases: [IssueState, WorkflowInput, string][] = [
       ["Triage", INPUTS.TriageFailed, "TriageFailed"],
       ["Verify", INPUTS.VerifyTimedOut, "VerifyTimeout"],
+      ["Verify", INPUTS.VerifyHeadChanged, "HeadChanged"],
       ["QA", INPUTS.QaModifiedCode, "QaModifiedCode"],
       ["InReview", INPUTS.ReviewRejected, "ReviewRejected"],
       ["AwaitingApproval", INPUTS.ApprovalDenied, "ApprovalDenied"],
@@ -174,7 +195,7 @@ describe("issue workflow", () => {
       for (const v of Object.values(o)) if (v && typeof v === "object") deepFreeze(v);
       return Object.freeze(o);
     };
-    expect(allowed).toHaveLength(29);
+    expect(allowed).toHaveLength(30);
     for (const [from, input, , extra] of allowed) {
       const frozen = deepFreeze(structuredClone(snap(from, extra ?? {})));
       const copy = structuredClone(frozen);
