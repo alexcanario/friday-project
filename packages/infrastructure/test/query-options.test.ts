@@ -9,6 +9,7 @@ const request = (outputKind: AgentRunRequest["agent"]["outputKind"]): AgentRunRe
   configRoot: "/cfg",
   agent: {
     model: "sonnet",
+    states: ["InProgress"],
     maxBudgetUsd: 0.5,
     maxTurns: 7,
     timeoutMs: 1000,

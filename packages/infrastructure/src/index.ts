@@ -10,3 +10,12 @@ export {
   branchName,
   type GitWorktreeManagerDeps,
 } from "./git-worktree-manager.ts";
+export {
+  buildToolPolicy,
+  type BuildToolPolicyResult,
+  type PathStyle,
+  type ToolPolicy,
+} from "./tool-policy.ts";
+export { decideToolCall, type ToolCall, type ToolDecision } from "./tool-decision.ts";
+export { isBashAllowed } from "./bash-allow.ts";
+export { resolveRegistryRoot } from "./registry-root.ts";

@@ -2,6 +2,7 @@ import type { AgentConfig } from "@friday/contracts";
 
 export interface AgentRunOptions {
   model: AgentConfig["model"];
+  states: AgentConfig["states"];
   maxBudgetUsd: number;
   maxTurns: number;
   timeoutMs: number;
@@ -15,6 +16,7 @@ export interface AgentRunOptions {
 export function toAgentRunOptions(agent: AgentConfig): AgentRunOptions {
   return {
     model: agent.model,
+    states: agent.states,
     maxBudgetUsd: agent.max_budget_usd,
     maxTurns: agent.max_turns,
     timeoutMs: agent.timeout_s * 1000,
