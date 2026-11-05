@@ -1,0 +1,4 @@
+{"type":"system","subtype":"init","tools":["AskUserQuestion","Bash"]}
+{"type":"assistant","message":{"content":[{"type":"tool_use","id":"t1","name":"AskUserQuestion","input":{"questions":[]}}]}}
+{"type":"assistant","message":{"content":[{"type":"tool_use","id":"t2","name":"AskUserQuestion","input":{"questions":[]}}]}}
+{"type":"result","subtype":"success","total_cost_usd":0.02,"num_turns":3}
