@@ -9,3 +9,4 @@ export {
   type Ticker,
   type TickerDeps,
 } from "./tick.ts";
+export { createRunRecorder } from "./run-recorder.ts";

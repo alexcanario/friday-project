@@ -205,6 +205,9 @@ importers:
 
   apps/daemon:
     dependencies:
+      '@friday/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
       '@friday/application':
         specifier: workspace:*
         version: link:../../packages/application
