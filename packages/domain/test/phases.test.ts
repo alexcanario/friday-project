@@ -47,4 +47,17 @@ describe("phases", () => {
       phaseIndex: 0,
     });
   });
+
+  it("restarts the phases on every return to in progress", () => {
+    const phases = [phase("design"), phase("implement")];
+    for (const [from, input] of [
+      ["QA", INPUTS.QaFailed],
+      ["InReview", INPUTS.ChangesRequested],
+    ] as const) {
+      const s = snap(from, { phases, phaseIndex: 2 });
+      const r = ok(transition(s, input));
+      expect(r.snapshot).toMatchObject({ state: "InProgress", phaseIndex: 0 });
+      expect(currentPhase(r.snapshot)?.role).toBe("design");
+    }
+  });
 });

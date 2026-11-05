@@ -1,6 +1,6 @@
 ---
 name: judge-strong
-description: Same contract as judge but on the strongest model; use only for PRs with a gate label or risk medium/high, to keep costs down elsewhere.
+description: Same contract as judge but on the strongest model; use only for PRs with a gate label, risk medium/high or no declared risk, to keep costs down elsewhere.
 model: opus
 tools: Read, Glob, Grep, Bash
 ---

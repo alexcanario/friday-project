@@ -1,6 +1,6 @@
 ---
 name: judge
-description: Independent final reviewer of one PR, bound to its head SHA; decides approve or request-changes. Use after qa passes. Use the judge-strong agent instead when the PR has a gate label or risk medium/high.
+description: Independent final reviewer of one PR, bound to its head SHA; decides approve or request-changes. Use after qa passes. Use the judge-strong agent instead when the PR has a gate label, risk medium/high or no declared risk.
 model: sonnet
 tools: Read, Glob, Grep, Bash
 ---

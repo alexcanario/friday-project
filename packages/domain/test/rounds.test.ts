@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { transition, type HeldReason, type IssueState, type WorkflowInput } from "../src/index.ts";
+import {
+  HELD_REASONS,
+  createWorkflow,
+  transition,
+  type HeldReason,
+  type IssueState,
+  type WorkflowInput,
+} from "../src/index.ts";
 import { INPUTS, snap } from "./fixtures.ts";
 
 type Counter = "verifyRound" | "qaRound" | "reviewIter";
@@ -56,5 +63,50 @@ describe("rounds", () => {
     expect(r.ok && r.value.snapshot.verifyRound).toBe(2);
     const c = transition(paused, INPUTS.CancelRequested);
     expect(c.ok && c.value.snapshot.state).toBe("Canceled");
+  });
+
+  it("keeps the counters along the real path", () => {
+    const created = createWorkflow("i-1");
+    if (!created.ok) throw new Error(created.error);
+    let s = created.value;
+    const steps = [
+      "Admitted",
+      "SpecialistAssigned",
+      "PhaseCompleted",
+      "WorkReported",
+      "VerifyFailed",
+      "PhaseCompleted",
+      "WorkReported",
+      "VerifyPassed",
+      "QaFailed",
+      "PhaseCompleted",
+      "WorkReported",
+      "VerifyPassed",
+      "QaPassed",
+      "ChangesRequested",
+    ] as const;
+    for (const type of steps) {
+      const r = transition(s, INPUTS[type]);
+      expect(r.ok, type).toBe(true);
+      if (r.ok) s = r.value.snapshot;
+    }
+    expect(s).toMatchObject({ state: "InProgress", verifyRound: 1, qaRound: 1, reviewIter: 1 });
+  });
+
+  it("keeps the counters on the other held reasons", () => {
+    const exhausted = ["VerifyRoundsExhausted", "QaRoundsExhausted", "ReviewItersExhausted"];
+    const others = HELD_REASONS.filter((r) => !exhausted.includes(r));
+    expect(others).toHaveLength(20);
+    for (const heldReason of others) {
+      const s = snap("Held", { heldReason, verifyRound: 1, qaRound: 1, reviewIter: 1 });
+      const r = transition(s, INPUTS.Resumed);
+      if (!r.ok) throw new Error(r.error);
+      expect(r.value.snapshot, heldReason).toMatchObject({
+        state: "InProgress",
+        verifyRound: 1,
+        qaRound: 1,
+        reviewIter: 1,
+      });
+    }
   });
 });

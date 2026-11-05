@@ -67,12 +67,12 @@ function resume(s: WorkflowSnapshot): Next {
 }
 
 function approval(input: Extract<WorkflowInput, { type: "ApprovalGranted" }>): Next {
-  if (input.decidedAt >= input.expiresAt) return hold("ApprovalExpired");
+  if (!(input.decidedAt < input.expiresAt)) return hold("ApprovalExpired");
   if (input.headSha !== input.prHeadSha) return hold("HeadChanged");
   return { state: "Merging" };
 }
 
-function decide(s: WorkflowSnapshot, input: WorkflowInput): Result<Next, TransitionError> {
+function decideProgress(s: WorkflowSnapshot, input: WorkflowInput): Result<Next, TransitionError> {
   switch (input.type) {
     case "Admitted":
       return ok({ state: "Todo" });
@@ -91,6 +91,13 @@ function decide(s: WorkflowSnapshot, input: WorkflowInput): Result<Next, Transit
     case "RunHeld":
       if (!RUN_HELD_REASONS.includes(input.reason)) return err("InvalidTransition");
       return ok(hold(input.reason));
+    default:
+      return decideChecks(s, input);
+  }
+}
+
+function decideChecks(s: WorkflowSnapshot, input: WorkflowInput): Result<Next, TransitionError> {
+  switch (input.type) {
     case "VerifyPassed":
       return ok({ state: "QA" });
     case "VerifyFailed":
@@ -110,6 +117,13 @@ function decide(s: WorkflowSnapshot, input: WorkflowInput): Result<Next, Transit
       return ok(retry(s, "reviewIter", "ReviewItersExhausted"));
     case "ReviewRejected":
       return ok(hold("ReviewRejected"));
+    default:
+      return decideRelease(s, input);
+  }
+}
+
+function decideRelease(s: WorkflowSnapshot, input: WorkflowInput): Result<Next, TransitionError> {
+  switch (input.type) {
     case "RiskAssessed":
       return ok({
         state: input.risk === "low" && input.autoMerge ? "Merging" : "AwaitingApproval",
@@ -128,6 +142,8 @@ function decide(s: WorkflowSnapshot, input: WorkflowInput): Result<Next, Transit
       return ok(resume(s));
     case "CancelRequested":
       return ok({ state: "Canceled" });
+    default:
+      return err("InvalidTransition");
   }
 }
 
@@ -136,7 +152,7 @@ export function transition(
   input: WorkflowInput,
 ): Result<TransitionOutcome, TransitionError> {
   if (!isAllowed(snapshot.state, input.type)) return err("InvalidTransition");
-  const decided = decide(snapshot, input);
+  const decided = decideProgress(snapshot, input);
   if (!decided.ok) return decided;
   const next: WorkflowSnapshot = {
     ...snapshot,

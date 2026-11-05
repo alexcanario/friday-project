@@ -103,4 +103,84 @@ describe("issue workflow", () => {
     const created = createWorkflow("i-1");
     expect(created.ok && created.value.state).toBe("Backlog");
   });
+
+  it("records the reason of each hold", () => {
+    const cases: [IssueState, WorkflowInput, string][] = [
+      ["Triage", INPUTS.TriageFailed, "TriageFailed"],
+      ["Verify", INPUTS.VerifyTimedOut, "VerifyTimeout"],
+      ["QA", INPUTS.QaModifiedCode, "QaModifiedCode"],
+      ["InReview", INPUTS.ReviewRejected, "ReviewRejected"],
+      ["AwaitingApproval", INPUTS.ApprovalDenied, "ApprovalDenied"],
+      ["AwaitingApproval", INPUTS.ApprovalExpired, "ApprovalExpired"],
+      ["Merging", INPUTS.MergeBlocked, "MergeBlocked"],
+    ];
+    for (const [from, input, reason] of cases) {
+      const r = transition(snap(from), input);
+      if (!r.ok) throw new Error(`${from} ${input.type}`);
+      expect(r.value.snapshot).toMatchObject({ state: "Held", heldReason: reason });
+      expect(r.value.event).toMatchObject({ to: "Held", heldReason: reason });
+    }
+  });
+
+  it("exposes the states and held reasons by name", () => {
+    expect(ISSUE_STATES).toEqual(
+      expect.arrayContaining([
+        "Backlog",
+        "Todo",
+        "Triage",
+        "InProgress",
+        "Verify",
+        "QA",
+        "InReview",
+        "RiskCheck",
+        "AwaitingApproval",
+        "Merging",
+        "Held",
+        "Done",
+        "Canceled",
+      ]),
+    );
+    expect(HELD_REASONS).toEqual(
+      expect.arrayContaining([
+        "TriageFailed",
+        "RunMisconfigured",
+        "BudgetExceeded",
+        "TurnsExceeded",
+        "RuntimeFailed",
+        "BreakerOpen",
+        "BudgetExhausted",
+        "IssueBudgetExceeded",
+        "SchemaInvalid",
+        "VerifyRoundsExhausted",
+        "VerifyTimeout",
+        "QaRoundsExhausted",
+        "QaModifiedCode",
+        "ReviewItersExhausted",
+        "ReviewRejected",
+        "ApprovalDenied",
+        "ApprovalExpired",
+        "HeadChanged",
+        "MergeBlocked",
+        "ConfidenceBelowHigh",
+        "IncidentOpen",
+        "Reconciled",
+        "PausedByHuman",
+      ]),
+    );
+  });
+
+  it("never mutates the snapshot on any allowed pair", () => {
+    const deepFreeze = <T extends object>(o: T): T => {
+      for (const v of Object.values(o)) if (v && typeof v === "object") deepFreeze(v);
+      return Object.freeze(o);
+    };
+    expect(allowed).toHaveLength(29);
+    for (const [from, input, , extra] of allowed) {
+      const frozen = deepFreeze(structuredClone(snap(from, extra ?? {})));
+      const copy = structuredClone(frozen);
+      const r = transition(frozen, deepFreeze(structuredClone(input)));
+      expect(r.ok, `${from} ${input.type}`).toBe(true);
+      expect(frozen).toEqual(copy);
+    }
+  });
 });

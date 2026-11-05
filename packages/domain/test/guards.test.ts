@@ -64,4 +64,50 @@ describe("guards", () => {
       expect(bad).toEqual({ ok: false, error: "InvalidTransition" });
     }
   });
+
+  it("treats an invalid approval time as expired", () => {
+    const grant = (decidedAt: number, expiresAt: number): WorkflowInput => ({
+      type: "ApprovalGranted",
+      headSha: SHA,
+      prHeadSha: SHA,
+      decidedAt,
+      expiresAt,
+    });
+    const bad: [number, number][] = [
+      [Number.NaN, 200],
+      [100, Number.NaN],
+    ];
+    for (const [at, exp] of bad) {
+      const r = transition(snap("AwaitingApproval"), grant(at, exp));
+      if (!r.ok) throw new Error(r.error);
+      expect(r.value.snapshot).toMatchObject({ state: "Held", heldReason: "ApprovalExpired" });
+    }
+    const good = transition(snap("AwaitingApproval"), grant(100, 200));
+    expect(good.ok && good.value.snapshot.state).toBe("Merging");
+  });
+
+  it("rejects the reasons outside the run list", () => {
+    const outside = [
+      "TriageFailed",
+      "VerifyRoundsExhausted",
+      "VerifyTimeout",
+      "QaRoundsExhausted",
+      "QaModifiedCode",
+      "ReviewItersExhausted",
+      "ReviewRejected",
+      "ApprovalDenied",
+      "ApprovalExpired",
+      "HeadChanged",
+      "MergeBlocked",
+      "ConfidenceBelowHigh",
+      "IncidentOpen",
+    ];
+    expect(outside).toHaveLength(13);
+    for (const from of RUN_HELD_FROM) {
+      for (const reason of outside) {
+        const r = transition(snap(from), { type: "RunHeld", reason } as unknown as WorkflowInput);
+        expect(r, `${from} ${reason}`).toEqual({ ok: false, error: "InvalidTransition" });
+      }
+    }
+  });
 });

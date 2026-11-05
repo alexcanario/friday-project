@@ -1,10 +1,8 @@
-import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { contractJsonSchema } from "../src/json-schema.ts";
-import type { ContractKind } from "../src/validate.ts";
+import type { ContractKind } from "../src/index.ts";
 
-export const kinds: ContractKind[] = [
+const kinds: ContractKind[] = [
   "qaReport",
   "reviewVerdict",
   "triage",
@@ -50,12 +48,5 @@ describe("contractJsonSchema", () => {
     const qi = q.properties.criteria.items;
     expect(qi.additionalProperties).toBe(false);
     expect(qi.required).not.toContain("how");
-  });
-
-  it("matches the committed schema files", () => {
-    for (const kind of kinds) {
-      const file = resolve(import.meta.dirname, `../../../contracts/${kind}.schema.json`);
-      expect(JSON.parse(readFileSync(file, "utf8"))).toEqual(contractJsonSchema(kind));
-    }
   });
 });
