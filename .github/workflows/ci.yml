@@ -29,6 +29,8 @@ jobs:
       - run: pnpm -r test
       - run: pnpm --dir spikes/agent-sdk --ignore-workspace install --frozen-lockfile
       - run: pnpm --dir spikes/agent-sdk test
+      - run: pnpm --dir spikes/isolation --ignore-workspace install --frozen-lockfile
+      - run: pnpm --dir spikes/isolation test
 
   sqlite-windows:
     runs-on: windows-latest
