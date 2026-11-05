@@ -58,9 +58,8 @@ describe.skipIf(process.env.FRIDAY_LIVE !== "1")("ClaudeAgentSdkRuntime (live)",
     await new ClaudeAgentSdkRuntime().run({
       cwd,
       configRoot,
-      prompt:
-        "Crie o arquivo probe.txt com a ferramenta Write e, se ela falhar, com a ferramenta Bash.",
-      agent: agent({ tools: ["Read", "Bash", "Write"] }),
+      prompt: "Crie o arquivo probe.txt com a ferramenta Bash.",
+      agent: agent({ states: ["QA"], tools: ["Read", "Bash"], bashAllow: [] }),
     });
     expect(existsSync(join(cwd, "probe.txt"))).toBe(false);
   });

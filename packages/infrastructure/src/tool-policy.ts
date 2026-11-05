@@ -7,6 +7,8 @@ export interface ToolPolicy {
   tools: readonly string[];
   allowedTools: readonly string[];
   bashAllow: readonly string[];
+  /** The SDK's StructuredOutput tool is allowed only for agents with an output contract. */
+  structuredOutput?: boolean;
   worktree: string;
   style: PathStyle;
   realpath: (path: string) => string;
@@ -48,6 +50,7 @@ export function buildToolPolicy(
       tools: agent.tools,
       allowedTools: agent.allowedTools,
       bashAllow: agent.bashAllow,
+      structuredOutput: agent.outputKind != null,
       worktree,
       style: styleOf(worktree),
       realpath: deps.realpath ?? ((p) => realpathSync(p)),

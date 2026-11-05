@@ -35,3 +35,4 @@ export {
   type RiskVerdict,
 } from "./classify-risk.ts";
 export { decideGates, type GateDecision, type GateInput } from "./decide-gates.ts";
+export type { ToolDenied, ToolDenialSink } from "./tool-denial-sink.ts";

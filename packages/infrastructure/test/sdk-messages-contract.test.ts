@@ -2,18 +2,19 @@ import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { SDKMessage } from "@anthropic-ai/claude-agent-sdk";
-import type { AgentRunRequest } from "@friday/application";
+import type { AgentRunRequest, ToolDenialSink, ToolDenied } from "@friday/application";
 import { describe, expect, it } from "vitest";
 import { ClaudeAgentSdkRuntime } from "../src/index.ts";
 import { fakeQuery } from "./runtime-helpers.ts";
 
 const dir = join(import.meta.dirname, "fixtures/sdk-messages");
 
-function request(): AgentRunRequest {
+function request(over: Partial<AgentRunRequest["agent"]> = {}): AgentRunRequest {
   const configRoot = mkdtempSync(join(tmpdir(), "friday-contract-"));
   writeFileSync(join(configRoot, "prompt.md"), "p");
+  const cwd = mkdtempSync(join(tmpdir(), "friday-contract-wt-"));
   return {
-    cwd: configRoot,
+    cwd,
     prompt: "x",
     configRoot,
     agent: {
@@ -27,17 +28,23 @@ function request(): AgentRunRequest {
       bashAllow: [],
       promptFile: "prompt.md",
       outputKind: null,
+      ...over,
     },
   };
 }
 
-async function replay(name: string, fails: boolean) {
+async function replay(
+  name: string,
+  fails: boolean,
+  sink?: ToolDenialSink,
+  agent: Partial<AgentRunRequest["agent"]> = {},
+) {
   const lines = readFileSync(join(dir, `${name}.messages.jsonl`), "utf8")
     .trim()
     .split("\n");
   const messages = lines.map((l) => JSON.parse(l) as SDKMessage);
   const query = fakeQuery(messages, fails ? new Error("exit 1") : undefined);
-  return new ClaudeAgentSdkRuntime({ query, env: {} }).run(request());
+  return new ClaudeAgentSdkRuntime({ query, env: {}, sink }).run(request(agent));
 }
 
 describe("recorded sdk messages", () => {
@@ -58,5 +65,17 @@ describe("recorded sdk messages", () => {
       tokens: { input: 1211, output: 108, cacheRead: 2922, cacheCreation: 3299 },
     });
     expect(await replay("turns", true)).toMatchObject({ status: "turns_exceeded", numTurns: 2 });
+  });
+
+  it("records the Write denial from the recorded run", async () => {
+    const denials: ToolDenied[] = [];
+    const out = await replay(
+      "write",
+      false,
+      { record: (d) => denials.push(d) },
+      { tools: ["Glob", "Grep", "Read", "Write"] },
+    );
+    expect(out.status).toBe("succeeded");
+    expect(denials).toEqual([{ toolName: "Write", toolUseId: "toolu_01T7uF8qDyEf5gvScwd1imdy" }]);
   });
 });
