@@ -55,3 +55,11 @@ export {
   type RunLookup,
 } from "./result-gate.ts";
 export { FakeResultStore, FakeRunLookup } from "./fake-result-store.ts";
+export type {
+  CiState,
+  CiStatus,
+  CreatedPr,
+  GitHubPort,
+  IssueSummary,
+  MergeResult,
+} from "./github-port.ts";
