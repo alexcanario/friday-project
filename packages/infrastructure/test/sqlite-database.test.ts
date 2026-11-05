@@ -1,5 +1,7 @@
 import Database from "better-sqlite3";
 import { describe, expect, it } from "vitest";
+import { symlinkSync, rmSync } from "node:fs";
+import { basename, dirname, join } from "node:path";
 import { openDatabase } from "../src/sqlite/database.ts";
 import { tempDbPath } from "./sqlite-helpers.ts";
 
@@ -44,5 +46,27 @@ describe("openDatabase", () => {
     const other = openDatabase(tempDbPath("other.db"));
     again.close();
     other.close();
+  });
+
+  it("a second close of an old handle does not free the path of a newer one", () => {
+    const path = tempDbPath();
+    const first = openDatabase(path);
+    first.close();
+    const second = openDatabase(path);
+    first.close();
+    expect(() => openDatabase(path)).toThrow();
+    expect(second.sqlite.open).toBe(true);
+    second.close();
+    expect(second.sqlite.open).toBe(false);
+  });
+
+  it("refuses a second writer through a link to the same folder", () => {
+    const path = tempDbPath();
+    const link = join(dirname(dirname(path)), `friday-link-${process.pid}-${Date.now()}`);
+    symlinkSync(dirname(path), link, "junction");
+    const first = openDatabase(path);
+    expect(() => openDatabase(join(link, basename(path)))).toThrow();
+    first.close();
+    rmSync(link, { recursive: true });
   });
 });

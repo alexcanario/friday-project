@@ -60,6 +60,12 @@ describe("sqlite schema", () => {
     );
     expect(() => run("UPDATE events SET type = 'x'")).toThrow();
     expect(() => run("DELETE FROM events")).toThrow();
+    expect(() =>
+      run(
+        "INSERT OR REPLACE INTO events (seq, project_id, issue_id, type, payload_json, actor, at) VALUES (1, 'p', 1, 'forged', '{}', 'a', 'now')",
+      ),
+    ).toThrow();
+    expect(db.sqlite.prepare("SELECT type FROM events WHERE seq = 1").get()).toEqual({ type: "t" });
     run(
       "INSERT INTO events (project_id, issue_id, type, payload_json, actor, at) VALUES ('p', 1, 't2', '{}', 'a', 'now')",
     );
