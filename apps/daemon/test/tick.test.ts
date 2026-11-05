@@ -5,12 +5,17 @@ import type { RunResult } from "./fakes.ts";
 
 const done = {} as RunResult;
 
-function setup(config: () => TickConfig | null = () => ({ enabled: true, maxConcurrentRuns: 1 })) {
+function setup(
+  config: () => TickConfig | null = () => ({ enabled: true, maxConcurrentRuns: 1 }),
+  failBuild = false,
+) {
   const clock = new FakeClock();
   const issues = new FakeIssues();
   const runtime = new PendingRuntime();
   const events = new FakeEvents();
   const built: number[] = [];
+  const logs: string[] = [];
+  const buildFailure = failBuild;
   const ticker = createTicker({
     projectId: "p1",
     clock,
@@ -18,12 +23,14 @@ function setup(config: () => TickConfig | null = () => ({ enabled: true, maxConc
     issues,
     buildRequest: (id) => {
       built.push(id);
+      if (buildFailure) throw new Error("bad request");
       return fakeRequest(id);
     },
     runtime,
     events,
+    log: (message) => logs.push(message),
   });
-  return { clock, issues, runtime, events, built, ticker };
+  return { clock, issues, runtime, events, built, logs, ticker };
 }
 
 const flush = () => new Promise<void>((r) => setTimeout(r, 0));
@@ -138,5 +145,45 @@ describe("ticker", () => {
     s.clock.advance(30000);
     await flush();
     expect(s.issues.calls).toBe(2);
+  });
+
+  it("dispatches a duplicated ready issue once and idle waits for it", async () => {
+    const s = setup(() => ({ enabled: true, maxConcurrentRuns: 2 }));
+    s.issues.ready = [7, 7];
+    await s.ticker.tick();
+    expect(s.built).toEqual([7]);
+    expect(s.runtime.requests).toHaveLength(1);
+    let idled = false;
+    const waiting = s.ticker.idle().then(() => (idled = true));
+    await flush();
+    expect(idled).toBe(false);
+    s.runtime.resolveAll(done);
+    await waiting;
+    expect(idled).toBe(true);
+  });
+
+  it("does not run an issue whose RunDispatched event failed to append", async () => {
+    const s = setup();
+    s.events.append = () => {
+      throw new Error("disk full");
+    };
+    s.issues.ready = [3];
+    await s.ticker.tick();
+    await s.ticker.idle();
+    expect(s.runtime.requests).toHaveLength(0);
+    expect(s.logs).toHaveLength(1);
+    s.events.append = FakeEvents.prototype.append.bind(s.events);
+    await s.ticker.tick();
+    expect(s.runtime.requests).toHaveLength(1);
+  });
+
+  it("logs a buildRequest error without breaking the tick", async () => {
+    const s = setup(undefined, true);
+    s.issues.ready = [4];
+    await expect(s.ticker.tick()).resolves.toBeUndefined();
+    await s.ticker.idle();
+    expect(s.logs).toHaveLength(1);
+    expect(s.logs[0]).toContain("4");
+    expect(s.runtime.requests).toHaveLength(0);
   });
 });

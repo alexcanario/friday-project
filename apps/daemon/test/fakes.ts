@@ -92,7 +92,6 @@ export function fakeRequest(issueId: number): AgentRunRequest {
     configRoot: "/cfg",
     agent: {
       model: "haiku",
-      states: ["InProgress"],
       maxBudgetUsd: 1,
       maxTurns: 1,
       timeoutMs: 1000,
@@ -102,5 +101,5 @@ export function fakeRequest(issueId: number): AgentRunRequest {
       promptFile: "p.md",
       outputKind: null,
     },
-  };
+  } as unknown as AgentRunRequest;
 }
