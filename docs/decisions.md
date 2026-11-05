@@ -38,6 +38,7 @@ Fonte única das decisões em vigor. O histórico e o raciocínio estão em `pla
 | D36 | Chaves do projeto no `factory.yaml`: `schemaVersion` (`friday/v1`), `enabled`, `repository`, `verify`, `flow` (`screen_paths`, `pr_evidence`, `triage`), `risk`, `pull_requests`, `limits` e `secrets`; saem os estados de `flow` e os tetos de rodada, fixos no motor (D29, D31) | fechada | 2026-11-04 |
 | D37 | Roster check: ao menos um agente em `InProgress`, `QA` e `InReview`; `states` aceita só esses três; os 5 especialistas da triagem precisam de ficha com `InProgress` | fechada | 2026-11-04 |
 | D38 | Ferramentas aceitas numa ficha de agente: `Read`, `Glob`, `Grep`, `Bash`, `Edit` e `Write`, mais as 8 ferramentas MCP da #43; `WebFetch` e `WebSearch` ficam de fora | fechada | 2026-11-04 |
+| D39 | A tarefa C lê o `- risco:` da issue para escolher o Judge. Sem essa linha, usa `judge-strong`, o que amplia a D8. Se o `judge` devolver risco maior que o declarado, repete com `judge-strong` no mesmo `head_sha`, e esse veredito passa a valer; risco menor não muda nada | fechada | 2026-11-05 |
 
 ## Siglas
 - **API:** Application Programming Interface.
