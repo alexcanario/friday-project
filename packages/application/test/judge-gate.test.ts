@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { transition } from "@friday/domain";
+import { FakeAgentRuntime, runJudgeStep } from "../src/index.ts";
+import { finished } from "./qa-step-helpers.ts";
 import { A, B, MemoryStale, inReview, rules, setup, verdict } from "./judge-helpers.ts";
 
 describe("judge gate", () => {
@@ -95,5 +97,18 @@ describe("judge gate", () => {
       kind: "held",
       input: { type: "RunHeld", reason: "RuntimeFailed" },
     });
+  });
+
+  it("returns invalid with the runtime violations when the run status is invalid_output", async () => {
+    const s = setup(null);
+    const violations = [
+      { code: "approve_with_failed_rule", path: "verdict", message: "regra falhou" },
+    ];
+    const runtime = new FakeAgentRuntime([{ ...finished(null, "invalid_output"), violations }]);
+    const out = await runJudgeStep({ ...s.deps, runtime }, s.input);
+    expect(out).toEqual({ kind: "invalid", violations });
+    expect(s.reads).toHaveLength(0);
+    expect(s.stale.marked).toHaveLength(0);
+    expect(s.posted).toHaveLength(0);
   });
 });
