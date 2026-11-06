@@ -1,5 +1,6 @@
 import {
   checkEffect,
+  type EffectsRun,
   type EffectTool,
   type GitHost,
   type GitHubPort,
@@ -14,14 +15,7 @@ export type ToolResponse = { content: Array<{ type: "text"; text: string }>; isE
 export interface EffectsInput {
   github: GitHubPort;
   gitHost: GitHost;
-  run: {
-    issue: number;
-    role: string;
-    branch: string;
-    base: string;
-    worktree: string;
-    getPullRequest: () => number | null;
-  };
+  run: EffectsRun;
 }
 
 export const EFFECT_KEYS: Record<EffectTool, string[]> = {

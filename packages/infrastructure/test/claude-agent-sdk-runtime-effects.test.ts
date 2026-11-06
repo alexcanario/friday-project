@@ -157,7 +157,10 @@ describe("ClaudeAgentSdkRuntime effect tools", () => {
       const out = await c.handlers.git_push!({ branch: "friday/96-x", commit: SHA });
       expect(out).toEqual({
         content: [
-          { type: "text", text: "403: Ferramenta não permitida para este papel ou estado da issue." },
+          {
+            type: "text",
+            text: "403: Ferramenta não permitida para este papel ou estado da issue.",
+          },
         ],
         isError: true,
       });

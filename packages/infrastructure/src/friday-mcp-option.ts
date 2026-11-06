@@ -1,5 +1,12 @@
 import type { Options } from "@anthropic-ai/claude-agent-sdk";
-import type { AgentRunRequest, ResultStore, RunLookup } from "@friday/application";
+import {
+  EFFECT_TOOLS,
+  type AgentRunRequest,
+  type GitHost,
+  type GitHubPort,
+  type ResultStore,
+  type RunLookup,
+} from "@friday/application";
 import type { createFridayMcpServer } from "./friday-mcp-server.ts";
 
 const PREFIX = "mcp__friday__";
@@ -7,6 +14,8 @@ const PREFIX = "mcp__friday__";
 export interface FridayMcpDeps {
   runs?: RunLookup;
   results?: ResultStore;
+  github?: GitHubPort;
+  gitHost?: GitHost;
   createMcpServer: typeof createFridayMcpServer;
 }
 
@@ -22,6 +31,11 @@ export function buildFridayMcpServers(
   const wanted = friday.agent.mcp_tools.map((t) => `${PREFIX}${t}`).sort();
   const allowed = request.agent.allowedTools.filter((t) => t.startsWith(PREFIX)).sort();
   if (wanted.length !== allowed.length || wanted.some((t, i) => t !== allowed[i])) return null;
+  const wantsEffects = friday.agent.mcp_tools.some((t) =>
+    (EFFECT_TOOLS as readonly string[]).includes(t),
+  );
+  const run = friday.effects?.run;
+  if (wantsEffects && (run === undefined || !deps.github || !deps.gitHost)) return null;
   try {
     const { server } = deps.createMcpServer({
       runId: friday.runId,
@@ -29,6 +43,9 @@ export function buildFridayMcpServers(
       getIssueState: friday.getIssueState,
       runs,
       results,
+      ...(wantsEffects
+        ? { effects: { github: deps.github!, gitHost: deps.gitHost!, run: run! } }
+        : {}),
     });
     return { friday: server };
   } catch {
