@@ -100,7 +100,8 @@ describe("createIntake", () => {
   it("logs and continues when one issue or the listing fails", async () => {
     const { events, github, logs, intake } = setup();
     github.issues.push(issue(9), issue(7));
-    events.failWhen = (e) => (e.type === "IssueIngested" && e.issueId === 9 ? new Error("boom") : null);
+    events.failWhen = (e) =>
+      e.type === "IssueIngested" && e.issueId === 9 ? new Error("boom") : null;
     expect(await intake.ingest()).toEqual([7]);
     expect(logs).toContain("Failed to ingest issue 9: boom");
     expect(events.appended.some((e) => e.issueId === 9)).toBe(false);

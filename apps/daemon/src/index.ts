@@ -40,3 +40,4 @@ export {
   type JudgeApplyResult,
   type JudgeDispatchDeps,
 } from "./judge-dispatch.ts";
+export { createIntake, type Intake, type IntakeDeps } from "./intake.ts";

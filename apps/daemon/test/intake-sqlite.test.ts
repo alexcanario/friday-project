@@ -1,11 +1,7 @@
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import {
-  createEventStore,
-  createIssueRepository,
-  openDatabase,
-} from "@friday/infrastructure";
+import { createEventStore, createIssueRepository, openDatabase } from "@friday/infrastructure";
 import { describe, expect, it } from "vitest";
 import { createIntake } from "../src/index.ts";
 import { FakeGitHub } from "./fakes.ts";
@@ -33,7 +29,10 @@ describe("intake with SQLite", () => {
     const { db, intake } = setup(true);
     expect(await intake.ingest()).toEqual([7]);
     expect(createIssueRepository(db).get("p", 7)?.state).toBe("Todo");
-    const types = () => createEventStore(db).list("p", 7).map((e) => e.type);
+    const types = () =>
+      createEventStore(db)
+        .list("p", 7)
+        .map((e) => e.type);
     expect(types()).toEqual(["IssueIngested", "StateChanged"]);
     expect(await intake.ingest()).toEqual([]);
     expect(types()).toEqual(["IssueIngested", "StateChanged"]);

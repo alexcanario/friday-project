@@ -159,11 +159,7 @@ export class FakeIssueRepository implements IssueRepository {
 
   readonly #projectFromEvents: boolean;
 
-  constructor(
-    events: FakeEvents,
-    order?: string[],
-    options: { projectFromEvents?: boolean } = {},
-  ) {
+  constructor(events: FakeEvents, order?: string[], options: { projectFromEvents?: boolean } = {}) {
     this.#events = events;
     this.#order = order;
     this.#projectFromEvents = options.projectFromEvents ?? false;
