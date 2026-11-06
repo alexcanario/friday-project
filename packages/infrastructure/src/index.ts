@@ -43,3 +43,4 @@ export {
 export { GitHubRestAdapter } from "./github-rest-adapter.ts";
 export { createGitHubClient } from "./github-client.ts";
 export { SqliteStaleVerdicts } from "./stale-verdicts.ts";
+export { GitCliHost, type GitCliHostOptions } from "./git-cli-host.ts";

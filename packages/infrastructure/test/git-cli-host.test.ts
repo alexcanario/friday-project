@@ -39,7 +39,11 @@ let mirror: string;
 let targetUrl: string;
 
 function git(cwd: string, ...args: string[]): string {
-  return execFileSync("git", args, { cwd, env: { ...process.env, ...IDENT }, encoding: "utf8" }).trim();
+  return execFileSync("git", args, {
+    cwd,
+    env: { ...process.env, ...IDENT },
+    encoding: "utf8",
+  }).trim();
 }
 
 function commit(msg: string, orphan = false): string {
@@ -56,9 +60,10 @@ function fakeGit(mode: "ok" | "push-fails" | "fetch-fails" = "ok"): { bin: strin
   writeFileSync(
     bin,
     `#!${process.execPath}
-import { appendFileSync } from "node:fs";
+import { appendFileSync, mkdirSync } from "node:fs";
 const argv = process.argv.slice(2);
 appendFileSync(${JSON.stringify(log)}, JSON.stringify({ argv, cwd: process.cwd(), env: process.env }) + "\\n");
+if (argv[0] === "init") mkdirSync(argv[3], { recursive: true });
 const mode = ${JSON.stringify(mode)};
 if (mode === "push-fails" && argv.includes("push")) {
   process.stderr.write("denied ${TOKEN} ${HEADER}\\n");
