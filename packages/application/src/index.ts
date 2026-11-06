@@ -64,3 +64,13 @@ export type {
   IssueSummary,
   MergeResult,
 } from "./github-port.ts";
+export {
+  checkEffect,
+  EFFECT_TOOLS,
+  type EffectOutcome,
+  type EffectRequest,
+  type EffectTool,
+} from "./effect-gate.ts";
+export type { GitHost } from "./git-host.ts";
+export { FakeGitHost } from "./fake-git-host.ts";
+export { FakeGitHubPort } from "./fake-github-port.ts";

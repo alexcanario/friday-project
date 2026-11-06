@@ -17,4 +17,10 @@ describe("buildRunEnv", () => {
     const win = { Path: "b", SystemRoot: "s", USERPROFILE: "u", TEMP: "t" };
     expect(buildRunEnv(win)).toStrictEqual(win);
   });
+
+  it("keeps the author token out of the run", () => {
+    const env = buildRunEnv({ PATH: "/bin", FRIDAY_AUTHOR_TOKEN: "segredo" });
+    expect(env).not.toHaveProperty("FRIDAY_AUTHOR_TOKEN");
+    expect(env).toHaveProperty("PATH");
+  });
 });
