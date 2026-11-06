@@ -20,6 +20,10 @@ describe("sdk dependency", () => {
       "tool-denial-sink",
       "result-gate",
       "fake-result-store",
+      "effect-gate",
+      "git-host",
+      "fake-git-host",
+      "fake-github-port",
     ]) {
       const src = read(`../../application/src/${file}.ts`);
       expect(src).not.toMatch(

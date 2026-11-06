@@ -103,3 +103,17 @@ describe("factoryConfigSchema", () => {
     }
   });
 });
+
+describe("pull_requests.author_token_env", () => {
+  it("accepts and rejects pull_requests.author_token_env", () => {
+    const withEnv = (v: unknown) => ({
+      ...valid(),
+      pull_requests: { merge: "manual", ...(v === undefined ? {} : { author_token_env: v }) },
+    });
+    expect(factoryConfigSchema.safeParse(withEnv("FRIDAY_AUTHOR_TOKEN")).success).toBe(true);
+    expect(factoryConfigSchema.safeParse(withEnv(undefined)).success).toBe(true);
+    for (const bad of ["lower", "", "A-B"]) {
+      expect(factoryConfigSchema.safeParse(withEnv(bad)).success).toBe(false);
+    }
+  });
+});
