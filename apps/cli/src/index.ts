@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { loadFactoryConfig } from "@friday/infrastructure";
+import { runApprovals, unconfiguredClient } from "./approvals.ts";
 
 const USAGE = "Uso: friday config check --root <pasta>\n";
 
@@ -26,7 +27,12 @@ export function main(args: string[]): { stdout: string; stderr: string; code: nu
   };
 }
 
-const out = main(process.argv.slice(2));
+async function run(args: string[]): Promise<{ stdout: string; stderr: string; code: number }> {
+  if (args[0] === "approvals") return runApprovals(args, () => unconfiguredClient);
+  return main(args);
+}
+
+const out = await run(process.argv.slice(2));
 process.stdout.write(out.stdout);
 process.stderr.write(out.stderr);
 process.exitCode = out.code;
