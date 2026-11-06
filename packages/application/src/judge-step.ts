@@ -1,0 +1,122 @@
+import { validateContract, type Violation } from "@friday/contracts";
+import type { RunHeldReason, WorkflowInput } from "@friday/domain";
+import type { AgentRunOptions } from "./agent-run-options.ts";
+import type { AgentRuntime } from "./agent-runtime.ts";
+import type { GitHubPort } from "./github-port.ts";
+import { heldReasonFor } from "./held-reason-for.ts";
+import { renderReviewBody, reviewEventFor } from "./judge-review.ts";
+import {
+  JUDGE_ALLOWED_MCP,
+  JUDGE_ALLOWED_TOOLS,
+  chooseJudgeRole,
+  parseDeclaredRisk,
+} from "./judge-role.ts";
+import type { StaleVerdicts } from "./stale-verdicts.ts";
+
+type ReviewApproved = Extract<WorkflowInput, { type: "ReviewApproved" }>;
+
+export type JudgeStepDeps = {
+  runtime: AgentRuntime;
+  stale: StaleVerdicts;
+  readPrHead: (pr: number) => Promise<string>;
+  reviewer: (token: string) => Pick<GitHubPort, "postReview">;
+  env: Record<string, string | undefined>;
+  reviewTokenEnv: string | undefined;
+  agents: Record<"judge" | "judge-strong", AgentRunOptions>;
+};
+
+export type JudgeStepInput = {
+  projectId: string;
+  issue: { id: number; body: string; labels: string[] };
+  pr: number;
+  cwd: string;
+  prompt: string;
+  configRoot: string;
+};
+
+export type JudgeStepOutcome =
+  | { kind: "approved"; input: ReviewApproved; reviewId: number }
+  | {
+      kind: "changes_requested";
+      input: { type: "ChangesRequested" };
+      feedback: string;
+      reviewId: number;
+    }
+  | { kind: "rejected"; input: { type: "ReviewRejected" }; reviewId: number }
+  | { kind: "head_mismatch"; input: ReviewApproved }
+  | { kind: "stale" }
+  | { kind: "invalid"; violations: Violation[] }
+  | { kind: "held"; input: { type: "RunHeld"; reason: RunHeldReason } };
+
+function readToken(deps: JudgeStepDeps): string {
+  if (deps.reviewTokenEnv === undefined) {
+    throw new Error("A chave pull_requests.review_token_env não está configurada.");
+  }
+  const token = deps.env[deps.reviewTokenEnv];
+  if (token === undefined || token.trim() === "") {
+    throw new Error(`A variável de ambiente ${deps.reviewTokenEnv} não está definida.`);
+  }
+  return token;
+}
+
+function misconfigured(agent: AgentRunOptions): boolean {
+  const tools = new Set<string>(JUDGE_ALLOWED_TOOLS);
+  const mcp = new Set<string>(JUDGE_ALLOWED_MCP);
+  return agent.tools.some((t) => !tools.has(t)) || agent.allowedTools.some((t) => !mcp.has(t));
+}
+
+const held = (reason: RunHeldReason): JudgeStepOutcome => ({
+  kind: "held",
+  input: { type: "RunHeld", reason },
+});
+
+export async function runJudgeStep(
+  deps: JudgeStepDeps,
+  input: JudgeStepInput,
+): Promise<JudgeStepOutcome> {
+  const token = readToken(deps);
+  const role = chooseJudgeRole({
+    declaredRisk: parseDeclaredRisk(input.issue.body),
+    labels: input.issue.labels,
+  });
+  const agent = deps.agents[role];
+  if (misconfigured(agent)) return held("RunMisconfigured");
+  const finished = await deps.runtime.run({
+    cwd: input.cwd,
+    prompt: input.prompt,
+    configRoot: input.configRoot,
+    agent,
+  });
+  const reason = heldReasonFor(finished);
+  if (reason !== null) return held(reason);
+  const parsed = validateContract("reviewVerdict", finished.output);
+  if (!parsed.ok) return { kind: "invalid", violations: parsed.violations };
+  const verdict = parsed.value;
+  const { projectId, issue, pr } = input;
+  if (deps.stale.isStale(projectId, issue.id, verdict.headSha)) return { kind: "stale" };
+  const prHeadSha = await deps.readPrHead(pr);
+  if (prHeadSha !== verdict.headSha) {
+    deps.stale.markStale(projectId, issue.id, verdict.headSha);
+    return {
+      kind: "head_mismatch",
+      input: { type: "ReviewApproved", headSha: verdict.headSha, prHeadSha },
+    };
+  }
+  const { id: reviewId } = await deps.reviewer(token).postReview(pr, {
+    commitId: verdict.headSha,
+    body: renderReviewBody(verdict),
+    event: reviewEventFor(verdict.verdict),
+  });
+  if (verdict.verdict === "approve") {
+    return {
+      kind: "approved",
+      reviewId,
+      input: { type: "ReviewApproved", headSha: verdict.headSha, prHeadSha },
+    };
+  }
+  if (verdict.verdict === "reject") {
+    return { kind: "rejected", reviewId, input: { type: "ReviewRejected" } };
+  }
+  const feedback = verdict.findings.map((f, i) => `${i + 1}. ${f}`).join("\n");
+  return { kind: "changes_requested", reviewId, feedback, input: { type: "ChangesRequested" } };
+}

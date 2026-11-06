@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { transition } from "@friday/domain";
-import { A, B, MemoryStale, inReview, setup, verdict } from "./judge-helpers.ts";
+import { A, B, MemoryStale, inReview, rules, setup, verdict } from "./judge-helpers.ts";
 
 describe("judge gate", () => {
   it("approves when headSha equals the PR head", async () => {
@@ -66,14 +66,15 @@ describe("judge gate", () => {
   });
 
   it("rejects invalid verdicts without changing state", async () => {
-    const bad = verdict();
     const cases: Array<[unknown, string]> = [
       [
-        verdict({ rules: [{ rule: 1, answer: "no", evidence: "x" }, ...(bad as any).rules.slice(1)] }),
+        verdict({
+          rules: [{ rule: 1, answer: "no", evidence: "x" }, ...rules().slice(1)],
+        }),
         "approve_with_failed_rule",
       ],
       [verdict({ verdict: "changes_requested", findings: [] }), "findings_missing"],
-      [verdict({ rules: (bad as any).rules.slice(1) }), "invalid_rules"],
+      [verdict({ rules: rules().slice(1) }), "invalid_rules"],
       [verdict({ headSha: "a".repeat(39) }), "invalid_head_sha"],
     ];
     for (const [output, code] of cases) {

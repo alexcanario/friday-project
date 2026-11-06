@@ -47,7 +47,9 @@ describe("judge review", () => {
     );
     const empty = setup(verdict(), { env: {} });
     const err = await empty.run().catch((e: Error) => e);
-    expect((err as Error).message).toBe("A variável de ambiente FRIDAY_JUDGE_TOKEN não está definida.");
+    expect((err as Error).message).toBe(
+      "A variável de ambiente FRIDAY_JUDGE_TOKEN não está definida.",
+    );
     for (const x of [unset, empty]) {
       expect(x.runtime.requests).toHaveLength(0);
       expect(x.tokens).toHaveLength(0);
