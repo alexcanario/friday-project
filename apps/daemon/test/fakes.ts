@@ -10,6 +10,7 @@ import type {
   RunRecord,
   RunRepository,
   StoredEvent,
+  StaleVerdicts,
 } from "@friday/application";
 import type { Clock, ReadyIssueSource } from "../src/index.ts";
 
@@ -64,8 +65,25 @@ export class FakeEvents implements EventStore {
     return { ...event, seq: this.appended.length };
   }
 
-  list(): StoredEvent[] {
-    return [];
+  list(projectId?: string, issueId?: number): StoredEvent[] {
+    return this.appended.flatMap((event, index) =>
+      (projectId === undefined || event.projectId === projectId) &&
+      (issueId === undefined || event.issueId === issueId)
+        ? [{ ...event, seq: index + 1 }]
+        : [],
+    );
+  }
+}
+
+export class FakeStaleVerdicts implements StaleVerdicts {
+  readonly #marked = new Set<string>();
+
+  markStale(projectId: string, issueId: number, headSha: string): void {
+    this.#marked.add(`${projectId}:${issueId}:${headSha}`);
+  }
+
+  isStale(projectId: string, issueId: number, headSha: string): boolean {
+    return this.#marked.has(`${projectId}:${issueId}:${headSha}`);
   }
 }
 
