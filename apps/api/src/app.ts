@@ -1,5 +1,6 @@
 import swagger from "@fastify/swagger";
 import type {
+  ApprovalStore,
   EventStore,
   IssueRepository,
   LedgerRepository,
@@ -12,6 +13,7 @@ import {
   validatorCompiler,
   type ZodTypeProvider,
 } from "fastify-type-provider-zod";
+import { approvalRoutes } from "./routes/approvals.ts";
 import { healthRoutes } from "./routes/health.ts";
 import { issueRoutes } from "./routes/issues.ts";
 import { ledgerRoutes } from "./routes/ledger.ts";
@@ -22,6 +24,8 @@ export interface ApiDeps {
   issues: IssueRepository;
   runs: RunRepository;
   ledger: LedgerRepository;
+  approvals: ApprovalStore;
+  now: () => number;
 }
 
 export async function buildApp(deps: ApiDeps): Promise<FastifyInstance> {
@@ -36,6 +40,7 @@ export async function buildApp(deps: ApiDeps): Promise<FastifyInstance> {
   issueRoutes(app, deps);
   runRoutes(app, deps);
   ledgerRoutes(app, deps);
+  approvalRoutes(app, deps);
   app.get("/openapi.json", { schema: { hide: true } }, () => app.swagger());
   await app.ready();
   return app;

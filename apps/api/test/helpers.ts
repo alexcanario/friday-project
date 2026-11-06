@@ -2,6 +2,7 @@ import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
+  createApprovalStore,
   createEventStore,
   createIssueRepository,
   createLedgerRepository,
@@ -14,19 +15,23 @@ import type { ApiDeps } from "../src/index.ts";
 export interface Fixture {
   db: FridayDatabase;
   deps: ApiDeps;
+  clock: { now: number };
 }
 
 export function openFixture(): Fixture {
   const dir = mkdtempSync(join(tmpdir(), "friday-api-"));
   const db = openDatabase(join(dir, "friday.db"));
   for (const id of ["p1", "p2"]) db.sqlite.prepare("INSERT INTO projects (id) VALUES (?)").run(id);
+  const clock = { now: 1_000_000 };
   const deps: ApiDeps = {
     events: createEventStore(db),
     issues: createIssueRepository(db),
     runs: createRunRepository(db),
     ledger: createLedgerRepository(db),
+    approvals: createApprovalStore(db),
+    now: () => clock.now,
   };
-  return { db, deps };
+  return { db, deps, clock };
 }
 
 export function stateChanged(
