@@ -77,6 +77,19 @@ export type { GitHost } from "./git-host.ts";
 export { FakeGitHost } from "./fake-git-host.ts";
 export { FakeGitHubPort } from "./fake-github-port.ts";
 export {
+  chooseJudgeRole,
+  parseDeclaredRisk,
+  JUDGE_ALLOWED_TOOLS,
+  JUDGE_ALLOWED_MCP,
+} from "./judge-role.ts";
+export { renderReviewBody, reviewEventFor } from "./judge-review.ts";
+export {
+  runJudgeStep,
+  type JudgeStepDeps,
+  type JudgeStepInput,
+  type JudgeStepOutcome,
+} from "./judge-step.ts";
+export {
   runTriageStep,
   SPECIALIST_LABEL_PREFIX,
   type TriageStepDeps,
