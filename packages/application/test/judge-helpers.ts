@@ -22,6 +22,7 @@ export const verdict = (over: Record<string, unknown> = {}): unknown => ({
   headSha: A,
   rules: rules(),
   findings: [],
+  risk: "low",
   ...over,
 });
 

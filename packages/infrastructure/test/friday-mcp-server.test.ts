@@ -2,7 +2,8 @@ import { FakeResultStore, FakeRunLookup } from "@friday/application";
 import type { AgentConfig } from "@friday/contracts";
 import type { IssueState } from "@friday/domain";
 import { describe, expect, it } from "vitest";
-import { createFridayMcpServer } from "../src/index.ts";
+import { z } from "zod";
+import { createFridayMcpServer, resultToolShape } from "../src/index.ts";
 
 const QA_OK = {
   verdict: "pass",
@@ -64,5 +65,17 @@ describe("createFridayMcpServer", () => {
     );
     state = "QA";
     expect(await handlers.qa_report!(QA_OK)).toEqual(text("200: resultado aceito."));
+  });
+
+  it("resultToolShape keeps risk for review_verdict", () => {
+    const rules = [1, 2, 3, 4, 5].map((rule) => ({ rule, answer: "yes", evidence: "ok" }));
+    const parsed = z.object(resultToolShape("review_verdict")).parse({
+      verdict: "approve",
+      headSha: "a".repeat(40),
+      rules,
+      findings: [],
+      risk: "medium",
+    });
+    expect(parsed).toHaveProperty("risk", "medium");
   });
 });

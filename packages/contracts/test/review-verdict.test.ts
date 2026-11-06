@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { validateContract } from "../src/index.ts";
+import { contractJsonSchema, validateContract } from "../src/index.ts";
 
 const SHA = "c71e0a94d2b6f8531e7a9c4d0b2f6e8a1c3d5b7f";
 const rule = (n: number, answer = "yes") => ({ rule: n, answer, evidence: "npm test exit 0" });
@@ -9,6 +9,7 @@ const approve = (o: object = {}) => ({
   headSha: SHA,
   rules: rules(),
   findings: [],
+  risk: "low",
   ...o,
 });
 const v = (code: string, path: string) => expect.objectContaining({ code, path });
@@ -36,6 +37,7 @@ describe("reviewVerdict", () => {
       ...base,
       verdict: "changes_requested",
       findings: ["Falta teste para o limite do pool", "Timeout fixo, sem configuração"],
+      risk: "low",
     };
     expect(validateContract("reviewVerdict", a).ok).toBe(true);
     expect(
@@ -43,6 +45,7 @@ describe("reviewVerdict", () => {
         ...base,
         verdict: "reject",
         findings: ["Fora do escopo."],
+        risk: "low",
       }).ok,
     ).toBe(true);
   });
@@ -115,5 +118,30 @@ describe("reviewVerdict", () => {
     expect(violations(approve({ verdict: "reject", findings: ["x"], rules: r }))).toEqual([
       v("evidence_blank", "rules.2.evidence"),
     ]);
+  });
+
+  it("accepts each risk level and keeps it", () => {
+    for (const risk of ["low", "medium", "high"]) {
+      const r = validateContract("reviewVerdict", approve({ risk }));
+      expect(r.ok && r.value.risk).toBe(risk);
+    }
+  });
+
+  it("rejects a verdict with a missing or invalid risk", () => {
+    const { risk: _r, ...noRisk } = approve();
+    void _r;
+    expect(violations(noRisk)).toEqual([v("required_field", "risk")]);
+    for (const risk of ["critical", "", 1]) {
+      expect(violations(approve({ risk }))).toEqual([v("invalid_value", "risk")]);
+    }
+  });
+
+  it("exposes risk as a required enum in the JSON Schema", () => {
+    const schema = contractJsonSchema("reviewVerdict") as {
+      properties: Record<string, { enum?: string[] }>;
+      required: string[];
+    };
+    expect(schema.properties.risk?.enum).toEqual(["low", "medium", "high"]);
+    expect(schema.required).toContain("risk");
   });
 });

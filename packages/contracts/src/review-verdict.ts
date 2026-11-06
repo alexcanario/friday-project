@@ -21,6 +21,7 @@ export const reviewVerdictSchema = z
     headSha: z.string().refine((s) => /^[0-9a-f]{40}$/.test(s), custom("invalid_head_sha")),
     rules: rulesSchema,
     findings: z.array(z.string()),
+    risk: z.enum(["low", "medium", "high"]),
   })
   .superRefine((review, ctx) => {
     if (review.verdict !== "approve" && review.findings.length === 0) {

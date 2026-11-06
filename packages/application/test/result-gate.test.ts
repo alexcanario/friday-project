@@ -18,6 +18,7 @@ const VERDICT_OK = {
   headSha: HEAD,
   rules: [1, 2, 3, 4, 5].map((rule) => ({ rule, answer: "yes", evidence: "ok" })),
   findings: [],
+  risk: "low",
 };
 const QA_AGENT: Pick<AgentConfig, "states" | "mcp_tools"> = {
   states: ["QA"],
