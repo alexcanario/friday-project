@@ -113,10 +113,18 @@ export async function runApprovals(
 ): Promise<Output> {
   const parsed = parse(args);
   if (parsed === null) return usage;
-  const client = open(parsed.db);
   try {
-    return await execute(client, parsed);
-  } finally {
-    client.close?.();
+    const client = open(parsed.db);
+    try {
+      return await execute(client, parsed);
+    } finally {
+      try {
+        client.close?.();
+      } catch {
+        // a close failure must never replace the result of execute
+      }
+    }
+  } catch {
+    return fail("Falha ao abrir o banco de aprovações.\n");
   }
 }

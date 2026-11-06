@@ -22,6 +22,8 @@ function fake(opts: {
   list?: (typeof pending)[] | Error;
   decide?: DecisionResult | Error;
   withClose?: boolean;
+  openError?: Error;
+  closeError?: Error;
 }) {
   const calls = { list: [] as string[], decide: [] as unknown[][], close: 0, open: [] as string[] };
   const client: ApprovalsClient = {
@@ -40,11 +42,13 @@ function fake(opts: {
       : {
           close: () => {
             calls.close += 1;
+            if (opts.closeError) throw opts.closeError;
           },
         }),
   };
   const open = (db: string) => {
     calls.open.push(db);
+    if (opts.openError) throw opts.openError;
     return client;
   };
   return { calls, open };
@@ -150,6 +154,25 @@ describe("friday approvals", () => {
       const g = fake({ ...opts, withClose: false });
       await expect(runApprovals(args, g.open)).resolves.toBeDefined();
     }
+  });
+
+  it("exits 1 with a fixed pt-BR message when open throws, without leaking the error", async () => {
+    const f = fake({ openError: new Error("segredo-interno /var/db") });
+    const out = await runApprovals(
+      ["approvals", "list", "--db", "x.db", "--project", "p1"],
+      f.open,
+    );
+    expect(out.code).toBe(1);
+    expect(out.stdout).toBe("");
+    expect(out.stderr).toBe("Falha ao abrir o banco de aprovações.\n");
+    expect(out.stderr).not.toContain("segredo-interno");
+  });
+
+  it("keeps the merged result when close throws", async () => {
+    const f = fake({ decide: { kind: "merged", sha: "m1" }, closeError: new Error("boom") });
+    const out = await runApprovals(["approvals", "approve", "1", "--db", "x.db"], f.open);
+    expect(out).toEqual({ stdout: "Aprovação 1 mesclada: m1\n", stderr: "", code: 0 });
+    expect(f.calls.close).toBe(1);
   });
 
   it("routes approvals in index.ts and keeps config check", () => {
