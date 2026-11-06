@@ -1,6 +1,6 @@
 import type { Risk, WorkflowInput } from "@friday/domain";
 import type { GitHubPort } from "./github-port.ts";
-import type { EventStore } from "./persistence-ports.ts";
+import type { EventStore, UnitOfWork } from "./persistence-ports.ts";
 
 /** An approval request expires 30 minutes after it is made. */
 export const APPROVAL_TTL_MS = 1_800_000;
@@ -25,6 +25,8 @@ export interface ApprovalStore {
   get(id: string): ApprovalRecord | null;
   /** Undecided and `expiresAt > now`, ordered by `requestedAt` then `id`. */
   listPending(projectId: string, now: number): ApprovalRecord[];
+  /** Newest by `requestedAt` (ties: highest `id`), including decided and expired ones. */
+  latestForIssue(projectId: string, issueId: number): ApprovalRecord | null;
   /** Writes only while `decision` is still null; returns false otherwise. */
   decide(
     id: string,
@@ -44,6 +46,7 @@ export type ApprovalOutcome =
 export interface RequestApprovalDeps {
   store: ApprovalStore;
   events: EventStore;
+  unitOfWork: UnitOfWork;
   now: () => number;
   newId: () => string;
 }
@@ -62,22 +65,24 @@ export function requestApproval(
     decidedAt: null,
     decidedBy: null,
   };
-  deps.store.insert(record);
-  deps.events.append({
-    projectId: record.projectId,
-    issueId: record.issueId,
-    runId: null,
-    type: "ApprovalRequested",
-    payload: {
-      id: record.id,
-      pr: record.pr,
-      headSha: record.headSha,
-      tier: record.tier,
-      requestedAt: record.requestedAt,
-      expiresAt: record.expiresAt,
-    },
-    actor: "daemon",
-    at: new Date(requestedAt).toISOString(),
+  deps.unitOfWork.run(() => {
+    deps.store.insert(record);
+    deps.events.append({
+      projectId: record.projectId,
+      issueId: record.issueId,
+      runId: null,
+      type: "ApprovalRequested",
+      payload: {
+        id: record.id,
+        pr: record.pr,
+        headSha: record.headSha,
+        tier: record.tier,
+        requestedAt: record.requestedAt,
+        expiresAt: record.expiresAt,
+      },
+      actor: "daemon",
+      at: new Date(requestedAt).toISOString(),
+    });
   });
   return record;
 }
@@ -85,6 +90,7 @@ export function requestApproval(
 export interface DecideApprovalDeps {
   store: ApprovalStore;
   events: EventStore;
+  unitOfWork: UnitOfWork;
   github: Pick<GitHubPort, "squashMerge">;
   readPrHead: (pr: number) => Promise<string>;
   now: () => number;
@@ -100,17 +106,19 @@ function record(
   decidedAt: number,
   actor: string,
 ): boolean {
-  if (!deps.store.decide(rec.id, { decision, decidedAt, decidedBy: actor })) return false;
-  deps.events.append({
-    projectId: rec.projectId,
-    issueId: rec.issueId,
-    runId: null,
-    type: "ApprovalDecided",
-    payload: { id: rec.id, decision, decidedAt },
-    actor,
-    at: new Date(deps.now()).toISOString(),
+  return deps.unitOfWork.run(() => {
+    if (!deps.store.decide(rec.id, { decision, decidedAt, decidedBy: actor })) return false;
+    deps.events.append({
+      projectId: rec.projectId,
+      issueId: rec.issueId,
+      runId: null,
+      type: "ApprovalDecided",
+      payload: { id: rec.id, decision, decidedAt },
+      actor,
+      at: new Date(deps.now()).toISOString(),
+    });
+    return true;
   });
-  return true;
 }
 
 export async function decideApproval(

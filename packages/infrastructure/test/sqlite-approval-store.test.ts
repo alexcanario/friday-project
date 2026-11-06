@@ -62,3 +62,30 @@ describe("sqlite approval store", () => {
     for (let i = 0; i < 50; i++) expect(generateApprovalId()).toMatch(/^[0-9a-f]{8}$/);
   });
 });
+
+describe("sqlite approval store latestForIssue", () => {
+  it("latestForIssue returns the newest record per issue", () => {
+    const db = openWithProjects("p", "q");
+    const store = createApprovalStore(db);
+    expect(store.latestForIssue("p", 13)).toBeNull();
+
+    store.insert(rec({ id: "00000001", projectId: "p", issueId: 13, requestedAt: 1000 }));
+    store.insert(rec({ id: "00000002", projectId: "p", issueId: 13, requestedAt: 1001 }));
+    store.decide("00000001", { decision: "denied", decidedAt: 1002, decidedBy: "human:cli" });
+    expect(store.latestForIssue("p", 13)?.id).toBe("00000002");
+
+    store.insert(rec({ id: "00000003", projectId: "p", issueId: 13, requestedAt: 1001 }));
+    expect(store.latestForIssue("p", 13)?.id).toBe("00000003");
+
+    store.insert(rec({ id: "00000009", projectId: "p", issueId: 14, requestedAt: 9000 }));
+    store.insert(rec({ id: "0000000a", projectId: "q", issueId: 13, requestedAt: 9000 }));
+    expect(store.latestForIssue("p", 13)?.id).toBe("00000003");
+
+    store.decide("00000003", { decision: "approved", decidedAt: 1100, decidedBy: "human:cli" });
+    expect(store.latestForIssue("p", 13)).toMatchObject({ id: "00000003", decision: "approved" });
+    store.insert(
+      rec({ id: "0000000b", projectId: "p", issueId: 15, requestedAt: 1, expiresAt: 2 }),
+    );
+    expect(store.latestForIssue("p", 15)?.id).toBe("0000000b");
+  });
+});

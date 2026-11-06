@@ -1,5 +1,5 @@
 import { randomBytes } from "node:crypto";
-import { and, asc, eq, gt, isNull } from "drizzle-orm";
+import { and, asc, desc, eq, gt, isNull } from "drizzle-orm";
 import type { ApprovalRecord, ApprovalStore } from "@friday/application";
 import type { FridayDatabase } from "./database.ts";
 import { approvals } from "./schema.ts";
@@ -28,6 +28,17 @@ export function createApprovalStore(db: FridayDatabase): ApprovalStore {
         )
         .orderBy(asc(approvals.requestedAt), asc(approvals.id))
         .all();
+    },
+    latestForIssue(projectId, issueId) {
+      return (
+        db.orm
+          .select()
+          .from(approvals)
+          .where(and(eq(approvals.projectId, projectId), eq(approvals.issueId, issueId)))
+          .orderBy(desc(approvals.requestedAt), desc(approvals.id))
+          .limit(1)
+          .get() ?? null
+      );
     },
     decide(id, d) {
       const result = db.orm
