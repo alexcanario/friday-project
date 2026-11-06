@@ -92,7 +92,7 @@ describe("runSpecialistStep", () => {
     for (const input of [{ type: "Admitted" }, { type: "SpecialistAssigned" }] as WorkflowInput[]) {
       const r = transition(cur, input);
       if (!r.ok) throw new Error("setup failed");
-      cur = r.value;
+      cur = r.value.snapshot;
     }
     expect(cur.state).toBe("InProgress");
     const only = transition(cur, WR);
@@ -100,7 +100,7 @@ describe("runSpecialistStep", () => {
     for (const input of out.inputs) {
       const r = transition(cur, input);
       expect(r.ok).toBe(true);
-      if (r.ok) cur = r.value;
+      if (r.ok) cur = r.value.snapshot;
     }
     expect(cur.state).toBe("Verify");
   });
