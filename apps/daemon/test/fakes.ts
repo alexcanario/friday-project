@@ -4,7 +4,9 @@ import type {
   EventStore,
   IssueRepository,
   IssueRow,
+  IssueSummary,
   NewEvent,
+  PrDiff,
   StoredEvent,
 } from "@friday/application";
 import type { Clock, ReadyIssueSource } from "../src/index.ts";
@@ -108,15 +110,24 @@ export function fakeRequest(issueId: number): AgentRunRequest {
 
 export class FakeIssueRepository implements IssueRepository {
   row: IssueRow | null = null;
+  /** Per-issue rows; when non-empty they take precedence over `row`. */
+  readonly rows = new Map<number, IssueRow>();
+  readonly getCalls: number[] = [];
+  getFailure: Error | null = null;
   readonly rebuilds: { projectId: string; appendedCount: number }[] = [];
 
   readonly #events: FakeEvents;
+  readonly #order: string[] | undefined;
 
-  constructor(events: FakeEvents) {
+  constructor(events: FakeEvents, order?: string[]) {
     this.#events = events;
+    this.#order = order;
   }
 
-  get(): IssueRow | null {
+  get(_projectId?: string, issueId?: number): IssueRow | null {
+    if (issueId !== undefined) this.getCalls.push(issueId);
+    if (this.getFailure) throw this.getFailure;
+    if (this.rows.size > 0) return issueId === undefined ? null : (this.rows.get(issueId) ?? null);
     return this.row;
   }
 
@@ -125,6 +136,37 @@ export class FakeIssueRepository implements IssueRepository {
   }
 
   rebuild(projectId: string): void {
+    this.#order?.push("rebuild");
     this.rebuilds.push({ projectId, appendedCount: this.#events.appended.length });
+  }
+}
+
+export class FakeGitHub {
+  readonly issues: IssueSummary[] = [];
+  readonly diffs = new Map<number, PrDiff>();
+  readonly listCalls: string[] = [];
+  readonly labelCalls: { issue: number; label: string }[] = [];
+  addLabelFailure: Error | null = null;
+
+  readonly #order: string[] | undefined;
+
+  constructor(order?: string[]) {
+    this.#order = order;
+  }
+
+  listIssuesByLabel(label: string): Promise<IssueSummary[]> {
+    this.listCalls.push(label);
+    return Promise.resolve(this.issues.filter((i) => i.labels.includes(label)));
+  }
+
+  getPrDiff(pr: number): Promise<PrDiff> {
+    const diff = this.diffs.get(pr);
+    return diff ? Promise.resolve(diff) : Promise.reject(new Error(`sem diff para o PR ${pr}`));
+  }
+
+  addLabel(issue: number, label: string): Promise<void> {
+    this.#order?.push("addLabel");
+    this.labelCalls.push({ issue, label });
+    return this.addLabelFailure ? Promise.reject(this.addLabelFailure) : Promise.resolve();
   }
 }

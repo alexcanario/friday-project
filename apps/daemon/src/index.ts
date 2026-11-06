@@ -24,3 +24,11 @@ export {
   type VerifyStepOutcome,
 } from "./verify-step.ts";
 export { applyVerifyOutcome, type VerifyApplyResult } from "./verify-apply.ts";
+export {
+  STATE_ROLES,
+  createStateDispatcher,
+  type DispatchConfig,
+  type DispatchRole,
+  type StateDispatcher,
+  type StateDispatcherDeps,
+} from "./state-dispatcher.ts";
