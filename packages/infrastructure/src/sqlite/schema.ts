@@ -1,4 +1,5 @@
 import type { RunRecordStatus } from "@friday/application";
+import type { Risk } from "@friday/domain";
 import { sql } from "drizzle-orm";
 import {
   check,
@@ -89,3 +90,17 @@ export const runResults = sqliteTable(
   },
   (t) => [uniqueIndex("run_results_run_kind_idx").on(t.runId, t.kind)],
 );
+
+export const approvals = sqliteTable("approvals", {
+  id: text("id").primaryKey(),
+  projectId: projectId(),
+  issueId: integer("issue_id").notNull(),
+  pr: integer("pr").notNull(),
+  headSha: text("head_sha").notNull(),
+  tier: text("tier").$type<Risk>().notNull(),
+  requestedAt: integer("requested_at").notNull(),
+  expiresAt: integer("expires_at").notNull(),
+  decision: text("decision").$type<"approved" | "denied">(),
+  decidedAt: integer("decided_at"),
+  decidedBy: text("decided_by"),
+});
