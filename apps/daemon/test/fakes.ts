@@ -9,6 +9,7 @@ import type {
   PrDiff,
   RunRecord,
   RunRepository,
+  StateChangedPayload,
   StoredEvent,
   StaleVerdicts,
 } from "@friday/application";
@@ -156,9 +157,16 @@ export class FakeIssueRepository implements IssueRepository {
   readonly #events: FakeEvents;
   readonly #order: string[] | undefined;
 
-  constructor(events: FakeEvents, order?: string[]) {
+  readonly #projectFromEvents: boolean;
+
+  constructor(
+    events: FakeEvents,
+    order?: string[],
+    options: { projectFromEvents?: boolean } = {},
+  ) {
     this.#events = events;
     this.#order = order;
+    this.#projectFromEvents = options.projectFromEvents ?? false;
   }
 
   get(_projectId?: string, issueId?: number): IssueRow | null {
@@ -175,6 +183,20 @@ export class FakeIssueRepository implements IssueRepository {
   rebuild(projectId: string): void {
     this.#order?.push("rebuild");
     this.rebuilds.push({ projectId, appendedCount: this.#events.appended.length });
+    if (!this.#projectFromEvents) return;
+    for (const event of this.#events.appended) {
+      if (event.type !== "StateChanged" || event.issueId === null) continue;
+      const payload = event.payload as StateChangedPayload;
+      this.rows.set(event.issueId, {
+        projectId: event.projectId,
+        issueId: event.issueId,
+        state: payload.to,
+        heldReason: payload.heldReason,
+        verifyRound: payload.verifyRound,
+        qaRound: payload.qaRound,
+        reviewIter: payload.reviewIter,
+      });
+    }
   }
 }
 
