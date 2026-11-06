@@ -103,3 +103,13 @@ export {
   type TriageStepInput,
   type TriageStepOutcome,
 } from "./triage-step.ts";
+export {
+  APPROVAL_TTL_MS,
+  decideApproval,
+  requestApproval,
+  type ApprovalOutcome,
+  type ApprovalRecord,
+  type ApprovalStore,
+  type DecideApprovalDeps,
+  type RequestApprovalDeps,
+} from "./approval.ts";

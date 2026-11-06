@@ -1,4 +1,9 @@
-import { createWorkflow, transition, type WorkflowInput } from "@friday/domain";
+import {
+  createWorkflow,
+  transition,
+  type WorkflowInput,
+  type WorkflowSnapshot,
+} from "@friday/domain";
 import { describe, expect, it } from "vitest";
 import {
   APPROVAL_TTL_MS,
@@ -82,21 +87,22 @@ function setup(opts?: {
     );
   const decide = (decision: "approve" | "deny", at: number, actor = "human:cli") => {
     clock = at;
-    return decideApproval(
-      { store, events, github, readPrHead, now },
-      { id: ID, decision, actor },
-    );
+    return decideApproval({ store, events, github, readPrHead, now }, { id: ID, decision, actor });
   };
   return { store, events, merges, request, decide, reads: () => headReads };
 }
 
-const awaiting = () => ({ ...createWorkflow("7"), state: "AwaitingApproval" as const });
-const apply = (inputs: WorkflowInput[]) => {
+const awaiting = (): WorkflowSnapshot => {
+  const created = createWorkflow("7");
+  if (!created.ok) throw new Error("workflow inválido");
+  return { ...created.value, state: "AwaitingApproval" };
+};
+const apply = (inputs: WorkflowInput[]): WorkflowSnapshot => {
   let snap = awaiting();
   for (const i of inputs) {
     const r = transition(snap, i);
     if (!r.ok) throw new Error("transição inválida");
-    snap = r.snapshot as typeof snap;
+    snap = r.value.snapshot;
   }
   return snap;
 };
@@ -118,7 +124,8 @@ describe("approval gate", () => {
     });
     expect(s.store.get(ID)).toEqual(rec);
     expect(s.events.all).toHaveLength(1);
-    const { seq: _seq, ...event } = s.events.all[0]!;
+    const event = { ...s.events.all[0]!, seq: undefined };
+    delete event.seq;
     expect(event).toEqual({
       projectId: "p",
       issueId: 7,
