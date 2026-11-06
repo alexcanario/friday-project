@@ -40,3 +40,13 @@ export const daySum = z.object({
 });
 
 export const errorResponse = z.object({ message: z.string() });
+
+export const approvalItem = z.object({
+  id: z.string(),
+  issueId: z.number().int(),
+  pr: z.number().int(),
+  headSha: z.string(),
+  tier: z.enum(["low", "high", "unclassified"]),
+  requestedAt: z.number().int(),
+  expiresAt: z.number().int(),
+});
