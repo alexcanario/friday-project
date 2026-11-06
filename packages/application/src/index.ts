@@ -76,3 +76,10 @@ export {
 export type { GitHost } from "./git-host.ts";
 export { FakeGitHost } from "./fake-git-host.ts";
 export { FakeGitHubPort } from "./fake-github-port.ts";
+export {
+  runTriageStep,
+  SPECIALIST_LABEL_PREFIX,
+  type TriageStepDeps,
+  type TriageStepInput,
+  type TriageStepOutcome,
+} from "./triage-step.ts";
