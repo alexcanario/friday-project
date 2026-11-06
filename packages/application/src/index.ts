@@ -83,3 +83,10 @@ export {
   type SpecialistStepDeps,
   type SpecialistStepOutcome,
 } from "./specialist-step.ts";
+export {
+  runTriageStep,
+  SPECIALIST_LABEL_PREFIX,
+  type TriageStepDeps,
+  type TriageStepInput,
+  type TriageStepOutcome,
+} from "./triage-step.ts";
