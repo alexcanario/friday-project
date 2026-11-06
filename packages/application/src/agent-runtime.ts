@@ -1,5 +1,6 @@
 import type { AgentConfig, RunFinished } from "@friday/contracts";
 import type { IssueState } from "@friday/domain";
+import type { EffectsRun } from "./effects-run.ts";
 import type { AgentRunOptions } from "./agent-run-options.ts";
 
 export interface AgentRunRequest {
@@ -12,6 +13,8 @@ export interface AgentRunRequest {
     runId: string;
     agent: Pick<AgentConfig, "states" | "mcp_tools">;
     getIssueState: () => IssueState;
+    /** The run the effect tools (git_push, pr_create, pr_diff, issue_comment) act on. */
+    effects?: { run: EffectsRun };
   };
 }
 

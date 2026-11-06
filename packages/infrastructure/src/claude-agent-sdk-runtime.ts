@@ -4,6 +4,8 @@ import { query as sdkQuery, type Options, type SDKMessage } from "@anthropic-ai/
 import type {
   AgentRuntime,
   AgentRunRequest,
+  GitHost,
+  GitHubPort,
   ResultStore,
   RunLookup,
   ToolDenialSink,
@@ -30,6 +32,8 @@ export interface ClaudeAgentSdkRuntimeDeps {
   sink?: ToolDenialSink;
   runs?: RunLookup;
   results?: ResultStore;
+  github?: GitHubPort;
+  gitHost?: GitHost;
   createMcpServer?: typeof createFridayMcpServer;
 }
 
@@ -54,6 +58,8 @@ export class ClaudeAgentSdkRuntime implements AgentRuntime {
     const mcpServers = buildFridayMcpServers(request, {
       runs: this.#deps.runs,
       results: this.#deps.results,
+      github: this.#deps.github,
+      gitHost: this.#deps.gitHost,
       createMcpServer: this.#deps.createMcpServer ?? createFridayMcpServer,
     });
     if (mcpServers === null) return emptyFinished("misconfigured", null);
