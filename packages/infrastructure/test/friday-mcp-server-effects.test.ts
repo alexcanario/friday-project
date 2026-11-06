@@ -193,3 +193,42 @@ describe("effect tools", () => {
     expect(fresh.gitHost.pushes).toHaveLength(2);
   });
 });
+
+describe("effect tools through the MCP server", () => {
+  type CallHandler = (
+    req: { method: "tools/call"; params: { name: string; arguments: unknown } },
+    extra: unknown,
+  ) => Promise<{ content: Array<{ text: string }>; isError?: boolean }>;
+  const callViaMcp = (made: ReturnType<typeof setup>, name: string, args: unknown) => {
+    const inner = (
+      made.server as unknown as {
+        instance: { server: { _requestHandlers: Map<string, CallHandler> } };
+      }
+    ).instance.server;
+    const handler = inner._requestHandlers.get("tools/call")!;
+    return handler({ method: "tools/call", params: { name, arguments: args } }, {});
+  };
+
+  it("rejects extra fields with 422 before calling any port", async () => {
+    const made = setup();
+    const push = await callViaMcp(made, "git_push", {
+      branch: "friday/70-x",
+      commit: SHA,
+      extra: 1,
+    });
+    expect(push.isError).toBe(true);
+    expect(push.content[0]!.text).toBe("422: Entrada inválida para git_push.");
+    const diff = await callViaMcp(made, "pr_diff", { x: 1 });
+    expect(diff.isError).toBe(true);
+    expect(diff.content[0]!.text).toBe("422: Entrada inválida para pr_diff.");
+    expect(made.gitHost.pushes).toEqual([]);
+    expect(made.github.calls).toEqual([]);
+  });
+
+  it("still runs the effect on valid input through the MCP server", async () => {
+    const made = setup();
+    const push = await callViaMcp(made, "git_push", { branch: "friday/70-x", commit: SHA });
+    expect(push.content[0]!.text).toBe("200: push feito.");
+    expect(made.gitHost.pushes).toHaveLength(1);
+  });
+});
