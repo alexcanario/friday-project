@@ -89,3 +89,10 @@ export {
   type JudgeStepInput,
   type JudgeStepOutcome,
 } from "./judge-step.ts";
+export {
+  runTriageStep,
+  SPECIALIST_LABEL_PREFIX,
+  type TriageStepDeps,
+  type TriageStepInput,
+  type TriageStepOutcome,
+} from "./triage-step.ts";
