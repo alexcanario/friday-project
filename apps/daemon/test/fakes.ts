@@ -7,6 +7,8 @@ import type {
   IssueSummary,
   NewEvent,
   PrDiff,
+  RunRecord,
+  RunRepository,
   StoredEvent,
 } from "@friday/application";
 import type { Clock, ReadyIssueSource } from "../src/index.ts";
@@ -45,8 +47,19 @@ export class FakeClock implements Clock {
 
 export class FakeEvents implements EventStore {
   readonly appended: NewEvent[] = [];
+  /** Throws the returned error instead of storing the event. */
+  failWhen: ((event: NewEvent) => Error | null) | null = null;
+
+  readonly #order: string[] | undefined;
+
+  constructor(order?: string[]) {
+    this.#order = order;
+  }
 
   append(event: NewEvent): StoredEvent {
+    const failure = this.failWhen?.(event) ?? null;
+    if (failure) throw failure;
+    this.#order?.push("events.append");
     this.appended.push(event);
     return { ...event, seq: this.appended.length };
   }
@@ -72,8 +85,14 @@ export class FakeIssues implements ReadyIssueSource {
 export class PendingRuntime implements AgentRuntime {
   readonly requests: AgentRunRequest[] = [];
   readonly #settlers: { resolve: (r: RunResult) => void; reject: (e: Error) => void }[] = [];
+  readonly #order: string[] | undefined;
+
+  constructor(order?: string[]) {
+    this.#order = order;
+  }
 
   run(request: AgentRunRequest): Promise<RunResult> {
+    this.#order?.push("runtime.run");
     this.requests.push(request);
     return new Promise<RunResult>((resolve, reject) => {
       this.#settlers.push({ resolve, reject });
@@ -168,5 +187,40 @@ export class FakeGitHub {
     this.#order?.push("addLabel");
     this.labelCalls.push({ issue, label });
     return this.addLabelFailure ? Promise.reject(this.addLabelFailure) : Promise.resolve();
+  }
+}
+
+export class FakeRunRepository implements RunRepository {
+  readonly rows = new Map<string, RunRecord>();
+  calls = 0;
+  saveFailure: Error | null = null;
+  /** Fails only saves whose row matches. */
+  saveFailWhen: ((run: RunRecord) => Error | null) | null = null;
+
+  readonly #order: string[] | undefined;
+
+  constructor(order?: string[]) {
+    this.#order = order;
+  }
+
+  save(run: RunRecord): void {
+    this.calls += 1;
+    const failure = this.saveFailure ?? this.saveFailWhen?.(run) ?? null;
+    if (failure) throw failure;
+    this.#order?.push("runs.save");
+    this.rows.set(run.id, { ...run });
+  }
+
+  get(runId: string): RunRecord | null {
+    this.calls += 1;
+    return this.rows.get(runId) ?? null;
+  }
+
+  list(projectId: string): RunRecord[] {
+    return [...this.rows.values()].filter((r) => r.projectId === projectId);
+  }
+
+  listActive(projectId: string): RunRecord[] {
+    return this.list(projectId).filter((r) => r.status === "running" && r.finishedAt === null);
   }
 }
