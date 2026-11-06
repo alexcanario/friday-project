@@ -77,6 +77,13 @@ export type { GitHost } from "./git-host.ts";
 export { FakeGitHost } from "./fake-git-host.ts";
 export { FakeGitHubPort } from "./fake-github-port.ts";
 export {
+  runSpecialistStep,
+  SPECIALIST_ALLOWED_MCP,
+  type SpecialistStepInput,
+  type SpecialistStepDeps,
+  type SpecialistStepOutcome,
+} from "./specialist-step.ts";
+export {
   chooseJudgeRole,
   parseDeclaredRisk,
   JUDGE_ALLOWED_TOOLS,
