@@ -15,12 +15,15 @@ import {
   type MergeResult,
   type NewEvent,
   type StoredEvent,
+  type UnitOfWork,
 } from "../src/index.ts";
 
 const A = "a".repeat(40);
 const B = "b".repeat(40);
 const T0 = 1_000_000;
 const ID = "e5f0b0c9";
+
+const unitOfWork: UnitOfWork = { run: (work) => work() };
 
 function memoryStore(forceDecideFalse = false): ApprovalStore {
   const rows = new Map<string, ApprovalRecord>();
@@ -37,6 +40,10 @@ function memoryStore(forceDecideFalse = false): ApprovalStore {
       [...rows.values()].filter(
         (r) => r.projectId === projectId && r.decision === null && r.expiresAt > now,
       ),
+    latestForIssue: (projectId, issueId) =>
+      [...rows.values()]
+        .filter((r) => r.projectId === projectId && r.issueId === issueId)
+        .sort((a, b) => b.requestedAt - a.requestedAt || (a.id < b.id ? 1 : -1))[0] ?? null,
     decide(id, d) {
       const r = rows.get(id);
       if (forceDecideFalse || !r || r.decision !== null) return false;
@@ -82,12 +89,15 @@ function setup(opts?: {
   const now = () => clock;
   const request = () =>
     requestApproval(
-      { store, events, now, newId: () => ID },
+      { store, events, unitOfWork, now, newId: () => ID },
       { projectId: "p", issueId: 7, pr: 30, headSha: A, tier: "high" },
     );
   const decide = (decision: "approve" | "deny", at: number, actor = "human:cli") => {
     clock = at;
-    return decideApproval({ store, events, github, readPrHead, now }, { id: ID, decision, actor });
+    return decideApproval(
+      { store, events, unitOfWork, github, readPrHead, now },
+      { id: ID, decision, actor },
+    );
   };
   return { store, events, merges, request, decide, reads: () => headReads };
 }
@@ -251,6 +261,7 @@ describe("approval gate", () => {
       {
         store: u.store,
         events: u.events,
+        unitOfWork,
         github: { squashMerge: () => Promise.reject(new Error("não deveria")) },
         readPrHead: () => Promise.reject(new Error("não deveria")),
         now: () => T0,
@@ -292,5 +303,29 @@ describe("approval gate", () => {
     await d.decide("deny", T0 + 5, "human:cli");
     expect(decidedEvents(d.events)[0]?.payload).toMatchObject({ id: ID, decision: "denied" });
     expect(d.store.get(ID)?.decidedBy).toBe("human:cli");
+  });
+  it("keeps the #92 behaviour with an inline unit of work", async () => {
+    const calls: string[] = [];
+    const tracked: UnitOfWork = {
+      run: (work) => {
+        calls.push("run");
+        return work();
+      },
+    };
+    const store = memoryStore();
+    const events = memoryEvents();
+    const github = { squashMerge: () => Promise.resolve({ merged: true, sha: "m1" } as const) };
+    requestApproval(
+      { store, events, unitOfWork: tracked, now: () => T0, newId: () => ID },
+      { projectId: "p", issueId: 7, pr: 30, headSha: A, tier: "high" },
+    );
+    expect(calls).toEqual(["run"]);
+    const out = await decideApproval(
+      { store, events, unitOfWork: tracked, github, readPrHead: () => Promise.resolve(A), now: () => T0 + 5 },
+      { id: ID, decision: "approve", actor: "human:cli" },
+    );
+    expect(out).toMatchObject({ kind: "merged", sha: "m1" });
+    expect(calls).toEqual(["run", "run"]);
+    expect(store.latestForIssue("p", 7)?.decision).toBe("approved");
   });
 });

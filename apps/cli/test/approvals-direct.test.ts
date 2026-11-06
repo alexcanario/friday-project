@@ -6,6 +6,7 @@ import {
   createApprovalStore,
   createEventStore,
   createIssueRepository,
+  createUnitOfWork,
   openDatabase,
   type FridayDatabase,
 } from "@friday/infrastructure";
@@ -28,6 +29,7 @@ beforeEach(() => {
   head = A;
   merge = { merged: true, sha: "m1" };
   merges = [];
+  failOn = null;
 });
 afterEach(() => db.close());
 
@@ -35,10 +37,20 @@ const store = () => createApprovalStore(db);
 const events = () => createEventStore(db);
 const issues = () => createIssueRepository(db);
 
+let failOn: string | null = null;
+
 function client() {
+  const real = events();
   return createDirectClient({
     store: store(),
-    events: events(),
+    events: {
+      append: (e) => {
+        if (e.type === failOn) throw new Error("boom");
+        return real.append(e);
+      },
+      list: (p, i) => real.list(p, i),
+    },
+    unitOfWork: createUnitOfWork(db),
     issues: issues(),
     github: {
       squashMerge: async (pr: number, sha: string) => {
@@ -193,5 +205,13 @@ describe("friday approvals direct client", () => {
     seed(7);
     expect(await client().decide("00000001", "approve")).toEqual({ kind: "merged", sha: "m1" });
     expect(changes("p1", 7)).toHaveLength(0);
+  });
+
+  it("rolls back the decision when the event append fails", async () => {
+    seed();
+    failOn = "ApprovalDecided";
+    await expect(client().decide("00000001", "approve")).rejects.toThrow("boom");
+    expect(store().get("00000001")?.decision).toBeNull();
+    expect(merges).toHaveLength(0);
   });
 });
