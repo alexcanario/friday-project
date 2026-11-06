@@ -15,6 +15,7 @@ import {
   type HeldReason,
   type IssueState,
   type RunHeldReason,
+  type WorkflowInput,
   type WorkflowSnapshot,
 } from "@friday/domain";
 
@@ -52,8 +53,41 @@ export function snapshotOf(row: IssueRow): WorkflowSnapshot | null {
   };
 }
 
-export function createRunRecorder(deps: RunRecorderDeps): RunRecorder {
+/** Transitions the stored issue with one input; records StateChanged and rebuilds when accepted. */
+export function applyInput(
+  deps: RunRecorderDeps,
+  ctx: { issueId: number; runId: string | null },
+  input: WorkflowInput,
+): boolean {
   const { projectId, events, issues, now } = deps;
+  const row = issues.get(projectId, ctx.issueId);
+  if (row === null) return false;
+  const snapshot = snapshotOf(row);
+  if (snapshot === null) return false;
+  const outcome = transition(snapshot, input);
+  if (!outcome.ok || outcome.value.event === null) return false;
+  const { snapshot: after, event } = outcome.value;
+  const payload: StateChangedPayload = {
+    ...event,
+    verifyRound: after.verifyRound,
+    qaRound: after.qaRound,
+    reviewIter: after.reviewIter,
+  };
+  events.append({
+    type: "StateChanged",
+    projectId,
+    issueId: ctx.issueId,
+    runId: ctx.runId,
+    actor: "daemon",
+    at: now().toISOString(),
+    payload,
+  });
+  issues.rebuild(projectId);
+  return true;
+}
+
+export function createRunRecorder(deps: RunRecorderDeps): RunRecorder {
+  const { projectId, events, now } = deps;
   const base = (ctx: RunContext) => ({
     projectId,
     issueId: ctx.issueId,
@@ -63,21 +97,7 @@ export function createRunRecorder(deps: RunRecorderDeps): RunRecorder {
   });
 
   function applyHeld(ctx: RunContext, reason: RunHeldReason): void {
-    const row = issues.get(projectId, ctx.issueId);
-    if (row === null) return;
-    const snapshot = snapshotOf(row);
-    if (snapshot === null) return;
-    const outcome = transition(snapshot, { type: "RunHeld", reason });
-    if (!outcome.ok || outcome.value.event === null) return;
-    const { snapshot: after, event } = outcome.value;
-    const payload: StateChangedPayload = {
-      ...event,
-      verifyRound: after.verifyRound,
-      qaRound: after.qaRound,
-      reviewIter: after.reviewIter,
-    };
-    events.append({ ...base(ctx), type: "StateChanged", payload });
-    issues.rebuild(projectId);
+    applyInput(deps, ctx, { type: "RunHeld", reason });
   }
 
   return {

@@ -23,3 +23,4 @@ export {
   type VerifyStepInput,
   type VerifyStepOutcome,
 } from "./verify-step.ts";
+export { applyVerifyOutcome, type VerifyApplyResult } from "./verify-apply.ts";
