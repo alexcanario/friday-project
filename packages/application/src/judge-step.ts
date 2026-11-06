@@ -87,6 +87,8 @@ export async function runJudgeStep(
     configRoot: input.configRoot,
     agent,
   });
+  if (finished.status === "invalid_output")
+    return { kind: "invalid", violations: finished.violations as Violation[] };
   const reason = heldReasonFor(finished);
   if (reason !== null) return held(reason);
   const parsed = validateContract("reviewVerdict", finished.output);
