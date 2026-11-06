@@ -38,6 +38,7 @@ export type FakeGitHub = {
   checkRuns: Map<string, FakeCheckRun[]>;
   files: Map<number, FakeFile[]>;
   mergeStatus: number;
+  reviewStatus: number;
   mergeSha: string;
   pageSize: number;
 };
@@ -90,6 +91,7 @@ export function createGitHubFake(): FakeGitHub {
     checkRuns: new Map(),
     files: new Map(),
     mergeStatus: 200,
+    reviewStatus: 200,
     mergeSha: "m1",
     pageSize: 100,
   };
@@ -188,6 +190,10 @@ function route(
   }
   if ((m = rest.match(/^\/pulls\/(\d+)\/files$/)) && method === "GET") {
     return page(fake.files.get(Number(m[1])) ?? [], url, fake.pageSize);
+  }
+  if (rest.match(/^\/pulls\/(\d+)\/reviews$/) && method === "POST") {
+    if (fake.reviewStatus !== 200) return json({ message: "Validation Failed" }, fake.reviewStatus);
+    return json({ id: 501 });
   }
   if ((m = rest.match(/^\/pulls\/(\d+)\/merge$/)) && method === "PUT") {
     if (fake.mergeStatus !== 200) return json({ message: "merge failed" }, fake.mergeStatus);

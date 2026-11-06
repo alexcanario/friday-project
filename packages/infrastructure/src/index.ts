@@ -39,3 +39,5 @@ export {
   type ToolResponse,
 } from "./friday-mcp-server.ts";
 export { GitHubRestAdapter } from "./github-rest-adapter.ts";
+export { createGitHubClient } from "./github-client.ts";
+export { SqliteStaleVerdicts } from "./stale-verdicts.ts";

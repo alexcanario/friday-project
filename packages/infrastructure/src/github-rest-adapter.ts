@@ -5,6 +5,7 @@ import type {
   IssueSummary,
   MergeResult,
   PrDiff,
+  ReviewEvent,
 } from "@friday/application";
 import type { Octokit } from "octokit";
 
@@ -158,6 +159,23 @@ export class GitHubRestAdapter implements GitHubPort {
       if (status === 405) return { merged: false, reason: "not_mergeable" };
       throw error;
     }
+  }
+
+  async postReview(
+    pr: number,
+    review: { commitId: string; body: string; event: ReviewEvent },
+  ): Promise<{ id: number }> {
+    const res = await this.octokit.request(
+      "POST /repos/{owner}/{repo}/pulls/{pull_number}/reviews",
+      {
+        ...this.repo,
+        pull_number: pr,
+        commit_id: review.commitId,
+        body: review.body,
+        event: review.event,
+      },
+    );
+    return { id: Number(res.data.id) };
   }
 
   private async headSha(pr: number): Promise<string> {

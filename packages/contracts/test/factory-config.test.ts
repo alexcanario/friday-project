@@ -117,3 +117,27 @@ describe("pull_requests.author_token_env", () => {
     }
   });
 });
+
+describe("pull_requests.review_token_env", () => {
+  const withPr = (pr: unknown) => ({ ...valid(), pull_requests: pr });
+  it("accepts pull_requests.review_token_env", () => {
+    const ok = [
+      { merge: "manual", review_token_env: "FRIDAY_JUDGE_TOKEN" },
+      { merge: "auto", review_token_env: "A1_B2" },
+      { merge: "manual" },
+    ];
+    for (const pr of ok) expect(factoryConfigSchema.safeParse(withPr(pr)).success).toBe(true);
+    const both = { ...withPr({ merge: "manual", review_token_env: "FRIDAY_JUDGE_TOKEN" }) };
+    expect(factoryConfigSchema.safeParse({ ...both, secrets: ["ANTHROPIC_API_KEY"] }).success).toBe(
+      true,
+    );
+  });
+  it("rejects an invalid or unknown pull_requests key", () => {
+    for (const bad of ["lower", "", "A-B", "1ABC", "_ABC", 5]) {
+      const pr = { merge: "manual", review_token_env: bad };
+      expect(factoryConfigSchema.safeParse(withPr(pr)).success, String(bad)).toBe(false);
+    }
+    const unknown = { merge: "manual", review_token: "X" };
+    expect(factoryConfigSchema.safeParse(withPr(unknown)).success).toBe(false);
+  });
+});

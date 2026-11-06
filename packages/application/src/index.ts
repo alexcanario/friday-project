@@ -63,7 +63,9 @@ export type {
   GitHubPort,
   IssueSummary,
   MergeResult,
+  ReviewEvent,
 } from "./github-port.ts";
+export type { StaleVerdicts } from "./stale-verdicts.ts";
 export {
   checkEffect,
   EFFECT_TOOLS,
