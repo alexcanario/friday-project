@@ -29,7 +29,10 @@ const MESSAGES = [init(["Read", "StructuredOutput"]), result()] as SDKMessage[];
 type Input = Parameters<typeof createFridayMcpServer>[0];
 type Captured = ReturnType<typeof createFridayMcpServer>;
 
-function setup(onCall?: (c: Captured) => Promise<void>) {
+type Call = { value?: unknown; error?: unknown };
+
+function setup(onCall?: (c: Captured) => Promise<unknown>) {
+  const calls: Call[] = [];
   const queries: Options[] = [];
   const inputs: Input[] = [];
   const created: Captured[] = [];
@@ -43,7 +46,13 @@ function setup(onCall?: (c: Captured) => Promise<void>) {
   }) as typeof createFridayMcpServer;
   const query = async function* ({ options }: { prompt: string; options: Options }) {
     queries.push(options);
-    if (onCall) await onCall(created[0]!);
+    if (onCall) {
+      try {
+        calls.push({ value: await onCall(created[0]!) });
+      } catch (error) {
+        calls.push({ error });
+      }
+    }
     for (const m of MESSAGES) yield m;
   };
   const deps = {
@@ -52,7 +61,7 @@ function setup(onCall?: (c: Captured) => Promise<void>) {
     results: new FakeResultStore(),
     createMcpServer,
   };
-  return { queries, inputs, created, github, gitHost, deps };
+  return { calls, queries, inputs, created, github, gitHost, deps };
 }
 
 const request = (
@@ -91,16 +100,20 @@ describe("ClaudeAgentSdkRuntime effect tools", () => {
   it("runs the four effect tools against the fake ports end to end", async () => {
     const s = setup(async (c) => {
       const h = c.handlers;
-      const outs = [
+      return [
         await h.git_push!({ branch: "friday/96-x", commit: SHA }),
         await h.pr_create!({ title: "t", body: "b" }),
         await h.pr_diff!({}),
         await h.issue_comment!({ body: "c" }),
       ];
-      for (const o of outs) expect(o.isError).toBeUndefined();
     });
     const runtime = new ClaudeAgentSdkRuntime({ ...s.deps, github: s.github, gitHost: s.gitHost });
     await runtime.run(request());
+    expect(s.calls).toHaveLength(1);
+    expect(s.calls[0]!.error).toBeUndefined();
+    const outs = s.calls[0]!.value as Array<{ isError?: boolean }>;
+    expect(outs).toHaveLength(4);
+    for (const o of outs) expect(o.isError).toBeUndefined();
     expect(s.gitHost.pushes).toEqual([{ worktree: "/w", branch: "friday/96-x", commit: SHA }]);
     expect(s.github.calls).toEqual([
       {
@@ -154,19 +167,21 @@ describe("ClaudeAgentSdkRuntime effect tools", () => {
 
   it("reads the issue state and the pull request on every call", async () => {
     const s = setup(async (c) => {
-      const out = await c.handlers.git_push!({ branch: "friday/96-x", commit: SHA });
-      expect(out).toEqual({
-        content: [
-          {
-            type: "text",
-            text: "403: Ferramenta não permitida para este papel ou estado da issue.",
-          },
-        ],
-        isError: true,
-      });
+      return c.handlers.git_push!({ branch: "friday/96-x", commit: SHA });
     });
     const runtime = new ClaudeAgentSdkRuntime({ ...s.deps, github: s.github, gitHost: s.gitHost });
     await runtime.run(request({ state: "InReview" }));
+    expect(s.calls).toHaveLength(1);
+    expect(s.calls[0]!.error).toBeUndefined();
+    expect(s.calls[0]!.value).toEqual({
+      content: [
+        {
+          type: "text",
+          text: "403: Ferramenta não permitida para este papel ou estado da issue.",
+        },
+      ],
+      isError: true,
+    });
     expect(s.gitHost.pushes).toEqual([]);
 
     const t = setup(async (c) => {
@@ -174,6 +189,8 @@ describe("ClaudeAgentSdkRuntime effect tools", () => {
     });
     const other = new ClaudeAgentSdkRuntime({ ...t.deps, github: t.github, gitHost: t.gitHost });
     await other.run(request({ effects: { run: { ...RUN, getPullRequest: () => 9 } } }));
+    expect(t.calls).toHaveLength(1);
+    expect(t.calls[0]!.error).toBeUndefined();
     expect(t.github.calls).toEqual([{ method: "getPrDiff", args: [9] }]);
   });
 });
