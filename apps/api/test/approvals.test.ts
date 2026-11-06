@@ -1,7 +1,7 @@
 import type { ApprovalRecord } from "@friday/application";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import { buildApp } from "../src/index.ts";
-import { openFixture } from "./helpers.ts";
+import { openFixture, type Fixture } from "./helpers.ts";
 
 const A = "a".repeat(40);
 const T0 = 1_000_000;
@@ -24,8 +24,15 @@ function record(over: Partial<ApprovalRecord> & Pick<ApprovalRecord, "id">): App
 }
 
 describe("GET /approvals", () => {
+  let f: Fixture;
+  let app: Awaited<ReturnType<typeof buildApp>>;
+  afterEach(async () => {
+    await app.close();
+    f.db.close();
+  });
+
   it("lists only the pending approvals of the project in order and excludes expired and decided ones", async () => {
-    const f = openFixture();
+    f = openFixture();
     f.deps.approvals.insert(record({ id: "00000001" }));
     f.deps.approvals.insert(record({ id: "00000002", requestedAt: T0 + 1000, issueId: 8, pr: 31 }));
     f.deps.approvals.insert(record({ id: "00000003", projectId: "p2", issueId: 10, pr: 33 }));
@@ -40,7 +47,7 @@ describe("GET /approvals", () => {
         decidedBy: "human:cli",
       }),
     );
-    const app = await buildApp(f.deps);
+    app = await buildApp(f.deps);
     f.clock.now = T0 + 2000;
     const res = await app.inject({ method: "GET", url: "/approvals?project=p1" });
     expect(res.statusCode).toBe(200);
@@ -73,8 +80,8 @@ describe("GET /approvals", () => {
   });
 
   it("answers an empty list and 400 without a project", async () => {
-    const f = openFixture();
-    const app = await buildApp(f.deps);
+    f = openFixture();
+    app = await buildApp(f.deps);
     const empty = await app.inject({ method: "GET", url: "/approvals?project=p1" });
     expect(empty.statusCode).toBe(200);
     expect(empty.json()).toEqual([]);
@@ -83,17 +90,17 @@ describe("GET /approvals", () => {
   });
 
   it("serializes the unclassified tier", async () => {
-    const f = openFixture();
+    f = openFixture();
     f.deps.approvals.insert(record({ id: "00000001", tier: "unclassified" }));
-    const app = await buildApp(f.deps);
+    app = await buildApp(f.deps);
     const res = await app.inject({ method: "GET", url: "/approvals?project=p1" });
     expect(res.json()[0].tier).toBe("unclassified");
   });
 
   it("documents only GET /approvals and exposes no write route", async () => {
-    const f = openFixture();
+    f = openFixture();
     f.deps.approvals.insert(record({ id: "00000001" }));
-    const app = await buildApp(f.deps);
+    app = await buildApp(f.deps);
     const spec = (await app.inject({ method: "GET", url: "/openapi.json" })).json();
     const item = spec.paths["/approvals"];
     expect(item.get.responses["200"]).toBeDefined();
