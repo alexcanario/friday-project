@@ -24,8 +24,11 @@ export type TriageStepOutcome = {
 };
 
 function existingSpecialist(labels: string[]): Triage["specialist"] | null {
-  for (const specialist of triageSchema.shape.specialist.options) {
-    if (labels.includes(`${SPECIALIST_LABEL_PREFIX}${specialist}`)) return specialist;
+  const valid: readonly string[] = triageSchema.shape.specialist.options;
+  for (const label of labels) {
+    if (!label.startsWith(SPECIALIST_LABEL_PREFIX)) continue;
+    const value = label.slice(SPECIALIST_LABEL_PREFIX.length);
+    if (valid.includes(value)) return value as Triage["specialist"];
   }
   return null;
 }
