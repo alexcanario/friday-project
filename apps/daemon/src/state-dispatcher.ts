@@ -39,6 +39,8 @@ export type StateDispatcherDeps = {
   log?: (message: string) => void;
   classifyRisk?: typeof realClassifyRisk;
   decideGates?: typeof realDecideGates;
+  /** Runs the Judge for an issue in review; replaces the role-based dispatch of InReview. */
+  judge?: (issueId: number) => Promise<{ applied: boolean; feedback: string | null }>;
 };
 
 export type StateDispatcher = {
@@ -52,6 +54,7 @@ export function createStateDispatcher(deps: StateDispatcherDeps): StateDispatche
   const classify = deps.classifyRisk ?? realClassifyRisk;
   const decide = deps.decideGates ?? realDecideGates;
   let dispatched = new Map<number, DispatchRole>();
+  const judging = new Set<number>();
 
   const logError = (message: string, error: unknown): void => {
     deps.log?.(`${message}: ${error instanceof Error ? error.message : String(error)}`);
@@ -95,6 +98,21 @@ export function createStateDispatcher(deps: StateDispatcherDeps): StateDispatche
     }
   }
 
+  async function handleJudge(
+    issueId: number,
+    judge: NonNullable<StateDispatcherDeps["judge"]>,
+  ): Promise<void> {
+    if (judging.has(issueId)) return;
+    judging.add(issueId);
+    try {
+      await judge(issueId);
+    } catch (error) {
+      logError(`Falha ao rodar o Judge da issue ${issueId}`, error);
+    } finally {
+      judging.delete(issueId);
+    }
+  }
+
   async function inspect(
     number: number,
     labels: string[],
@@ -109,6 +127,10 @@ export function createStateDispatcher(deps: StateDispatcherDeps): StateDispatche
     }
     if (snapshot.state === "RiskCheck") {
       await handleRiskCheck(number, labels);
+      return;
+    }
+    if (snapshot.state === "InReview" && deps.judge !== undefined) {
+      await handleJudge(number, deps.judge);
       return;
     }
     const role = STATE_ROLES[snapshot.state];

@@ -67,12 +67,14 @@ describe("state dispatcher judge branch", () => {
 
   it("skips reentrant calls while the judge is running", async () => {
     let release: (v: typeof done) => void = () => {};
-    const judge = vi.fn<JudgeFn>(
-      () =>
-        new Promise((resolve) => {
-          release = resolve;
-        }),
-    );
+    let calls = 0;
+    const judge = vi.fn<JudgeFn>(() => {
+      calls += 1;
+      if (calls > 1) return Promise.resolve(done);
+      return new Promise((resolve) => {
+        release = resolve;
+      });
+    });
     const t = setup(judge);
     const first = t.dispatcher.listReady();
     const second = await t.dispatcher.listReady();

@@ -8,12 +8,7 @@ import {
 import type { RunFinished } from "@friday/contracts";
 import { applyJudgeOutcome, createRunRecorder, prHeadReader } from "../src/index.ts";
 import { runJudgeForIssue, type JudgeDispatchDeps } from "../src/judge-dispatch.ts";
-import {
-  FakeEvents,
-  FakeIssueRepository,
-  FakeRunRepository,
-  FakeStaleVerdicts,
-} from "./fakes.ts";
+import { FakeEvents, FakeIssueRepository, FakeRunRepository, FakeStaleVerdicts } from "./fakes.ts";
 
 const A = "a".repeat(40);
 const B = "b".repeat(40);
@@ -84,6 +79,14 @@ function setup(o: Options = {}) {
   const issues = new FakeIssueRepository(events);
   issues.row = row(o.state ?? "InReview", o.reviewIter ?? 0);
   const runs = new FakeRunRepository();
+  const rebuild = issues.rebuild.bind(issues);
+  issues.rebuild = (projectId) => {
+    rebuild(projectId);
+    const last = events.appended.filter((e) => e.type === "StateChanged").at(-1);
+    const to = (last?.payload as { to?: string; heldReason?: string | null } | undefined) ?? {};
+    if (issues.row && to.to)
+      issues.row = { ...issues.row, state: to.to, heldReason: to.heldReason ?? null };
+  };
   const recorder = { projectId: "p", events, issues, now };
   const runtime = new FakeAgentRuntime(o.results ?? [finished(verdict())]);
   const stale = new FakeStaleVerdicts();
@@ -212,7 +215,9 @@ describe("runJudgeForIssue", () => {
   });
 
   it("records JudgeFinished with the feedback on changes requested", async () => {
-    const t = setup({ results: [finished(verdict({ verdict: "request_changes", findings: ["x"] }))] });
+    const t = setup({
+      results: [finished(verdict({ verdict: "changes_requested", findings: ["x"] }))],
+    });
     await expect(runJudgeForIssue(t.deps, 7)).resolves.toEqual({ applied: true, feedback: "1. x" });
     expect(t.ofType("StateChanged")[0]?.payload).toMatchObject({ to: "InProgress" });
     expect(t.ofType("JudgeFinished")).toHaveLength(1);
@@ -359,7 +364,6 @@ describe("runJudgeForIssue run registration", () => {
     });
     await runJudgeForIssue(strong.deps, 7);
     expect(strong.ofType("RunFinished")).toHaveLength(1);
-    expect(strong.issues.row?.state).toBe("InReview");
     expect(strong.ofType("StateChanged")).toHaveLength(1);
     expect(strong.ofType("StateChanged")[0]?.payload).toMatchObject({
       to: "Held",

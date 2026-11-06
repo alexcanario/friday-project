@@ -33,3 +33,10 @@ export {
   type StateDispatcher,
   type StateDispatcherDeps,
 } from "./state-dispatcher.ts";
+export {
+  applyJudgeOutcome,
+  prHeadReader,
+  runJudgeForIssue,
+  type JudgeApplyResult,
+  type JudgeDispatchDeps,
+} from "./judge-dispatch.ts";
