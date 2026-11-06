@@ -115,7 +115,11 @@ describe("friday approvals direct client", () => {
       requestedAt: T0,
       expiresAt: T0 + 1_800_000,
     });
-    expect(await c.list("p1")).toEqual([p("00000001", 7, 30), p("00000002", 8, 31), p("00000003", 9, 32)]);
+    expect(await c.list("p1")).toEqual([
+      p("00000001", 7, 30),
+      p("00000002", 8, 31),
+      p("00000003", 9, 32),
+    ]);
     expect(await c.list("p2")).toEqual([p("00000004", 10, 33)]);
     expect(await c.list("p3")).toEqual([]);
   });
@@ -130,7 +134,11 @@ describe("friday approvals direct client", () => {
     expect(rec?.decidedBy).toBe("human:cli");
     const ch = changes("p1", 7).map((e) => e.payload);
     expect(ch).toHaveLength(2);
-    expect(ch[0]).toMatchObject({ trigger: "ApprovalGranted", from: "AwaitingApproval", to: "Merging" });
+    expect(ch[0]).toMatchObject({
+      trigger: "ApprovalGranted",
+      from: "AwaitingApproval",
+      to: "Merging",
+    });
     expect(ch[1]).toMatchObject({ trigger: "Merged", to: "Done" });
     expect(issues().get("p1", 7)?.state).toBe("Done");
     const total = events().list("p1", 7).length;

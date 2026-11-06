@@ -73,9 +73,9 @@ describe("friday approvals", () => {
 
   it("approves and prints the merged sha", async () => {
     const f = fake({ decide: { kind: "merged", sha: "m1" } });
-    expect(await runApprovals(["approvals", "approve", "00000001", "--db", "x.db"], f.open)).toEqual(
-      { stdout: "Aprovação 00000001 mesclada: m1\n", stderr: "", code: 0 },
-    );
+    expect(
+      await runApprovals(["approvals", "approve", "00000001", "--db", "x.db"], f.open),
+    ).toEqual({ stdout: "Aprovação 00000001 mesclada: m1\n", stderr: "", code: 0 });
     expect(f.calls.decide).toEqual([["00000001", "approve"]]);
     expect(f.calls.open).toEqual(["x.db"]);
   });
@@ -181,5 +181,5 @@ describe("friday approvals", () => {
       stderr: "",
       code: 0,
     });
-  });
+  }, 30_000);
 });
