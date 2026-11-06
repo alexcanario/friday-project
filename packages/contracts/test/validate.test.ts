@@ -75,7 +75,10 @@ describe("validateContract", () => {
   it("every violation has the fixed pt-BR message and contains its path", () => {
     const sha = "c71e0a94d2b6f8531e7a9c4d0b2f6e8a1c3d5b7f";
     const r = (n: number) => ({ rule: n, answer: "yes", evidence: "ok" });
-    const rv = { verdict: "approve", headSha: sha, rules: [1, 2, 3, 4, 5].map(r),
+    const rv = {
+      verdict: "approve",
+      headSha: sha,
+      rules: [1, 2, 3, 4, 5].map(r),
       findings: [],
       risk: "low",
     };

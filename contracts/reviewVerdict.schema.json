@@ -47,13 +47,22 @@
       "items": {
         "type": "string"
       }
+    },
+    "risk": {
+      "type": "string",
+      "enum": [
+        "low",
+        "medium",
+        "high"
+      ]
     }
   },
   "required": [
     "verdict",
     "headSha",
     "rules",
-    "findings"
+    "findings",
+    "risk"
   ],
   "additionalProperties": false
 }

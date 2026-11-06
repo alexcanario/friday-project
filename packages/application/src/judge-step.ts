@@ -86,6 +86,33 @@ function outcomeFor(verdict: ReviewVerdict, reviewId: number, prHeadSha: string)
   return { kind: "changes_requested", reviewId, feedback, input: { type: "ChangesRequested" } };
 }
 
+type Validated = { ok: true; verdict: ReviewVerdict } | { ok: false; outcome: JudgeStepOutcome };
+
+/** Runs one agent role and validates its output into a verdict or an outcome. */
+async function runAndValidate(
+  deps: JudgeStepDeps,
+  input: JudgeStepInput,
+  role: "judge" | "judge-strong",
+): Promise<Validated> {
+  const agent = deps.agents[role];
+  if (misconfigured(agent)) return { ok: false, outcome: held("RunMisconfigured") };
+  const finished = await deps.runtime.run({
+    cwd: input.cwd,
+    prompt: input.prompt,
+    configRoot: input.configRoot,
+    agent,
+  });
+  if (finished.status === "invalid_output") {
+    const violations = finished.violations as Violation[];
+    return { ok: false, outcome: { kind: "invalid", violations } };
+  }
+  const reason = heldReasonFor(finished);
+  if (reason !== null) return { ok: false, outcome: held(reason) };
+  const parsed = validateContract("reviewVerdict", finished.output);
+  if (!parsed.ok) return { ok: false, outcome: { kind: "invalid", violations: parsed.violations } };
+  return { ok: true, verdict: parsed.value };
+}
+
 export async function runJudgeStep(
   deps: JudgeStepDeps,
   input: JudgeStepInput,
@@ -95,21 +122,13 @@ export async function runJudgeStep(
     declaredRisk: parseDeclaredRisk(input.issue.body),
     labels: input.issue.labels,
   });
-  const agent = deps.agents[role];
-  if (misconfigured(agent)) return held("RunMisconfigured");
-  const finished = await deps.runtime.run({
-    cwd: input.cwd,
-    prompt: input.prompt,
-    configRoot: input.configRoot,
-    agent,
-  });
-  if (finished.status === "invalid_output")
-    return { kind: "invalid", violations: finished.violations as Violation[] };
-  const reason = heldReasonFor(finished);
-  if (reason !== null) return held(reason);
-  const parsed = validateContract("reviewVerdict", finished.output);
-  if (!parsed.ok) return { kind: "invalid", violations: parsed.violations };
-  const verdict = parsed.value;
+  let result = await runAndValidate(deps, input, role);
+  // D39: the cheaper judge only runs for declared low risk; any higher risk repeats once.
+  if (result.ok && role === "judge" && result.verdict.risk !== "low") {
+    result = await runAndValidate(deps, input, "judge-strong");
+  }
+  if (!result.ok) return result.outcome;
+  const verdict = result.verdict;
   const { projectId, issue, pr } = input;
   if (deps.stale.isStale(projectId, issue.id, verdict.headSha)) return { kind: "stale" };
   const prHeadSha = await deps.readPrHead(pr);

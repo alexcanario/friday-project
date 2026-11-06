@@ -27,7 +27,7 @@ const KEYS: Record<ResultTool, string[]> = {
   criteria_set: ["criteria"],
   work_report: ["summary", "headSha", "changedFiles", "notDone"],
   qa_report: ["verdict", "criteria", "notChecked"],
-  review_verdict: ["verdict", "headSha", "rules", "findings"],
+  review_verdict: ["verdict", "headSha", "rules", "findings", "risk"],
 };
 const DESCRIPTIONS: Record<ResultTool, string> = {
   criteria_set: "Envia os critérios de aceite da issue.",
@@ -35,7 +35,8 @@ const DESCRIPTIONS: Record<ResultTool, string> = {
   qa_report: "Envia o relatório de QA.",
   review_verdict: "Envia o veredito da revisão.",
 };
-const shapeOf = (name: ResultTool) => Object.fromEntries(KEYS[name].map((key) => [key, loose]));
+export const resultToolShape = (name: ResultTool): Record<string, z.ZodType> =>
+  Object.fromEntries(KEYS[name].map((key) => [key, loose]));
 
 export interface FridayMcpServerInput {
   runId: string;
@@ -90,7 +91,7 @@ export function createFridayMcpServer(input: FridayMcpServerInput): {
   }
   for (const name of names) handlers[name] = makeResultHandler(name, input);
   const tools = names.map((name) =>
-    tool(name, DESCRIPTIONS[name], shapeOf(name), (args) => handlers[name]!(args)),
+    tool(name, DESCRIPTIONS[name], resultToolShape(name), (args) => handlers[name]!(args)),
   );
   const effectTools = effectNames.map((name) => {
     handlers[name] = makeEffectHandler(name, { ...input, effects: effects! });
