@@ -30,7 +30,13 @@ export const factoryConfigSchema = z.strictObject({
     max_changed_lines: positiveInt,
     max_changed_files: positiveInt,
   }),
-  pull_requests: z.strictObject({ merge: z.enum(["manual", "auto"]) }),
+  pull_requests: z.strictObject({
+    merge: z.enum(["manual", "auto"]),
+    author_token_env: z
+      .string()
+      .regex(/^[A-Z][A-Z0-9_]*$/)
+      .optional(),
+  }),
   limits: z.strictObject({
     per_issue_usd: positive,
     per_day_usd: positive,

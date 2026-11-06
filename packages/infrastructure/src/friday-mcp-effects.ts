@@ -1,0 +1,111 @@
+import {
+  checkEffect,
+  type EffectTool,
+  type GitHost,
+  type GitHubPort,
+  type RunLookup,
+} from "@friday/application";
+import type { AgentConfig } from "@friday/contracts";
+import type { IssueState } from "@friday/domain";
+import { z } from "zod";
+
+export type ToolResponse = { content: Array<{ type: "text"; text: string }>; isError?: boolean };
+
+export interface EffectsInput {
+  github: GitHubPort;
+  gitHost: GitHost;
+  run: {
+    issue: number;
+    role: string;
+    branch: string;
+    base: string;
+    worktree: string;
+    getPullRequest: () => number | null;
+  };
+}
+
+export const EFFECT_KEYS: Record<EffectTool, string[]> = {
+  git_push: ["branch", "commit"],
+  pr_create: ["title", "body"],
+  pr_diff: [],
+  issue_comment: ["body"],
+};
+export const EFFECT_DESCRIPTIONS: Record<EffectTool, string> = {
+  git_push: "Envia o commit da branch da run para o remoto.",
+  pr_create: "Abre o PR da run (ou devolve o existente).",
+  pr_diff: "Devolve o resumo do diff do PR da run.",
+  issue_comment: "Publica um comentário na issue da run.",
+};
+
+const reply = (text: string, isError?: true): ToolResponse => ({
+  content: [{ type: "text", text }],
+  ...(isError ? { isError } : {}),
+});
+
+const schemas = (run: EffectsInput["run"]): Record<EffectTool, z.ZodType> => ({
+  git_push: z.strictObject({
+    branch: z.literal(run.branch),
+    commit: z.string().regex(/^[0-9a-f]{40}$/),
+  }),
+  pr_create: z.strictObject({ title: z.string(), body: z.string() }),
+  pr_diff: z.strictObject({}),
+  issue_comment: z.strictObject({ body: z.string() }),
+});
+
+type Deps = {
+  runId: string;
+  agent: Pick<AgentConfig, "states" | "mcp_tools">;
+  getIssueState: () => IssueState;
+  runs: RunLookup;
+  effects: EffectsInput;
+};
+
+async function execute(
+  name: EffectTool,
+  args: { branch: string; commit: string; title: string; body: string },
+  { github, gitHost, run }: EffectsInput,
+) {
+  switch (name) {
+    case "git_push":
+      await gitHost.push({ worktree: run.worktree, branch: args.branch, commit: args.commit });
+      return reply("200: push feito.");
+    case "pr_create": {
+      const pr = await github.createPullRequest({
+        head: run.branch,
+        base: run.base,
+        title: args.title,
+        body: args.body,
+      });
+      return reply(`200: PR #${pr.number} ${pr.created ? "aberto" : "já existia"}.`);
+    }
+    case "pr_diff": {
+      const pr = run.getPullRequest();
+      if (pr === null) return reply("404: A run ainda não tem PR.", true);
+      return reply(JSON.stringify(await github.getPrDiff(pr)));
+    }
+    case "issue_comment":
+      await github.postAgentComment(run.issue, run.role, args.body);
+      return reply("200: comentário publicado.");
+  }
+}
+
+export function makeEffectHandler(name: EffectTool, deps: Deps) {
+  const schema = schemas(deps.effects.run)[name];
+  return async (args: unknown): Promise<ToolResponse> => {
+    const gate = checkEffect({
+      tool: name,
+      agent: deps.agent,
+      issueState: deps.getIssueState(),
+      runActive: deps.runs.isActive(deps.runId),
+    });
+    if (gate.status !== 200) return reply(`${gate.status}: ${gate.message}`, true);
+    const parsed = schema.safeParse(args);
+    if (!parsed.success) return reply(`422: Entrada inválida para ${name}.`, true);
+    try {
+      return await execute(name, parsed.data as Parameters<typeof execute>[1], deps.effects);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      return reply(`500: Falha ao executar ${name}: ${message}`, true);
+    }
+  };
+}

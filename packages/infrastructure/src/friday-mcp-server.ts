@@ -1,7 +1,9 @@
 import { createSdkMcpServer, tool } from "@anthropic-ai/claude-agent-sdk";
 import {
   checkResult,
+  EFFECT_TOOLS,
   RESULT_TOOLS,
+  type EffectTool,
   type ResultStore,
   type ResultTool,
   type RunLookup,
@@ -9,8 +11,15 @@ import {
 import type { AgentConfig } from "@friday/contracts";
 import type { IssueState } from "@friday/domain";
 import { z } from "zod";
+import {
+  EFFECT_DESCRIPTIONS,
+  EFFECT_KEYS,
+  makeEffectHandler,
+  type EffectsInput,
+  type ToolResponse,
+} from "./friday-mcp-effects.ts";
 
-export type ToolResponse = { content: Array<{ type: "text"; text: string }>; isError?: boolean };
+export type { ToolResponse };
 
 const loose = z.unknown().optional();
 // Top-level keys per contract; listed literally because the schemas expose no uniform `.shape`.
@@ -34,15 +43,25 @@ export interface FridayMcpServerInput {
   getIssueState: () => IssueState;
   runs: RunLookup;
   results: ResultStore;
+  effects?: EffectsInput;
 }
 
 export function createFridayMcpServer(input: FridayMcpServerInput): {
   server: ReturnType<typeof createSdkMcpServer>;
   toolNames: string[];
-  handlers: Partial<Record<ResultTool, (args: unknown) => Promise<ToolResponse>>>;
+  handlers: Partial<Record<ResultTool | EffectTool, (args: unknown) => Promise<ToolResponse>>>;
 } {
   const names = input.agent.mcp_tools.filter((t): t is ResultTool => t in RESULT_TOOLS);
-  const handlers: Partial<Record<ResultTool, (args: unknown) => Promise<ToolResponse>>> = {};
+  const handlers: Partial<
+    Record<ResultTool | EffectTool, (args: unknown) => Promise<ToolResponse>>
+  > = {};
+  const effectNames = input.agent.mcp_tools.filter((t): t is EffectTool =>
+    (EFFECT_TOOLS as readonly string[]).includes(t),
+  );
+  const effects = input.effects;
+  for (const name of effectNames) {
+    if (!effects) throw new Error(`Porta ausente para a ferramenta ${name}.`);
+  }
   for (const name of names) {
     handlers[name] = (args: unknown): Promise<ToolResponse> => {
       const outcome = checkResult(
@@ -71,9 +90,14 @@ export function createFridayMcpServer(input: FridayMcpServerInput): {
   const tools = names.map((name) =>
     tool(name, DESCRIPTIONS[name], shapeOf(name), (args) => handlers[name]!(args)),
   );
+  const effectTools = effectNames.map((name) => {
+    handlers[name] = makeEffectHandler(name, { ...input, effects: effects! });
+    const shape = Object.fromEntries(EFFECT_KEYS[name].map((key) => [key, loose]));
+    return tool(name, EFFECT_DESCRIPTIONS[name], shape, (args) => handlers[name]!(args));
+  });
   return {
-    server: createSdkMcpServer({ name: "friday", tools }),
-    toolNames: names.map((name) => `mcp__friday__${name}`),
+    server: createSdkMcpServer({ name: "friday", tools: [...tools, ...effectTools] }),
+    toolNames: [...names, ...effectNames].map((name) => `mcp__friday__${name}`),
     handlers,
   };
 }
