@@ -1,6 +1,7 @@
 export { loadFactoryConfig, type LoadFactoryConfigResult } from "./factory-config-loader.ts";
 export { buildRunEnv } from "./run-env.ts";
 export { buildQueryOptions, type QueryOptionsInput } from "./query-options.ts";
+export { GitCliHost, type GitCliHostOptions } from "./git-cli-host.ts";
 export {
   ClaudeAgentSdkRuntime,
   type ClaudeAgentSdkRuntimeDeps,
