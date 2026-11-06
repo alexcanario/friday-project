@@ -4,6 +4,7 @@ import {
   type EventStore,
   type GitHubPort,
   type IssueRepository,
+  type UnitOfWork,
 } from "@friday/application";
 import { applyInputs } from "./apply-inputs.ts";
 import type { ApprovalsClient } from "./approvals.ts";
@@ -11,6 +12,7 @@ import type { ApprovalsClient } from "./approvals.ts";
 export type DirectClientDeps = {
   store: ApprovalStore;
   events: EventStore;
+  unitOfWork: UnitOfWork;
   issues: IssueRepository;
   github: Pick<GitHubPort, "squashMerge">;
   readPrHead: (pr: number) => Promise<string>;

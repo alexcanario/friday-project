@@ -321,7 +321,14 @@ describe("approval gate", () => {
     );
     expect(calls).toEqual(["run"]);
     const out = await decideApproval(
-      { store, events, unitOfWork: tracked, github, readPrHead: () => Promise.resolve(A), now: () => T0 + 5 },
+      {
+        store,
+        events,
+        unitOfWork: tracked,
+        github,
+        readPrHead: () => Promise.resolve(A),
+        now: () => T0 + 5,
+      },
       { id: ID, decision: "approve", actor: "human:cli" },
     );
     expect(out).toMatchObject({ kind: "merged", sha: "m1" });

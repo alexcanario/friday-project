@@ -87,3 +87,8 @@ export interface LedgerRepository {
   record(entry: LedgerEntry): void;
   sumByDay(projectId: string, day: string): DaySum;
 }
+
+/** Runs `work` in one transaction: if it throws, everything it wrote is undone and the error is rethrown. */
+export interface UnitOfWork {
+  run<T>(work: () => T): T;
+}

@@ -83,7 +83,9 @@ describe("sqlite approval store latestForIssue", () => {
 
     store.decide("00000003", { decision: "approved", decidedAt: 1100, decidedBy: "human:cli" });
     expect(store.latestForIssue("p", 13)).toMatchObject({ id: "00000003", decision: "approved" });
-    store.insert(rec({ id: "0000000b", projectId: "p", issueId: 15, requestedAt: 1, expiresAt: 2 }));
+    store.insert(
+      rec({ id: "0000000b", projectId: "p", issueId: 15, requestedAt: 1, expiresAt: 2 }),
+    );
     expect(store.latestForIssue("p", 15)?.id).toBe("0000000b");
   });
 });

@@ -44,7 +44,14 @@ function setup() {
     );
   const decide = (decision: "approve" | "deny") =>
     decideApproval(
-      { store, events, unitOfWork, github, readPrHead: () => Promise.resolve(A), now: () => T0 + 5 },
+      {
+        store,
+        events,
+        unitOfWork,
+        github,
+        readPrHead: () => Promise.resolve(A),
+        now: () => T0 + 5,
+      },
       { id: ID, decision, actor: "human:cli" },
     );
   const count = (type: string) => real.list("p", 7).filter((e) => e.type === type).length;

@@ -26,6 +26,7 @@ export type {
   RunRepository,
   StateChangedPayload,
   StoredEvent,
+  UnitOfWork,
 } from "./persistence-ports.ts";
 export { matchesGlob } from "./glob-match.ts";
 export type { PrDiff } from "./pr-diff.ts";
