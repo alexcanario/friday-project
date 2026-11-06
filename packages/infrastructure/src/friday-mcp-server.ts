@@ -46,6 +46,32 @@ export interface FridayMcpServerInput {
   effects?: EffectsInput;
 }
 
+function makeResultHandler(name: ResultTool, input: FridayMcpServerInput) {
+  return (args: unknown): Promise<ToolResponse> => {
+    const outcome = checkResult(
+      { runs: input.runs, results: input.results },
+      {
+        runId: input.runId,
+        tool: name,
+        agent: input.agent,
+        issueState: input.getIssueState(),
+        input: args,
+      },
+    );
+    if (outcome.status === 200) {
+      return Promise.resolve({ content: [{ type: "text", text: "200: resultado aceito." }] });
+    }
+    const detail =
+      outcome.status === 422
+        ? outcome.violations.map((v) => v.message).join("\n")
+        : outcome.message;
+    return Promise.resolve({
+      content: [{ type: "text", text: `${outcome.status}: ${detail}` }],
+      isError: true,
+    });
+  };
+}
+
 export function createFridayMcpServer(input: FridayMcpServerInput): {
   server: ReturnType<typeof createSdkMcpServer>;
   toolNames: string[];
@@ -59,41 +85,23 @@ export function createFridayMcpServer(input: FridayMcpServerInput): {
     (EFFECT_TOOLS as readonly string[]).includes(t),
   );
   const effects = input.effects;
-  for (const name of effectNames) {
-    if (!effects) throw new Error(`Porta ausente para a ferramenta ${name}.`);
+  if (effectNames.length > 0 && !effects) {
+    throw new Error(`Porta ausente para a ferramenta ${effectNames[0]}.`);
   }
-  for (const name of names) {
-    handlers[name] = (args: unknown): Promise<ToolResponse> => {
-      const outcome = checkResult(
-        { runs: input.runs, results: input.results },
-        {
-          runId: input.runId,
-          tool: name,
-          agent: input.agent,
-          issueState: input.getIssueState(),
-          input: args,
-        },
-      );
-      if (outcome.status === 200) {
-        return Promise.resolve({ content: [{ type: "text", text: "200: resultado aceito." }] });
-      }
-      const detail =
-        outcome.status === 422
-          ? outcome.violations.map((v) => v.message).join("\n")
-          : outcome.message;
-      return Promise.resolve({
-        content: [{ type: "text", text: `${outcome.status}: ${detail}` }],
-        isError: true,
-      });
-    };
-  }
+  for (const name of names) handlers[name] = makeResultHandler(name, input);
   const tools = names.map((name) =>
     tool(name, DESCRIPTIONS[name], shapeOf(name), (args) => handlers[name]!(args)),
   );
   const effectTools = effectNames.map((name) => {
     handlers[name] = makeEffectHandler(name, { ...input, effects: effects! });
-    const shape = Object.fromEntries(EFFECT_KEYS[name].map((key) => [key, loose]));
-    return tool(name, EFFECT_DESCRIPTIONS[name], shape, (args) => handlers[name]!(args));
+    // Loose object keeps unknown keys so the strict handler schema can reject them with 422.
+    const shape = z.looseObject(Object.fromEntries(EFFECT_KEYS[name].map((key) => [key, loose])));
+    return tool(
+      name,
+      EFFECT_DESCRIPTIONS[name],
+      shape as unknown as Record<string, typeof loose>,
+      (args) => handlers[name]!(args),
+    );
   });
   return {
     server: createSdkMcpServer({ name: "friday", tools: [...tools, ...effectTools] }),
