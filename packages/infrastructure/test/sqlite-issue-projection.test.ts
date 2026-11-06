@@ -62,4 +62,23 @@ describe("sqlite issue projection", () => {
     expect(repo.get("a", 1)?.state).toBe("Held");
     expect(repo.get("a", 99)).toBeNull();
   });
+
+  it("list returns only the project issues in issueId order and [] for an unknown project", () => {
+    db = openWithProjects("a", "b");
+    const store = createEventStore(db);
+    const repo = createIssueRepository(db);
+    store.append(changed("a", 20, "Verify", 0));
+    store.append(changed("a", 3, "InProgress", 0));
+    store.append(changed("a", 11, "Held", 0));
+    store.append(changed("b", 1, "Done", 0));
+    repo.rebuild("a");
+    repo.rebuild("b");
+    expect(repo.list("a").map((i) => [i.issueId, i.state, i.heldReason])).toEqual([
+      [3, "InProgress", null],
+      [11, "Held", "budget"],
+      [20, "Verify", null],
+    ]);
+    expect(repo.list("b").map((i) => i.issueId)).toEqual([1]);
+    expect(repo.list("desconhecido")).toEqual([]);
+  });
 });

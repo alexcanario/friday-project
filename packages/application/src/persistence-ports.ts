@@ -39,6 +39,8 @@ export interface IssueRow {
 
 export interface IssueRepository {
   get(projectId: string, issueId: number): IssueRow | null;
+  /** Issues of the project ordered by `issueId` ascending; `[]` for an unknown project. */
+  list(projectId: string): IssueRow[];
   /** Recreates the project's issues from its `StateChanged` events. */
   rebuild(projectId: string): void;
 }
@@ -58,6 +60,8 @@ export interface RunRecord {
 export interface RunRepository {
   save(run: RunRecord): void;
   get(runId: string): RunRecord | null;
+  /** Runs of the project ordered by `startedAt` ascending (nulls first), then `id`. */
+  list(projectId: string): RunRecord[];
   /** Runs of the project with `status` running and no `finishedAt`, ordered by id. */
   listActive(projectId: string): RunRecord[];
 }

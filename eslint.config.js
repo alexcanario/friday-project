@@ -42,6 +42,7 @@ const outer = [
   "@friday/infrastructure",
   "@friday/daemon",
   "@friday/cli",
+  "@friday/api",
 ];
 
 export default tseslint.config(
@@ -60,7 +61,7 @@ export default tseslint.config(
         rel("application"),
         rel("infrastructure"),
         rel("apps"),
-      ].filter((p) => p.includes("/") || p.includes("*")),
+      ].filter((p) => p.endsWith("*")),
     ),
   },
   {
@@ -86,9 +87,11 @@ export default tseslint.config(
   {
     files: ["packages/application/**/*.ts"],
     rules: restrict(
-      ["@friday/infrastructure", "@friday/daemon", "@friday/cli"],
+      ["@friday/infrastructure", "@friday/daemon", "@friday/cli", "@friday/api"],
       [
-        ...["@friday/infrastructure", "@friday/daemon", "@friday/cli"].map((n) => `${n}/*`),
+        ...["@friday/infrastructure", "@friday/daemon", "@friday/cli", "@friday/api"].map(
+          (n) => `${n}/*`,
+        ),
         rel("infrastructure"),
         rel("apps"),
       ],
@@ -97,16 +100,29 @@ export default tseslint.config(
   {
     files: ["packages/infrastructure/**/*.ts"],
     rules: restrict(
-      ["@friday/daemon", "@friday/cli"],
-      ["@friday/daemon/*", "@friday/cli/*", rel("apps")],
+      ["@friday/daemon", "@friday/cli", "@friday/api"],
+      ["@friday/daemon/*", "@friday/cli/*", "@friday/api/*", rel("apps")],
     ),
   },
   {
     files: ["apps/daemon/**/*.ts"],
-    rules: restrict(["@friday/cli"], ["@friday/cli/*", "**/apps/cli/**"]),
+    rules: restrict(
+      ["@friday/cli", "@friday/api"],
+      ["@friday/cli/*", "@friday/api/*", "**/apps/cli/**", "**/apps/api/**"],
+    ),
   },
   {
     files: ["apps/cli/**/*.ts"],
-    rules: restrict(["@friday/daemon"], ["@friday/daemon/*", "**/apps/daemon/**"]),
+    rules: restrict(
+      ["@friday/daemon", "@friday/api"],
+      ["@friday/daemon/*", "@friday/api/*", "**/apps/daemon/**", "**/apps/api/**"],
+    ),
+  },
+  {
+    files: ["apps/api/**/*.ts"],
+    rules: restrict(
+      ["@friday/daemon", "@friday/cli"],
+      ["@friday/daemon/*", "@friday/cli/*", "**/apps/daemon/**", "**/apps/cli/**"],
+    ),
   },
 );

@@ -120,6 +120,10 @@ export class FakeIssueRepository implements IssueRepository {
     return this.row;
   }
 
+  list(): IssueRow[] {
+    return this.row ? [this.row] : [];
+  }
+
   rebuild(projectId: string): void {
     this.rebuilds.push({ projectId, appendedCount: this.#events.appended.length });
   }
