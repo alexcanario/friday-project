@@ -9,6 +9,7 @@ export {
   type Ticker,
   type TickerDeps,
 } from "./tick.ts";
+export { type RunRecordingDeps } from "./run-registration.ts";
 export {
   createRunRecorder,
   type RunContext,
