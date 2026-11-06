@@ -137,6 +137,12 @@ describe("runTriageStep", () => {
       expect(out.specialist).toBe("database");
       expect(out.inputs).toEqual([{ type: "SpecialistAssigned" }]);
     }
+    const first = setup([]);
+    const firstOut = await runTriageStep(
+      first,
+      makeInput({ issue: issue(["specialist:security", "specialist:backend"]) }),
+    );
+    expect(firstOut.specialist).toBe("security");
     const s = setup([finished({ specialist: "backend", reason: "x" })]);
     await runTriageStep(s, makeInput({ issue: issue(["friday", "specialist:planner"]) }));
     expect(s.runtime.requests).toHaveLength(1);
