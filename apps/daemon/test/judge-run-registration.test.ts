@@ -42,6 +42,10 @@ describe("runJudgeForIssue run registration", () => {
       to: "Held",
       heldReason: "RunMisconfigured",
     });
+    expect(strong.runs.rows.get("r1")).toMatchObject({
+      status: "failed",
+      finishedAt: expect.anything(),
+    });
   });
 
   it("closes the run as failed when the step throws or the run is held", async () => {

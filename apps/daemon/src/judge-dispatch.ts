@@ -130,7 +130,7 @@ async function execute(
         ...deps.judgeInput(issueId),
       },
     );
-    completed = true;
+    completed = outcome.kind !== "held";
     return { outcome };
   } finally {
     const finished: RunFinished | null = last;
