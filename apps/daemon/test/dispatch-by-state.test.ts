@@ -277,7 +277,9 @@ describe("state dispatcher", () => {
     expect(runtime.requests).toHaveLength(2);
     runtime.resolveAll({} as never);
     await ticker.idle();
-    expect(t.events.appended.filter((e) => e.type === "StateChanged" && e.issueId === 13)).toHaveLength(1);
+    expect(
+      t.events.appended.filter((e) => e.type === "StateChanged" && e.issueId === 13),
+    ).toHaveLength(1);
   });
 
   it("is exported by the package index", () => {
