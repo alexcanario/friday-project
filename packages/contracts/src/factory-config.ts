@@ -36,6 +36,10 @@ export const factoryConfigSchema = z.strictObject({
       .string()
       .regex(/^[A-Z][A-Z0-9_]*$/)
       .optional(),
+    review_token_env: z
+      .string()
+      .regex(/^[A-Z][A-Z0-9_]*$/)
+      .optional(),
   }),
   limits: z.strictObject({
     per_issue_usd: positive,

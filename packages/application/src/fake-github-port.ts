@@ -50,6 +50,9 @@ export class FakeGitHubPort implements GitHubPort {
   getCiStatus(): Promise<CiStatus> {
     return missing("getCiStatus");
   }
+  postReview(): Promise<{ id: number }> {
+    return missing("postReview");
+  }
   squashMerge(): Promise<MergeResult> {
     return missing("squashMerge");
   }

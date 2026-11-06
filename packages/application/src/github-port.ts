@@ -7,6 +7,8 @@ export type CreatedPr = { number: number; headSha: string; created: boolean };
 export type MergeResult =
   { merged: true; sha: string } | { merged: false; reason: "head_changed" | "not_mergeable" };
 
+export type ReviewEvent = "APPROVE" | "REQUEST_CHANGES" | "COMMENT";
+
 export interface GitHubPort {
   listIssuesByLabel(label: string): Promise<IssueSummary[]>;
   addLabel(issue: number, label: string): Promise<void>;
@@ -21,4 +23,8 @@ export interface GitHubPort {
   getCiStatus(pr: number, checkName: string): Promise<CiStatus>;
   getPrDiff(pr: number): Promise<PrDiff>;
   squashMerge(pr: number, expectedHeadSha: string): Promise<MergeResult>;
+  postReview(
+    pr: number,
+    review: { commitId: string; body: string; event: ReviewEvent },
+  ): Promise<{ id: number }>;
 }

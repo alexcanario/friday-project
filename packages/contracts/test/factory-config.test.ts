@@ -128,9 +128,9 @@ describe("pull_requests.review_token_env", () => {
     ];
     for (const pr of ok) expect(factoryConfigSchema.safeParse(withPr(pr)).success).toBe(true);
     const both = { ...withPr({ merge: "manual", review_token_env: "FRIDAY_JUDGE_TOKEN" }) };
-    expect(
-      factoryConfigSchema.safeParse({ ...both, secrets: ["ANTHROPIC_API_KEY"] }).success,
-    ).toBe(true);
+    expect(factoryConfigSchema.safeParse({ ...both, secrets: ["ANTHROPIC_API_KEY"] }).success).toBe(
+      true,
+    );
   });
   it("rejects an invalid or unknown pull_requests key", () => {
     for (const bad of ["lower", "", "A-B", "1ABC", "_ABC", 5]) {
