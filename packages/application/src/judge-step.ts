@@ -1,4 +1,4 @@
-import { validateContract, type Violation } from "@friday/contracts";
+import { validateContract, type ReviewVerdict, type Violation } from "@friday/contracts";
 import type { RunHeldReason, WorkflowInput } from "@friday/domain";
 import type { AgentRunOptions } from "./agent-run-options.ts";
 import type { AgentRuntime } from "./agent-runtime.ts";
@@ -70,6 +70,22 @@ const held = (reason: RunHeldReason): JudgeStepOutcome => ({
   input: { type: "RunHeld", reason },
 });
 
+/** Maps the posted verdict to the step outcome. */
+function outcomeFor(verdict: ReviewVerdict, reviewId: number, prHeadSha: string): JudgeStepOutcome {
+  if (verdict.verdict === "approve") {
+    return {
+      kind: "approved",
+      reviewId,
+      input: { type: "ReviewApproved", headSha: verdict.headSha, prHeadSha },
+    };
+  }
+  if (verdict.verdict === "reject") {
+    return { kind: "rejected", reviewId, input: { type: "ReviewRejected" } };
+  }
+  const feedback = verdict.findings.map((f, i) => `${i + 1}. ${f}`).join("\n");
+  return { kind: "changes_requested", reviewId, feedback, input: { type: "ChangesRequested" } };
+}
+
 export async function runJudgeStep(
   deps: JudgeStepDeps,
   input: JudgeStepInput,
@@ -109,16 +125,5 @@ export async function runJudgeStep(
     body: renderReviewBody(verdict),
     event: reviewEventFor(verdict.verdict),
   });
-  if (verdict.verdict === "approve") {
-    return {
-      kind: "approved",
-      reviewId,
-      input: { type: "ReviewApproved", headSha: verdict.headSha, prHeadSha },
-    };
-  }
-  if (verdict.verdict === "reject") {
-    return { kind: "rejected", reviewId, input: { type: "ReviewRejected" } };
-  }
-  const feedback = verdict.findings.map((f, i) => `${i + 1}. ${f}`).join("\n");
-  return { kind: "changes_requested", reviewId, feedback, input: { type: "ChangesRequested" } };
+  return outcomeFor(verdict, reviewId, prHeadSha);
 }
