@@ -49,6 +49,8 @@ export type StateDispatcherDeps = {
   approval?: ApprovalDeps;
   /** Runs the Judge for an issue in review; replaces the role-based dispatch of InReview. */
   judge?: (issueId: number) => Promise<{ applied: boolean; feedback: string | null }>;
+  /** Runs QA for an issue in QA; replaces the role-based dispatch of QA. */
+  qa?: (issueId: number) => Promise<{ applied: boolean; feedback: string | null }>;
 };
 
 type Capacity = { active: number; max: number };
@@ -56,7 +58,7 @@ type Capacity = { active: number; max: number };
 export type StateDispatcher = {
   /** `capacity` is optional only for direct calls (tests, uses without a ticker). */
   listReady(capacity?: Capacity): Promise<number[]>;
-  /** Judge runs in flight; they occupy a slot of maxConcurrentRuns (D68). */
+  /** Judge and QA runs in flight; they occupy a slot of maxConcurrentRuns (D68). */
   busy(): number;
   buildRequest(issueId: number): AgentRunRequest;
 };
@@ -68,6 +70,7 @@ export function createStateDispatcher(deps: StateDispatcherDeps): StateDispatche
   const decide = deps.decideGates ?? realDecideGates;
   let dispatched = new Map<number, DispatchRole>();
   const judging = new Set<number>();
+  const qaRunning = new Set<number>();
 
   const logError = (message: string, error: unknown): void => {
     deps.log?.(`${message}: ${error instanceof Error ? error.message : String(error)}`);
@@ -141,7 +144,8 @@ export function createStateDispatcher(deps: StateDispatcherDeps): StateDispatche
     capacity: Capacity | undefined,
   ): Promise<void> {
     if (judging.has(issueId)) return;
-    if (capacity !== undefined && capacity.active + judging.size >= capacity.max) return;
+    if (capacity !== undefined && capacity.active + judging.size + qaRunning.size >= capacity.max)
+      return;
     judging.add(issueId);
     try {
       await judge(issueId);
@@ -149,6 +153,24 @@ export function createStateDispatcher(deps: StateDispatcherDeps): StateDispatche
       logError(`Falha ao rodar o Judge da issue ${issueId}`, error);
     } finally {
       judging.delete(issueId);
+    }
+  }
+
+  async function handleQa(
+    issueId: number,
+    qa: NonNullable<StateDispatcherDeps["qa"]>,
+    capacity: Capacity | undefined,
+  ): Promise<void> {
+    if (qaRunning.has(issueId)) return;
+    const used = judging.size + qaRunning.size;
+    if (capacity !== undefined && capacity.active + used >= capacity.max) return;
+    qaRunning.add(issueId);
+    try {
+      await qa(issueId);
+    } catch (error) {
+      logError(`Falha ao rodar o QA da issue ${issueId}`, error);
+    } finally {
+      qaRunning.delete(issueId);
     }
   }
 
@@ -177,6 +199,10 @@ export function createStateDispatcher(deps: StateDispatcherDeps): StateDispatche
       await handleJudge(number, deps.judge, capacity);
       return;
     }
+    if (snapshot.state === "QA" && deps.qa !== undefined) {
+      await handleQa(number, deps.qa, capacity);
+      return;
+    }
     const role = STATE_ROLES[snapshot.state];
     if (role !== undefined && deps.roles[role] !== undefined) next.set(number, role);
   }
@@ -200,7 +226,7 @@ export function createStateDispatcher(deps: StateDispatcherDeps): StateDispatche
       dispatched = next;
       return [...next.keys()];
     },
-    busy: () => judging.size,
+    busy: () => judging.size + qaRunning.size,
     buildRequest(issueId) {
       const role = dispatched.get(issueId);
       const builder = role === undefined ? undefined : deps.roles[role];
