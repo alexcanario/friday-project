@@ -27,6 +27,74 @@ export type SpecialistDispatchDeps = {
 type Result = { applied: boolean; feedback: null };
 const NOT_APPLIED: Result = { applied: false, feedback: null };
 
+type StepOutcome = Awaited<ReturnType<typeof runSpecialistStep>>;
+type RunContext = { runId: string; issueId: number; maxBudgetUsd: number };
+type RunRow = {
+  id: string;
+  projectId: string;
+  issueId: number;
+  phase: null;
+  startedAt: string;
+  finishedAt: null;
+};
+type Tracker = { last: RunFinished | null };
+
+function recordingRuntime(
+  deps: SpecialistDispatchDeps,
+  ctx: RunContext,
+  tracker: Tracker,
+): AgentRuntime {
+  const { recorder, runtimeFor } = deps.recording;
+  const base: AgentRuntime = runtimeFor
+    ? runtimeFor(ctx, recorder.denialSink(ctx))
+    : deps.step.runtime;
+  return {
+    run: async (req) => {
+      const finished = await base.run(req);
+      tracker.last = finished;
+      recorder.recordFinished(ctx, finished);
+      return finished;
+    },
+  };
+}
+
+function appendWorkReported(
+  deps: SpecialistDispatchDeps,
+  ctx: RunContext,
+  request: AgentRunRequest,
+  outcome: StepOutcome,
+): void {
+  if (!("report" in outcome)) return;
+  deps.recorder.events.append({
+    projectId: deps.projectId,
+    issueId: ctx.issueId,
+    runId: ctx.runId,
+    type: "WorkReported",
+    payload: {
+      worktreePath: request.cwd,
+      headSha: outcome.report.headSha,
+      changedFiles: outcome.report.changedFiles,
+    },
+    actor: "daemon",
+    at: deps.recorder.now().toISOString(),
+  });
+}
+
+function closeRun(
+  deps: SpecialistDispatchDeps,
+  row: RunRow,
+  tracker: Tracker,
+  held: boolean,
+): void {
+  const done = tracker.last;
+  const status = done !== null && !held ? statusFor(done) : "failed";
+  try {
+    deps.recording.runs.save({ ...row, status, finishedAt: deps.now().toISOString() });
+  } catch (error) {
+    deps.log?.(`Falha ao fechar a run ${row.id}: ${String(error)}`);
+  }
+}
+
 async function execute(
   deps: SpecialistDispatchDeps,
   issueId: number,
@@ -34,8 +102,7 @@ async function execute(
   request: AgentRunRequest,
   snapshot: WorkflowSnapshot,
 ): Promise<Result> {
-  const { runs, recorder } = deps.recording;
-  const row = {
+  const row: RunRow = {
     id: runId,
     projectId: deps.projectId,
     issueId,
@@ -43,59 +110,29 @@ async function execute(
     startedAt: deps.now().toISOString(),
     finishedAt: null,
   };
-  runs.save({ ...row, status: "running" });
+  deps.recording.runs.save({ ...row, status: "running" });
   const ctx = { runId, issueId, maxBudgetUsd: request.agent.maxBudgetUsd };
-  let last: RunFinished | null = null;
+  const tracker: Tracker = { last: null };
   let held = false;
   try {
-    const base: AgentRuntime = deps.recording.runtimeFor
-      ? deps.recording.runtimeFor(ctx, recorder.denialSink(ctx))
-      : deps.step.runtime;
-    const runtime: AgentRuntime = {
-      run: async (req) => {
-        const finished = await base.run(req);
-        last = finished;
-        recorder.recordFinished(ctx, finished);
-        return finished;
-      },
-    };
+    const runtime = recordingRuntime(deps, ctx, tracker);
     const outcome = await runSpecialistStep({ ...deps.step, runtime }, { request, snapshot });
     held = outcome.inputs.some((i) => i.type === "RunHeld");
     const result = applySpecialistOutcome(deps.recorder, { issueId, runId }, outcome);
-    if (result.applied && "report" in outcome) {
-      deps.recorder.events.append({
-        projectId: deps.projectId,
-        issueId,
-        runId,
-        type: "WorkReported",
-        payload: {
-          worktreePath: request.cwd,
-          headSha: outcome.report.headSha,
-          changedFiles: outcome.report.changedFiles,
-        },
-        actor: "daemon",
-        at: deps.recorder.now().toISOString(),
-      });
-    }
+    if (result.applied) appendWorkReported(deps, ctx, request, outcome);
     return { applied: result.applied, feedback: null };
   } catch (error) {
     // Só registra o teto quando o runtime lançou; se a run terminou, recordFinished já gravou o custo.
-    if (last === null) {
+    if (tracker.last === null) {
       try {
-        recorder.recordUnknownCost(ctx);
+        deps.recording.recorder.recordUnknownCost(ctx);
       } catch (ledgerError) {
         deps.log?.(`Falha ao registrar o custo da run ${runId}: ${String(ledgerError)}`);
       }
     }
     throw error;
   } finally {
-    const done: RunFinished | null = last;
-    const status = done !== null && !held ? statusFor(done) : "failed";
-    try {
-      runs.save({ ...row, status, finishedAt: deps.now().toISOString() });
-    } catch (error) {
-      deps.log?.(`Falha ao fechar a run ${runId}: ${String(error)}`);
-    }
+    closeRun(deps, row, tracker, held);
   }
 }
 
