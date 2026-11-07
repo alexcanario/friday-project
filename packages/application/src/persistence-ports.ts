@@ -95,3 +95,13 @@ export interface LedgerRepository {
 export interface UnitOfWork {
   run<T>(work: () => T): T;
 }
+
+/** Runtime-failure breaker state of a project; instants are ISO strings. */
+export type BreakerState = { openedAt: string | null; failures: string[] };
+
+export interface BreakerStateRepository {
+  /** `null` when the project has no saved state. */
+  get(projectId: string): BreakerState | null;
+  /** Replaces the project's state; throws for a project that does not exist. */
+  save(projectId: string, state: BreakerState): void;
+}

@@ -14,6 +14,8 @@ export type {
   CreateWorktreeRequest,
 } from "./worktree-manager.ts";
 export type {
+  BreakerState,
+  BreakerStateRepository,
   DaySum,
   EventStore,
   IssueRepository,
