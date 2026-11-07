@@ -215,9 +215,11 @@ describe("friday approvals production client", () => {
     const root = makeRoot(true);
     const blank = open({ FRIDAY_HOME: root, TEST_AUTHOR_TOKEN: "   " });
     const dbA = newDb();
-    expect(
-      await runApprovals(["approvals", "approve", "00000001", "--db", dbA], blank),
-    ).toEqual({ stdout: "", stderr: "Falha ao decidir a aprovação.\n", code: 1 });
+    expect(await runApprovals(["approvals", "approve", "00000001", "--db", dbA], blank)).toEqual({
+      stdout: "",
+      stderr: "Falha ao decidir a aprovação.\n",
+      code: 1,
+    });
 
     const good = open({ FRIDAY_HOME: root, TEST_AUTHOR_TOKEN: "tok-123" });
     const dbB = newDb();
@@ -229,9 +231,9 @@ describe("friday approvals production client", () => {
     expect(out.stderr).not.toContain("tok-123");
 
     const dbC = newDb();
-    expect(
-      await runApprovals(["approvals", "list", "--db", dbC, "--project", "p1"], good),
-    ).toEqual({ stdout: "Nenhuma aprovação pendente.\n", stderr: "", code: 0 });
+    expect(await runApprovals(["approvals", "list", "--db", dbC, "--project", "p1"], good)).toEqual(
+      { stdout: "Nenhuma aprovação pendente.\n", stderr: "", code: 0 },
+    );
   });
 
   it("routes approve and deny in index.ts through the production open", () => {
