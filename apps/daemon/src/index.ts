@@ -1,4 +1,5 @@
 export { AlreadyRunningError, acquireProcessLock, type ProcessLockDeps } from "./process-lock.ts";
+export { checkBudget, type BudgetCheck, type BudgetVerdict } from "./budget-guard.ts";
 export { readTickConfig, type TickConfig } from "./tick-config.ts";
 export {
   TICK_INTERVAL_MS,

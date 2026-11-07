@@ -119,7 +119,10 @@ async function execute(
       if (finished.status === "invalid_output") {
         appendEvent(deps, issueId, runId, "RunFinished", finished);
       } else {
-        recorder.recordFinished({ runId, issueId }, finished);
+        recorder.recordFinished(
+          { runId, issueId, maxBudgetUsd: request.agent.maxBudgetUsd },
+          finished,
+        );
       }
       return finished;
     },

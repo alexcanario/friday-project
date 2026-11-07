@@ -116,18 +116,21 @@ export function createRunRecorder(deps: RunRecorderDeps): RunRecorder {
       events.append({ ...base(ctx), type: "RunFinished", payload: finished });
       const unknown = finished.costUsd === null;
       const tokens = finished.tokens;
-      deps.ledger?.record({
-        ...ledgerBase(ctx),
-        costUsd: unknown ? (ctx.maxBudgetUsd ?? null) : finished.costUsd,
-        costUnknown: unknown,
-        inputTokens: tokens?.input ?? 0,
-        outputTokens: tokens?.output ?? 0,
-        cacheReadTokens: tokens?.cacheRead ?? 0,
-        cacheCreationTokens: tokens?.cacheCreation ?? 0,
-        numTurns: finished.numTurns,
-      });
-      const reason = heldReasonFor(finished);
-      if (reason !== null) applyHeld(ctx, reason);
+      try {
+        deps.ledger?.record({
+          ...ledgerBase(ctx),
+          costUsd: unknown ? (ctx.maxBudgetUsd ?? null) : finished.costUsd,
+          costUnknown: unknown,
+          inputTokens: tokens?.input ?? 0,
+          outputTokens: tokens?.output ?? 0,
+          cacheReadTokens: tokens?.cacheRead ?? 0,
+          cacheCreationTokens: tokens?.cacheCreation ?? 0,
+          numTurns: finished.numTurns,
+        });
+      } finally {
+        const reason = heldReasonFor(finished);
+        if (reason !== null) applyHeld(ctx, reason);
+      }
     },
     recordUnknownCost(ctx) {
       deps.ledger?.record({

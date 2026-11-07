@@ -1,4 +1,5 @@
 import type { AgentRunRequest, AgentRuntime, EventStore } from "@friday/application";
+import { passesBudget, type BudgetDeps } from "./budget-gate.ts";
 import { beginRun, completeRun, type RunRecordingDeps } from "./run-registration.ts";
 import type { TickConfig } from "./tick-config.ts";
 
@@ -27,6 +28,7 @@ export interface TickerDeps {
   events: EventStore;
   log?: (message: string) => void;
   recording?: RunRecordingDeps;
+  budget?: BudgetDeps;
 }
 
 export interface Ticker {
@@ -45,7 +47,26 @@ export function createTicker(deps: TickerDeps): Ticker {
 
   const iso = (): string => new Date(deps.clock.now()).toISOString();
 
-  function dispatchRecorded(issueId: number, recording: RunRecordingDeps): void {
+  function withinBudget(issueId: number, config: TickConfig): boolean {
+    if (!deps.budget) return true;
+    return passesBudget(
+      deps.budget,
+      config,
+      {
+        projectId: deps.projectId,
+        issueId,
+        runCeilingUsd: deps.buildRequest(issueId).agent.maxBudgetUsd,
+        nowMs: deps.clock.now(),
+      },
+      (message) => deps.log?.(message),
+    );
+  }
+
+  function dispatchRecorded(
+    issueId: number,
+    recording: RunRecordingDeps,
+    config: TickConfig,
+  ): void {
     const env = {
       projectId: deps.projectId,
       now: iso,
@@ -57,6 +78,7 @@ export function createTicker(deps: TickerDeps): Ticker {
     };
     let registered;
     try {
+      if (!withinBudget(issueId, config)) return;
       registered = beginRun(env, issueId);
     } catch (error) {
       logError(`Failed to dispatch issue ${issueId}`, error);
@@ -68,8 +90,8 @@ export function createTicker(deps: TickerDeps): Ticker {
     );
   }
 
-  function dispatch(issueId: number): void {
-    if (deps.recording) return dispatchRecorded(issueId, deps.recording);
+  function dispatch(issueId: number, config: TickConfig): void {
+    if (deps.recording) return dispatchRecorded(issueId, deps.recording, config);
     let request: AgentRunRequest;
     try {
       request = deps.buildRequest(issueId);
@@ -107,7 +129,7 @@ export function createTicker(deps: TickerDeps): Ticker {
     for (const issueId of [...new Set(ready)]
       .filter((id) => !active.has(id))
       .slice(0, Math.max(0, slots))) {
-      dispatch(issueId);
+      dispatch(issueId, config);
     }
   }
 
