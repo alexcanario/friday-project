@@ -46,5 +46,13 @@ export { applyQaOutcome, type QaApplyResult } from "./qa-apply.ts";
 export { runQaForIssue, type QaDispatchDeps } from "./qa-dispatch.ts";
 export { createIntake, type Intake, type IntakeDeps } from "./intake.ts";
 export { type ApprovalDeps } from "./approval-wiring.ts";
+export { applySpecialistOutcome } from "./specialist-apply.ts";
+export { runSpecialistForIssue, type SpecialistDispatchDeps } from "./specialist-dispatch.ts";
+export {
+  buildSpecialistRequest,
+  criteriaOf,
+  feedbackOf,
+  type SpecialistRequestInput,
+} from "./specialist-request.ts";
 export { composeDaemon, type ComposeOptions, type Daemon } from "./compose.ts";
 export { readDispatchConfig } from "./compose-config.ts";
