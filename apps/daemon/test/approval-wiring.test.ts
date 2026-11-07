@@ -249,15 +249,6 @@ describe("approval wiring", () => {
     }
   });
 
-  it("logs and does nothing when AwaitingApproval has no request", async () => {
-    const t = setup({ state: "AwaitingApproval" });
-    await expect(t.dispatcher.listReady()).resolves.toEqual([]);
-    expect(t.events.list("p", 13)).toHaveLength(0);
-    expect(t.log).toHaveBeenCalledWith(
-      "A issue 13 em AwaitingApproval não tem pedido de aprovação",
-    );
-  });
-
   it("logs and does nothing when an approved request has no decidedAt", async () => {
     const t = setup({ state: "AwaitingApproval" });
     t.store.seed(record({ decision: "approved" }));

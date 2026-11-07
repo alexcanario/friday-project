@@ -23,6 +23,8 @@ export type ApprovalContext = {
   now: () => Date;
   log?: (message: string) => void;
   approval: ApprovalDeps;
+  prOf: (issueId: number) => number | null;
+  tierOf: (pr: number) => Promise<Risk | null>;
 };
 
 type RiskDecision = { risk: Risk; autoMerge: boolean };
@@ -67,11 +69,32 @@ function apply(ctx: ApprovalContext, issueId: number, input: WorkflowInput): boo
   );
 }
 
+/** Recreates a lost request (D69): without a PR the issue is held; any failure retries next tick. */
+async function recreateRequest(ctx: ApprovalContext, issueId: number): Promise<void> {
+  const pr = ctx.prOf(issueId);
+  if (pr === null) {
+    apply(ctx, issueId, { type: "ApprovalExpired" });
+    return;
+  }
+  try {
+    const headSha = await ctx.approval.headOf(pr);
+    const tier = await ctx.tierOf(pr);
+    if (tier === null) {
+      ctx.log?.(`Risco indisponível para recriar o pedido de aprovação da issue ${issueId}`);
+      return;
+    }
+    recordApprovalRequest(ctx, { issueId, pr, headSha, tier });
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : String(error);
+    ctx.log?.(`Falha ao recriar o pedido de aprovação da issue ${issueId}: ${reason}`);
+  }
+}
+
 /** Per tick, for an issue in AwaitingApproval: expires, denies or reconciles (D67) its request. */
 export async function handleAwaitingApproval(ctx: ApprovalContext, issueId: number): Promise<void> {
   const latest = ctx.approval.store.latestForIssue(ctx.projectId, issueId);
   if (latest === null) {
-    ctx.log?.(`A issue ${issueId} em AwaitingApproval não tem pedido de aprovação`);
+    await recreateRequest(ctx, issueId);
     return;
   }
   if (latest.decision === "denied") {
