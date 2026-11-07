@@ -2,7 +2,7 @@ import { cpSync, existsSync, mkdtempSync, readFileSync, writeFileSync } from "no
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { GitHubPort, WorktreeManager } from "@friday/application";
-import { createRunRepository, openDatabase } from "@friday/infrastructure";
+import { createIssueRepository, createRunRepository, openDatabase } from "@friday/infrastructure";
 import { describe, expect, it, vi } from "vitest";
 import { AlreadyRunningError, composeDaemon, type ComposeOptions } from "../src/index.ts";
 import { FakeClock, FakeGitHub, PendingRuntime } from "./fakes.ts";
@@ -32,7 +32,9 @@ function setup(edit: (yaml: string) => string = (y) => y) {
   writeFileSync(file, edit(yaml));
   const github = new FakeGitHub();
   const logs: string[] = [];
-  const createGitHub = vi.fn((_token: string, _repo: { owner: string; repo: string }) => github);
+  const createGitHub = vi.fn<(token: string, repo: { owner: string; repo: string }) => FakeGitHub>(
+    () => github,
+  );
   const opts: ComposeOptions = {
     root,
     dbPath: join(root, "friday.db"),
@@ -148,9 +150,7 @@ describe("composeDaemon", () => {
     const tickSpy = vi.spyOn(FakeClock.prototype, "every");
     const daemon = await composeDaemon(t.opts);
     expect(tickSpy).not.toHaveBeenCalled();
-    expect(createRunRepository(daemon.db).get("run-1")?.status).toBe(
-      "canceled_by_reconciliation",
-    );
+    expect(createRunRepository(daemon.db).get("run-1")?.status).toBe("canceled_by_reconciliation");
     expect(daemon.report.canceledRuns).toEqual(["run-1"]);
     daemon.release();
     tickSpy.mockRestore();
@@ -165,8 +165,7 @@ describe("composeDaemon", () => {
         .prepare("SELECT COUNT(*) AS n FROM events WHERE type = 'IssueIngested' AND issue_id = 7")
         .get() as { n: number };
     await daemon.ticker.tick();
-    const issue = daemon.db.sqlite.prepare("SELECT state FROM issues WHERE issue_id = 7").get();
-    expect(issue).toEqual({ state: "Todo" });
+    expect(createIssueRepository(daemon.db).get("p", 7)?.state).toBe("Todo");
     expect(count().n).toBe(1);
     await daemon.ticker.tick();
     expect(count().n).toBe(1);
