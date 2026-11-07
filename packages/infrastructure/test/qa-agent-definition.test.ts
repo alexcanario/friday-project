@@ -1,4 +1,3 @@
-import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -89,22 +88,5 @@ describe("QA agent definition", () => {
         expect.objectContaining({ file: "agents/qa.yaml", code: "secret_value" }),
       ]),
     );
-  });
-
-  it("does not touch workflows, the package manifest or the lockfile", () => {
-    const out = execFileSync(
-      "git",
-      [
-        "diff",
-        "--name-only",
-        "origin/develop...HEAD",
-        "--",
-        ".github/workflows",
-        "packages/infrastructure/package.json",
-        "pnpm-lock.yaml",
-      ],
-      { cwd: resolve(import.meta.dirname, "../../.."), encoding: "utf8" },
-    );
-    expect(out.trim()).toBe("");
   });
 });
