@@ -65,3 +65,10 @@ export {
   type QaRequestInput,
   type QaTargetDeps,
 } from "./qa-request.ts";
+export {
+  buildRuntimeFor,
+  mirrorDirOf,
+  targetUrlOf,
+  type RuntimeRepository,
+  type RuntimeWiringDeps,
+} from "./runtime-wiring.ts";

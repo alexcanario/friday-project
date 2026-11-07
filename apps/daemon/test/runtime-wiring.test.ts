@@ -56,8 +56,9 @@ describe("runtime wiring", () => {
     });
     const runtime = runtimeFor({ runId: "r", issueId: 1 }, { record: () => undefined });
     const template = fakeRequest(1);
+    const agent = { ...template.agent, states: ["InProgress"], promptFile: "p.md" };
     for (const configRoot of [cwd, join(cwd, "cfg"), join(base, "sibling")]) {
-      const request = { ...template, cwd, configRoot } as AgentRunRequest;
+      const request = { ...template, agent, cwd, configRoot } as unknown as AgentRunRequest;
       const out = await runtime.run(request);
       expect(out.status).toBe("misconfigured");
     }
