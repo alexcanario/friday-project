@@ -52,6 +52,8 @@ export type StateDispatcherDeps = {
   judge?: (issueId: number) => Promise<{ applied: boolean; feedback: string | null }>;
   /** Runs QA for an issue in QA; replaces the role-based dispatch of QA. */
   qa?: (issueId: number) => Promise<{ applied: boolean; feedback: string | null }>;
+  /** Runs the specialist for an issue in progress; replaces the role-based dispatch of InProgress. */
+  specialist?: (issueId: number) => Promise<{ applied: boolean; feedback: string | null }>;
 };
 
 type Capacity = { active: number; max: number };
@@ -59,7 +61,7 @@ type Capacity = { active: number; max: number };
 export type StateDispatcher = {
   /** `capacity` is optional only for direct calls (tests, uses without a ticker). */
   listReady(capacity?: Capacity): Promise<number[]>;
-  /** Judge and QA runs in flight; they occupy a slot of maxConcurrentRuns (D68). */
+  /** Judge, QA and specialist runs in flight; they occupy a slot of maxConcurrentRuns (D68). */
   busy(): number;
   buildRequest(issueId: number): AgentRunRequest;
 };
@@ -72,6 +74,7 @@ export function createStateDispatcher(deps: StateDispatcherDeps): StateDispatche
   let dispatched = new Map<number, DispatchRole>();
   const judging = new Set<number>();
   const qaRunning = new Set<number>();
+  const specialistRunning = new Set<number>();
 
   const logError = (message: string, error: unknown): void => {
     deps.log?.(`${message}: ${error instanceof Error ? error.message : String(error)}`);
@@ -153,7 +156,10 @@ export function createStateDispatcher(deps: StateDispatcherDeps): StateDispatche
     capacity: Capacity | undefined,
   ): Promise<void> {
     if (judging.has(issueId)) return;
-    if (capacity !== undefined && capacity.active + judging.size + qaRunning.size >= capacity.max)
+    if (
+      capacity !== undefined &&
+      capacity.active + judging.size + qaRunning.size + specialistRunning.size >= capacity.max
+    )
       return;
     judging.add(issueId);
     try {
@@ -171,7 +177,7 @@ export function createStateDispatcher(deps: StateDispatcherDeps): StateDispatche
     capacity: Capacity | undefined,
   ): Promise<void> {
     if (qaRunning.has(issueId)) return;
-    const used = judging.size + qaRunning.size;
+    const used = judging.size + qaRunning.size + specialistRunning.size;
     if (capacity !== undefined && capacity.active + used >= capacity.max) return;
     qaRunning.add(issueId);
     try {
@@ -180,6 +186,24 @@ export function createStateDispatcher(deps: StateDispatcherDeps): StateDispatche
       logError(`Falha ao rodar o QA da issue ${issueId}`, error);
     } finally {
       qaRunning.delete(issueId);
+    }
+  }
+
+  async function handleSpecialist(
+    issueId: number,
+    specialist: NonNullable<StateDispatcherDeps["specialist"]>,
+    capacity: Capacity | undefined,
+  ): Promise<void> {
+    if (specialistRunning.has(issueId)) return;
+    const used = judging.size + qaRunning.size + specialistRunning.size;
+    if (capacity !== undefined && capacity.active + used >= capacity.max) return;
+    specialistRunning.add(issueId);
+    try {
+      await specialist(issueId);
+    } catch (error) {
+      logError(`Falha ao rodar o especialista da issue ${issueId}`, error);
+    } finally {
+      specialistRunning.delete(issueId);
     }
   }
 
@@ -212,6 +236,10 @@ export function createStateDispatcher(deps: StateDispatcherDeps): StateDispatche
       await handleQa(number, deps.qa, capacity);
       return;
     }
+    if (snapshot.state === "InProgress" && deps.specialist !== undefined) {
+      await handleSpecialist(number, deps.specialist, capacity);
+      return;
+    }
     const role = STATE_ROLES[snapshot.state];
     if (role !== undefined && deps.roles[role] !== undefined) next.set(number, role);
   }
@@ -235,7 +263,7 @@ export function createStateDispatcher(deps: StateDispatcherDeps): StateDispatche
       dispatched = next;
       return [...next.keys()];
     },
-    busy: () => judging.size + qaRunning.size,
+    busy: () => judging.size + qaRunning.size + specialistRunning.size,
     buildRequest(issueId) {
       const role = dispatched.get(issueId);
       const builder = role === undefined ? undefined : deps.roles[role];
