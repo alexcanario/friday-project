@@ -23,6 +23,8 @@ import { reconcile, type ReconcileReport } from "./reconcile.ts";
 import { createRunRecorder } from "./run-recorder.ts";
 import type { RunRecordingDeps } from "./run-registration.ts";
 import { createStateDispatcher, type StateDispatcherDeps } from "./state-dispatcher.ts";
+import { createTriageBranch } from "./triage-wiring.ts";
+import { assertTriageFicha, type TriageFicha } from "./triage-request.ts";
 import { createVerifyBranch } from "./verify-wiring.ts";
 import { readTickConfig } from "./tick-config.ts";
 import { buildRuntimeFor, mirrorDirOf, targetUrlOf } from "./runtime-wiring.ts";
@@ -49,6 +51,8 @@ export interface ComposeOptions {
   createGitHost?: (options: GitCliHostOptions) => GitHost;
   /** Role request builders; empty in production until the roles are wired. */
   roles?: StateDispatcherDeps["roles"];
+  /** Triage limits; without it Todo issues are left alone. */
+  triage?: TriageFicha;
 }
 
 export interface Daemon {
@@ -111,6 +115,12 @@ async function assemble(
   const breaker = buildBreaker(db, projectId, now);
   const ledger = createLedgerRepository(db);
   const recorderDeps = { projectId, events, issues, now };
+  const recording = {
+    runs,
+    recorder: createRunRecorder({ ...recorderDeps, ledger }),
+    runtimeFor,
+  };
+  const budget = { ledger, recorderDeps };
   const report = await reconcile({ projectId, root, runs, issues, events, worktrees, now });
   const dispatcher = createStateDispatcher({
     projectId,
@@ -122,6 +132,22 @@ async function assemble(
     prOf: opts.prOf,
     now,
     ...(opts.log === undefined ? {} : { log: opts.log }),
+    ...(opts.triage === undefined
+      ? {}
+      : {
+          triage: createTriageBranch({
+            projectId,
+            root,
+            ficha: opts.triage,
+            github,
+            runtime: opts.runtime,
+            recorder: recorderDeps,
+            recording,
+            budget,
+            now,
+            ...(opts.log === undefined ? {} : { log: opts.log }),
+          }),
+        }),
     verify: createVerifyBranch({
       projectId,
       recorder: recorderDeps,
@@ -156,8 +182,8 @@ async function assemble(
     runtime: opts.runtime,
     events,
     ...(opts.log === undefined ? {} : { log: opts.log }),
-    recording: { runs, recorder: createRunRecorder({ ...recorderDeps, ledger }), runtimeFor },
-    budget: { ledger, recorderDeps },
+    recording,
+    budget,
     breaker: { breaker, recorderDeps },
   });
   return { ticker, report };
@@ -166,6 +192,7 @@ async function assemble(
 /** Process composition at startup: lock, database, reconcile, GitHub, intake and ticker. */
 export async function composeDaemon(opts: ComposeOptions): Promise<Daemon> {
   const { token, tokenEnv, repo, repository } = readAuthor(opts);
+  if (opts.triage !== undefined) assertTriageFicha(opts.triage);
   const gitHost = (opts.createGitHost ?? ((o) => new GitCliHost(o)))({
     tokenEnv,
     mirrorDir: mirrorDirOf({ env: opts.env, homeDir: opts.homeDir ?? homedir(), repository }),

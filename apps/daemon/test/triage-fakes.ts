@@ -112,25 +112,23 @@ export function triageSetup(o: Opts = {}) {
   };
   const recorderDeps = { projectId: "p", events, issues, now: () => NOW };
   const log = vi.fn<(m: string) => void>();
-  const request = vi.fn(
-    (i: IssueSummary): AgentRunRequest => ({
-      cwd: "/r/t",
-      configRoot: "/r",
-      prompt: `Issue #${i.number}`,
-      agent: {
-        model: "haiku",
-        states: [],
-        maxBudgetUsd: 0.5,
-        maxTurns: 3,
-        timeoutMs: 120000,
-        tools: [],
-        allowedTools: [],
-        bashAllow: [],
-        promptFile: "prompts/triage.md",
-        outputKind: "triage",
-      },
-    }),
-  );
+  const request = vi.fn((i: IssueSummary): AgentRunRequest => ({
+    cwd: "/r/t",
+    configRoot: "/r",
+    prompt: `Issue #${i.number}`,
+    agent: {
+      model: "haiku",
+      states: [],
+      maxBudgetUsd: 0.5,
+      maxTurns: 3,
+      timeoutMs: 120000,
+      tools: [],
+      allowedTools: [],
+      bashAllow: [],
+      promptFile: "prompts/triage.md",
+      outputKind: "triage",
+    },
+  }));
   const deps: TriageDispatchDeps = {
     projectId: "p",
     github,

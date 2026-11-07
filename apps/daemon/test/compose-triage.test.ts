@@ -16,6 +16,8 @@ function triageScenario() {
   const runtime = new FakeAgentRuntime([finished(GOOD, "succeeded", 0.3)]);
   t.opts.createGitHub = (() => github) as unknown as typeof t.opts.createGitHub;
   t.opts.runtime = runtime;
+  t.opts.createRuntime = () => runtime;
+  t.opts.createGitHost = () => ({}) as never;
   return { ...t, github, runtime };
 }
 
