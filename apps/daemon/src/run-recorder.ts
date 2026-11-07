@@ -31,7 +31,8 @@ export type RunRecorderDeps = {
 export type RunContext = { runId: string; issueId: number; maxBudgetUsd?: number };
 
 export type RunRecorder = {
-  recordFinished(ctx: RunContext, finished: RunFinished): void;
+  /** With `applyHeld: false` the ledger is written but no RunHeld input is applied. */
+  recordFinished(ctx: RunContext, finished: RunFinished, options?: { applyHeld?: boolean }): void;
   /** Records the run ceiling as an unknown cost; used when the runtime threw. */
   recordUnknownCost(ctx: RunContext): void;
   denialSink(ctx: RunContext): ToolDenialSink;
@@ -112,7 +113,7 @@ export function createRunRecorder(deps: RunRecorderDeps): RunRecorder {
   }
 
   return {
-    recordFinished(ctx, finished) {
+    recordFinished(ctx, finished, options) {
       events.append({ ...base(ctx), type: "RunFinished", payload: finished });
       const unknown = finished.costUsd === null;
       const tokens = finished.tokens;
@@ -128,7 +129,7 @@ export function createRunRecorder(deps: RunRecorderDeps): RunRecorder {
           numTurns: finished.numTurns,
         });
       } finally {
-        const reason = heldReasonFor(finished);
+        const reason = options?.applyHeld === false ? null : heldReasonFor(finished);
         if (reason !== null) applyHeld(ctx, reason);
       }
     },

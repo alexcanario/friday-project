@@ -77,6 +77,45 @@ describe("run recorder", () => {
     expect(issues.rebuilds).toEqual([{ projectId: "p", appendedCount: 2 }]);
   });
 
+  it("recordFinished with applyHeld false records ledger without Held", () => {
+    const entries: unknown[] = [];
+    const events = new FakeEvents();
+    const issues = new FakeIssueRepository(events);
+    issues.row = {
+      projectId: "p",
+      issueId: 7,
+      state: "InProgress",
+      heldReason: null,
+      verifyRound: 0,
+      qaRound: 0,
+      reviewIter: 0,
+    };
+    const ledger = {
+      record: (e: unknown) => void entries.push(e),
+      sumByDay: () => ({ costUsd: 0, anyCostUnknown: false }),
+      sumByIssue: () => ({ costUsd: 0, anyCostUnknown: false }),
+    };
+    const recorder = createRunRecorder({
+      projectId: "p",
+      events,
+      issues,
+      now: () => new Date(AT),
+      ledger,
+    });
+    const ctx = { ...CTX, maxBudgetUsd: 1 };
+    recorder.recordFinished(ctx, finished("budget_exceeded"), { applyHeld: false });
+    expect(entries).toHaveLength(1);
+    expect(events.appended.map((e) => e.type)).toEqual(["RunFinished"]);
+    expect(issues.row?.state).toBe("InProgress");
+    recorder.recordFinished(ctx, finished("budget_exceeded"));
+    expect(events.appended.map((e) => e.type)).toEqual([
+      "RunFinished",
+      "RunFinished",
+      "StateChanged",
+    ]);
+    expect(events.appended[2]?.payload).toMatchObject({ to: "Held", heldReason: "BudgetExceeded" });
+  });
+
   it("records only RunFinished when the run succeeded", () => {
     const { events, issues, recorder } = setup();
     recorder.recordFinished(CTX, finished("succeeded"));
