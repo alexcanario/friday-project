@@ -54,3 +54,5 @@ export {
   feedbackOf,
   type SpecialistRequestInput,
 } from "./specialist-request.ts";
+export { composeDaemon, type ComposeOptions, type Daemon } from "./compose.ts";
+export { readDispatchConfig } from "./compose-config.ts";
