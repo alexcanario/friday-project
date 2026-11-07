@@ -7,6 +7,7 @@ import {
   type JudgeStepOutcome,
 } from "@friday/application";
 import type { RunFinished } from "@friday/contracts";
+import { passesBudget, type BudgetCaps, type BudgetDeps } from "./budget-gate.ts";
 import { applyInput, type RunRecorderDeps } from "./run-recorder.ts";
 import { statusFor, type RunRecordingDeps } from "./run-registration.ts";
 
@@ -22,6 +23,8 @@ export type JudgeDispatchDeps = {
   reviewerFor: JudgeStepDeps["reviewer"];
   recorder: RunRecorderDeps;
   recording: RunRecordingDeps;
+  budget: BudgetDeps;
+  caps: BudgetCaps;
   now: () => Date;
   log?: (message: string) => void;
 };
@@ -185,6 +188,20 @@ export async function runJudgeForIssue(
       deps.log?.(`O Judge já ignorou o head ${head} da issue ${issueId}`);
       return NOT_APPLIED;
     }
+    // The same run may call `judge` and then `judge-strong`, so the ceiling is the sum of both.
+    const { agents } = deps.step;
+    const allowed = passesBudget(
+      deps.budget,
+      deps.caps,
+      {
+        projectId: deps.projectId,
+        issueId,
+        runCeilingUsd: agents.judge.maxBudgetUsd + agents["judge-strong"].maxBudgetUsd,
+        nowMs: deps.now().getTime(),
+      },
+      deps.log ?? (() => {}),
+    );
+    if (!allowed) return NOT_APPLIED;
     const { outcome } = await execute(deps, issueId, pr, runId);
     return record(deps, issueId, runId, head, outcome);
   } catch (error) {

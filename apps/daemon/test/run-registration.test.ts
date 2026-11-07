@@ -61,6 +61,8 @@ function setup(options: Options = {}) {
     recorder,
     ...(options.ids ? {} : { newRunId: () => `r${(n += 1)}` }),
   };
+  const mode =
+    options.withRecording === false ? {} : { recording, budget: slackBudget(recorderDeps).budget };
   const ticker = createTicker({
     projectId: "p",
     clock,
@@ -78,9 +80,7 @@ function setup(options: Options = {}) {
     runtime,
     events,
     log: (m) => logs.push(m),
-    ...(options.withRecording === false
-      ? {}
-      : { recording, budget: slackBudget(recorderDeps).budget }),
+    ...mode,
   });
   return { order, clock, issues, events, runs, runtime, issueRepo, built, logs, ticker, recording };
 }

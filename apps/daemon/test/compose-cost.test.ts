@@ -1,7 +1,12 @@
 import { cpSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { AgentRunRequest, AgentRuntime, GitHubPort, WorktreeManager } from "@friday/application";
+import type {
+  AgentRunRequest,
+  AgentRuntime,
+  GitHubPort,
+  WorktreeManager,
+} from "@friday/application";
 import type { RunFinished } from "@friday/contracts";
 import { createLedgerRepository } from "@friday/infrastructure";
 import { describe, expect, it, vi } from "vitest";
@@ -61,7 +66,7 @@ function setup(o: Options = {}) {
     clock: new FakeClock(),
     lock: { pid: 101, kill: () => undefined },
     now: () => NOW,
-    createGitHub: (() => github) as unknown as (t: string, r: never) => GitHubPort,
+    createGitHub: (() => github) as unknown as ComposeOptions["createGitHub"],
     roles: {
       triage: (id) => ({
         ...fakeRequest(id),

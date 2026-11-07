@@ -39,6 +39,15 @@ type RunRow = {
 };
 type Tracker = { last: RunFinished | null };
 
+/** Writes the ceiling as unknown cost; a failure here is only logged. */
+function recordCeiling(deps: SpecialistDispatchDeps, ctx: RunContext): void {
+  try {
+    deps.recording.recorder.recordUnknownCost(ctx);
+  } catch (ledgerError) {
+    deps.log?.(`Falha ao registrar o custo da run ${ctx.runId}: ${String(ledgerError)}`);
+  }
+}
+
 function recordingRuntime(
   deps: SpecialistDispatchDeps,
   ctx: RunContext,
@@ -52,7 +61,12 @@ function recordingRuntime(
     run: async (req) => {
       const finished = await base.run(req);
       tracker.last = finished;
-      recorder.recordFinished(ctx, finished);
+      try {
+        recorder.recordFinished(ctx, finished);
+      } catch (error) {
+        recordCeiling(deps, ctx);
+        throw error;
+      }
       return finished;
     },
   };
@@ -123,13 +137,7 @@ async function execute(
     return { applied: result.applied, feedback: null };
   } catch (error) {
     // Só registra o teto quando o runtime lançou; se a run terminou, recordFinished já gravou o custo.
-    if (tracker.last === null) {
-      try {
-        deps.recording.recorder.recordUnknownCost(ctx);
-      } catch (ledgerError) {
-        deps.log?.(`Falha ao registrar o custo da run ${runId}: ${String(ledgerError)}`);
-      }
-    }
+    if (tracker.last === null) recordCeiling(deps, ctx);
     throw error;
   } finally {
     closeRun(deps, row, tracker, held);
