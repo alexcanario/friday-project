@@ -44,17 +44,18 @@ async function execute(
     finishedAt: null,
   };
   runs.save({ ...row, status: "running" });
+  const ctx = { runId, issueId, maxBudgetUsd: request.agent.maxBudgetUsd };
   let last: RunFinished | null = null;
   let held = false;
   try {
     const base: AgentRuntime = deps.recording.runtimeFor
-      ? deps.recording.runtimeFor({ runId, issueId }, recorder.denialSink({ runId, issueId }))
+      ? deps.recording.runtimeFor(ctx, recorder.denialSink(ctx))
       : deps.step.runtime;
     const runtime: AgentRuntime = {
       run: async (req) => {
         const finished = await base.run(req);
         last = finished;
-        recorder.recordFinished({ runId, issueId }, finished);
+        recorder.recordFinished(ctx, finished);
         return finished;
       },
     };
@@ -78,7 +79,14 @@ async function execute(
     }
     return { applied: result.applied, feedback: null };
   } catch (error) {
-    recorder.recordUnknownCost({ runId, issueId, maxBudgetUsd: request.agent.maxBudgetUsd });
+    // Só registra o teto quando o runtime lançou; se a run terminou, recordFinished já gravou o custo.
+    if (last === null) {
+      try {
+        recorder.recordUnknownCost(ctx);
+      } catch (ledgerError) {
+        deps.log?.(`Falha ao registrar o custo da run ${runId}: ${String(ledgerError)}`);
+      }
+    }
     throw error;
   } finally {
     const done: RunFinished | null = last;
