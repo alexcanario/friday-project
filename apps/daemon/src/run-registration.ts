@@ -43,8 +43,8 @@ export function statusFor(finished: RunFinished): RunRecordStatus {
 export function beginRun(env: RegistrationEnv, issueId: number): RegisteredRun {
   const { recording } = env;
   const runId = (recording.newRunId ?? randomUUID)();
-  const ctx: RunContext = { runId, issueId };
   const request = env.buildRequest(issueId, runId);
+  const ctx: RunContext = { runId, issueId, maxBudgetUsd: request.agent.maxBudgetUsd };
   const row: RunRecord = {
     id: runId,
     projectId: env.projectId,
@@ -93,6 +93,11 @@ export async function completeRun(env: RegistrationEnv, run: RegisteredRun): Pro
     }
   } catch (error) {
     env.logError(`Run failed for issue ${ctx.issueId}`, error);
+    try {
+      env.recording.recorder.recordUnknownCost(ctx);
+    } catch (ledgerError) {
+      env.logError(`Failed to record cost of run ${ctx.runId}`, ledgerError);
+    }
   }
   try {
     env.recording.runs.save({ ...run.row, status, finishedAt: env.now() });

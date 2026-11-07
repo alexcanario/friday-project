@@ -26,6 +26,8 @@ const entry = (projectId: string, runId: string, costUsd: number | null): Ledger
   outputTokens: 2,
   cacheReadTokens: 0,
   cacheCreationTokens: 0,
+  issueId: 7,
+  numTurns: null,
 });
 
 describe("GET /ledger/days/:day", () => {

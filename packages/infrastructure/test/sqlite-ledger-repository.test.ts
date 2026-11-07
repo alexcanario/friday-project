@@ -16,6 +16,8 @@ const entry = (projectId: string, runId: string, day: string, costUsd: number | 
   outputTokens: 20,
   cacheReadTokens: 3,
   cacheCreationTokens: 4,
+  issueId: 7,
+  numTurns: null,
 });
 
 describe("sqlite ledger repository", () => {
@@ -35,5 +37,31 @@ describe("sqlite ledger repository", () => {
       unknown
     >;
     expect(row).toMatchObject({ input_tokens: 10, output_tokens: 20, cost_unknown: 0 });
+  });
+
+  it("sums cost by issue", () => {
+    db = openWithProjects("a", "b");
+    const repo = createLedgerRepository(db);
+    repo.record(entry("a", "r1", "2026-01-01", 0.25));
+    repo.record(entry("a", "r2", "2026-01-02", 0.5));
+    repo.record({ ...entry("b", "r3", "2026-01-01", 9), issueId: 7 });
+    repo.record({ ...entry("a", "r4", "2026-01-01", 0.5), issueId: 9, costUnknown: true });
+    expect(repo.sumByIssue("a", 7)).toEqual({ costUsd: 0.75, anyCostUnknown: false });
+    expect(repo.sumByIssue("a", 8)).toEqual({ costUsd: 0, anyCostUnknown: false });
+    expect(repo.sumByIssue("a", 9)).toEqual({ costUsd: 0.5, anyCostUnknown: true });
+  });
+
+  it("stores issue_id and num_turns columns", () => {
+    db = openWithProjects("a");
+    const repo = createLedgerRepository(db);
+    repo.record(entry("a", "r1", "2026-01-01", 1));
+    repo.record({ ...entry("a", "r2", "2026-01-01", 1), numTurns: 4 });
+    const rows = db.sqlite
+      .prepare("SELECT issue_id, num_turns FROM ledger ORDER BY id")
+      .all() as Record<string, unknown>[];
+    expect(rows).toEqual([
+      { issue_id: 7, num_turns: null },
+      { issue_id: 7, num_turns: 4 },
+    ]);
   });
 });

@@ -207,6 +207,20 @@ describe("run registration", () => {
     expect(u.logs).toContain("Failed to finish run r1: boom");
   });
 
+  it("passes the request budget in the run context", async () => {
+    const t = setup();
+    const seen: unknown[] = [];
+    t.recording.runtimeFor = (ctx) => {
+      seen.push(ctx);
+      return t.runtime;
+    };
+    t.issues.ready = [7];
+    await t.ticker.tick();
+    expect(seen).toEqual([{ runId: "r1", issueId: 7, maxBudgetUsd: 1 }]);
+    t.runtime.resolveAll(finished("succeeded"));
+    await t.ticker.idle();
+  });
+
   it("gives each run its own runtime and denial sink", async () => {
     const t = setup();
     const own = new PendingRuntime();
@@ -219,7 +233,7 @@ describe("run registration", () => {
     t.issues.ready = [7];
     await t.ticker.tick();
     expect(calls).toHaveLength(1);
-    expect(calls[0]?.ctx).toEqual({ runId: "r1", issueId: 7 });
+    expect(calls[0]?.ctx).toEqual({ runId: "r1", issueId: 7, maxBudgetUsd: 1 });
     expect(own.requests).toHaveLength(1);
     expect(t.runtime.requests).toHaveLength(0);
     const denial = { toolName: "Bash", toolUseId: "t1" };
