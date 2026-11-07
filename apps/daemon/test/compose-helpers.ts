@@ -6,7 +6,10 @@ import { vi } from "vitest";
 import type { ComposeOptions } from "../src/index.ts";
 import { FakeClock, FakeGitHub, PendingRuntime } from "./fakes.ts";
 
-export const fixture = join(import.meta.dirname, "../../../packages/infrastructure/test/fixtures/valid");
+export const fixture = join(
+  import.meta.dirname,
+  "../../../packages/infrastructure/test/fixtures/valid",
+);
 export const NOW = new Date("2026-11-05T03:00:00.000Z");
 const ok = <T>(value: T) => Promise.resolve({ ok: true as const, value });
 
