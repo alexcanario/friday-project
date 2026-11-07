@@ -27,6 +27,7 @@ describe("GitHubPort", () => {
     const diff: PrDiff = await port.getPrDiff(30);
     expect(diff.diffBytes).toBe(1);
     await port.squashMerge(30, "abc");
+    expect(await port.getPrMergeState(30)).toEqual({ merged: false, headSha: "abc" });
     expect(fake.calls.length).toBeGreaterThan(0);
     for (const call of fake.calls) {
       expect(call.path.startsWith("/repos/o/r/")).toBe(true);
