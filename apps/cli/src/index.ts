@@ -1,7 +1,9 @@
 #!/usr/bin/env node
 import { loadFactoryConfig } from "@friday/infrastructure";
 import { costs } from "./costs.ts";
-import { runApprovals, unconfiguredClient } from "./approvals.ts";
+import { homedir } from "node:os";
+import { runApprovals } from "./approvals.ts";
+import { createProductionOpen } from "./production-client.ts";
 
 const USAGE = "Uso: friday config check --root <pasta>\n";
 
@@ -29,7 +31,8 @@ export function main(args: string[]): { stdout: string; stderr: string; code: nu
 }
 
 async function run(args: string[]): Promise<{ stdout: string; stderr: string; code: number }> {
-  if (args[0] === "approvals") return runApprovals(args, () => unconfiguredClient);
+  if (args[0] === "approvals")
+    return runApprovals(args, createProductionOpen({ env: process.env, homeDir: homedir() }));
   if (args[0] === "costs") return costs(args);
   return main(args);
 }
