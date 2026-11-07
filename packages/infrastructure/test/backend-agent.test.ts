@@ -15,6 +15,7 @@ const result = parseYaml(yamlText);
 if (!result.ok) throw new Error("backend.yaml is not valid YAML");
 const parsed: ParsedYaml = result.parsed;
 const agent = parsed.value as AgentConfig;
+const allow = agent.bash_allow ?? [];
 
 describe("backend agent definition", () => {
   it("accepts the backend agent config", () => {
@@ -69,17 +70,17 @@ describe("backend agent definition", () => {
   });
 
   it("allows only the approved dotnet and git commands", () => {
-    expect(agent.bash_allow).toEqual([
+    expect(allow).toEqual([
       "dotnet restore",
       "dotnet build",
       "dotnet test",
       "git status",
       "git diff",
     ]);
-    expect(isBashAllowed("dotnet test", agent.bash_allow)).toBe(true);
-    expect(isBashAllowed("dotnet test; rm -rf x", agent.bash_allow)).toBe(false);
-    expect(isBashAllowed("git push", agent.bash_allow)).toBe(false);
-    expect(isBashAllowed("dotnet publish", agent.bash_allow)).toBe(false);
+    expect(isBashAllowed("dotnet test", allow)).toBe(true);
+    expect(isBashAllowed("dotnet test; rm -rf x", allow)).toBe(false);
+    expect(isBashAllowed("git push", allow)).toBe(false);
+    expect(isBashAllowed("dotnet publish", allow)).toBe(false);
   });
 
   it("has no secret in the backend definition", () => {
