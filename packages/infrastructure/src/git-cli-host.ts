@@ -16,16 +16,7 @@ type PushRequest = Parameters<GitHost["push"]>[0];
 
 const COMMIT_RE = /^[0-9a-f]{40}$/;
 const BRANCH_RE = /^friday\/[0-9]+(-[a-z0-9-]+)?$/;
-const DROPPED_KEYS = new Set([
-  "GIT_CONFIG_PARAMETERS",
-  "GIT_ASKPASS",
-  "GIT_CONFIG_GLOBAL",
-  "GIT_SSH",
-  "GIT_SSH_COMMAND",
-  "GIT_DIR",
-  "GIT_WORK_TREE",
-]);
-const DROPPED_PATTERNS = [/^GIT_TRACE/, /^GIT_CONFIG_(COUNT|KEY_[0-9]+|VALUE_[0-9]+)$/];
+const ALLOWED_KEYS = new Set(["PATH", "HOME", "USERPROFILE", "SYSTEMROOT", "TEMP", "TMP", "LANG"]);
 const HOOKS_OFF = "/dev/null";
 
 function validateTargetUrl(targetUrl: string): void {
@@ -121,8 +112,7 @@ export class GitCliHost implements GitHost {
   private baseEnv(): Record<string, string> {
     const out: Record<string, string> = {};
     for (const [key, value] of Object.entries(this.env)) {
-      if (value === undefined || key === this.tokenEnv || DROPPED_KEYS.has(key)) continue;
-      if (DROPPED_PATTERNS.some((re) => re.test(key))) continue;
+      if (value === undefined || !ALLOWED_KEYS.has(key.toUpperCase())) continue;
       out[key] = value;
     }
     out.GIT_TERMINAL_PROMPT = "0";
