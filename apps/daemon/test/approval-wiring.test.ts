@@ -101,7 +101,7 @@ function setup(options: Options = {}) {
       .list("p", 13)
       .filter((e) => e.type === "StateChanged")
       .map((e) => e.payload as StateChangedPayload);
-  return { dispatcher, events, issues, store, clock, headOf, prMergeStateOf, log, changes, order };
+  return { dispatcher, github, events, issues, store, clock, headOf, prMergeStateOf, log, changes, order };
 }
 
 describe("approval wiring", () => {
@@ -255,5 +255,15 @@ describe("approval wiring", () => {
     expect(t.log).toHaveBeenCalledWith(
       "O pedido de aprovação 0a1b2c3d da issue 13 está aprovado sem decidedAt",
     );
+  });
+
+  it("still applies the gate labels when storing the approval request fails", async () => {
+    const t = setup();
+    vi.spyOn(t.store, "insert").mockImplementation(() => {
+      throw new Error("disco cheio");
+    });
+    await t.dispatcher.listReady();
+    expect(t.github.labelCalls).toContainEqual({ issue: 13, label: "gate:security" });
+    expect(t.log).not.toHaveBeenCalledWith(expect.stringContaining("gate:security"));
   });
 });
