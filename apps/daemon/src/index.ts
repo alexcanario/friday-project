@@ -41,3 +41,4 @@ export {
   type JudgeDispatchDeps,
 } from "./judge-dispatch.ts";
 export { createIntake, type Intake, type IntakeDeps } from "./intake.ts";
+export { type ApprovalDeps } from "./approval-wiring.ts";

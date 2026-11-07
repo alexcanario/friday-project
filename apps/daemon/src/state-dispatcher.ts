@@ -7,6 +7,12 @@ import {
 } from "@friday/application";
 import type { AgentRunRequest } from "@friday/application";
 import type { IssueState } from "@friday/domain";
+import {
+  handleAwaitingApproval,
+  headForApproval,
+  recordApprovalRequest,
+  type ApprovalDeps,
+} from "./approval-wiring.ts";
 import { applyInput, snapshotOf } from "./run-recorder.ts";
 import type { RunRequestBuilder } from "./tick.ts";
 
@@ -39,6 +45,8 @@ export type StateDispatcherDeps = {
   log?: (message: string) => void;
   classifyRisk?: typeof realClassifyRisk;
   decideGates?: typeof realDecideGates;
+  /** Human approval flow; without it AwaitingApproval is left alone. */
+  approval?: ApprovalDeps;
   /** Runs the Judge for an issue in review; replaces the role-based dispatch of InReview. */
   judge?: (issueId: number) => Promise<{ applied: boolean; feedback: string | null }>;
 };
@@ -60,6 +68,15 @@ export function createStateDispatcher(deps: StateDispatcherDeps): StateDispatche
     deps.log?.(`${message}: ${error instanceof Error ? error.message : String(error)}`);
   };
 
+  const approvalContext = (approval: ApprovalDeps) => ({
+    projectId: deps.projectId,
+    events: deps.events,
+    issues: deps.issues,
+    now: deps.now,
+    ...(deps.log === undefined ? {} : { log: deps.log }),
+    approval,
+  });
+
   async function handleRiskCheck(issueId: number, labels: string[]): Promise<void> {
     const pr = deps.prOf(issueId);
     if (pr === null) {
@@ -80,6 +97,9 @@ export function createStateDispatcher(deps: StateDispatcherDeps): StateDispatche
       screenPaths: config.screenPaths,
       issueGates: labels.filter((l) => l.startsWith("gate:")),
     });
+    const headPending =
+      deps.approval === undefined ? null : headForApproval(deps.approval, pr, decision);
+    const headSha = headPending === null ? null : await headPending;
     const accepted = applyInput(
       { projectId: deps.projectId, events: deps.events, issues: deps.issues, now: deps.now },
       { issueId, runId: null },
@@ -88,6 +108,18 @@ export function createStateDispatcher(deps: StateDispatcherDeps): StateDispatche
     if (!accepted) {
       deps.log?.(`RiskAssessed recusado para a issue ${issueId}`);
       return;
+    }
+    if (deps.approval !== undefined && headSha !== null) {
+      try {
+        recordApprovalRequest(approvalContext(deps.approval), {
+          issueId,
+          pr,
+          headSha,
+          tier: decision.risk,
+        });
+      } catch (error) {
+        logError(`Falha ao gravar o pedido de aprovação da issue ${issueId}`, error);
+      }
     }
     for (const gate of decision.gates) {
       try {
@@ -127,6 +159,10 @@ export function createStateDispatcher(deps: StateDispatcherDeps): StateDispatche
     }
     if (snapshot.state === "RiskCheck") {
       await handleRiskCheck(number, labels);
+      return;
+    }
+    if (snapshot.state === "AwaitingApproval" && deps.approval !== undefined) {
+      await handleAwaitingApproval(approvalContext(deps.approval), number);
       return;
     }
     if (snapshot.state === "InReview" && deps.judge !== undefined) {

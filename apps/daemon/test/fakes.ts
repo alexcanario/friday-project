@@ -1,6 +1,8 @@
 import type {
   AgentRunRequest,
   AgentRuntime,
+  ApprovalRecord,
+  ApprovalStore,
   EventStore,
   IssueRepository,
   IssueRow,
@@ -258,5 +260,47 @@ export class FakeRunRepository implements RunRepository {
 
   listActive(projectId: string): RunRecord[] {
     return this.list(projectId).filter((r) => r.status === "running" && r.finishedAt === null);
+  }
+}
+
+export class FakeApprovalStore implements ApprovalStore {
+  readonly records = new Map<string, ApprovalRecord>();
+
+  /** Test helper: stores a record as is. */
+  seed(record: ApprovalRecord): void {
+    this.records.set(record.id, { ...record });
+  }
+
+  insert(record: ApprovalRecord): void {
+    if (this.records.has(record.id)) throw new Error(`pedido ${record.id} já existe`);
+    this.records.set(record.id, { ...record });
+  }
+
+  get(id: string): ApprovalRecord | null {
+    const found = this.records.get(id);
+    return found ? { ...found } : null;
+  }
+
+  listPending(projectId: string, now: number): ApprovalRecord[] {
+    return [...this.records.values()]
+      .filter((r) => r.projectId === projectId && r.decision === null && r.expiresAt > now)
+      .sort((a, b) => a.requestedAt - b.requestedAt || a.id.localeCompare(b.id));
+  }
+
+  latestForIssue(projectId: string, issueId: number): ApprovalRecord | null {
+    const mine = [...this.records.values()]
+      .filter((r) => r.projectId === projectId && r.issueId === issueId)
+      .sort((a, b) => b.requestedAt - a.requestedAt || b.id.localeCompare(a.id));
+    return mine[0] ? { ...mine[0] } : null;
+  }
+
+  decide(
+    id: string,
+    decision: { decision: "approved" | "denied"; decidedAt: number; decidedBy: string },
+  ): boolean {
+    const found = this.records.get(id);
+    if (!found || found.decision !== null) return false;
+    this.records.set(id, { ...found, ...decision });
+    return true;
   }
 }
