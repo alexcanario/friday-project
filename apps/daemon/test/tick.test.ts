@@ -6,7 +6,12 @@ import type { RunResult } from "./fakes.ts";
 const done = {} as RunResult;
 
 function setup(
-  config: () => TickConfig | null = () => ({ enabled: true, maxConcurrentRuns: 1 }),
+  config: () => TickConfig | null = () => ({
+    enabled: true,
+    maxConcurrentRuns: 1,
+    perIssueUsd: 5,
+    perDayUsd: 10,
+  }),
   failBuild = false,
 ) {
   const clock = new FakeClock();
@@ -37,7 +42,12 @@ const flush = () => new Promise<void>((r) => setTimeout(r, 0));
 
 describe("ticker", () => {
   it("dispatches nothing when enabled is false and one run when true", async () => {
-    const off = setup(() => ({ enabled: false, maxConcurrentRuns: 1 }));
+    const off = setup(() => ({
+      enabled: false,
+      maxConcurrentRuns: 1,
+      perIssueUsd: 5,
+      perDayUsd: 10,
+    }));
     off.issues.ready = [5];
     await off.ticker.tick();
     expect(off.runtime.requests).toHaveLength(0);
@@ -58,7 +68,7 @@ describe("ticker", () => {
 
   it("rereads enabled on every tick", async () => {
     let enabled = true;
-    const s = setup(() => ({ enabled, maxConcurrentRuns: 1 }));
+    const s = setup(() => ({ enabled, maxConcurrentRuns: 1, perIssueUsd: 5, perDayUsd: 10 }));
     s.issues.ready = [1];
     await s.ticker.tick();
     s.runtime.resolveAll(done);
@@ -91,7 +101,12 @@ describe("ticker", () => {
   });
 
   it("respects the concurrency limit, frees the slot when a run rejects and survives a listReady error", async () => {
-    const two = setup(() => ({ enabled: true, maxConcurrentRuns: 2 }));
+    const two = setup(() => ({
+      enabled: true,
+      maxConcurrentRuns: 2,
+      perIssueUsd: 5,
+      perDayUsd: 10,
+    }));
     two.issues.ready = [1, 2, 3];
     await two.ticker.tick();
     expect(two.built).toEqual([1, 2]);
@@ -148,7 +163,7 @@ describe("ticker", () => {
   });
 
   it("dispatches a duplicated ready issue once and idle waits for it", async () => {
-    const s = setup(() => ({ enabled: true, maxConcurrentRuns: 2 }));
+    const s = setup(() => ({ enabled: true, maxConcurrentRuns: 2, perIssueUsd: 5, perDayUsd: 10 }));
     s.issues.ready = [7, 7];
     await s.ticker.tick();
     expect(s.built).toEqual([7]);

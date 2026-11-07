@@ -50,7 +50,7 @@ function setup(max: number, judge: JudgeFn, inProgress = true) {
   const ticker = createTicker({
     projectId: "p",
     clock: new FakeClock(),
-    readConfig: () => ({ enabled: true, maxConcurrentRuns: max }),
+    readConfig: () => ({ enabled: true, maxConcurrentRuns: max, perIssueUsd: 5, perDayUsd: 10 }),
     issues: { listReady, busy: () => dispatcher.busy() },
     buildRequest: (id) => dispatcher.buildRequest(id),
     runtime,

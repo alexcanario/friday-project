@@ -44,6 +44,15 @@ function setup(withLedger = true) {
   const ledger = new FakeLedger();
   const runs = new FakeRunRepository();
   const issueRepo = new FakeIssueRepository(events);
+  issueRepo.row = {
+    projectId: "p",
+    issueId: 7,
+    state: "InProgress",
+    heldReason: null,
+    verifyRound: 0,
+    qaRound: 0,
+    reviewIter: 0,
+  };
   const recorder = createRunRecorder({
     projectId: "p",
     events,
@@ -61,7 +70,7 @@ function setup(withLedger = true) {
     recording: { runs, recorder, newRunId: () => "r1" },
     logError: (m, e) => logs.push(`${m}: ${e instanceof Error ? e.message : String(e)}`),
   });
-  return { events, ledger, runs, recorder, env, logs };
+  return { events, ledger, runs, recorder, env, logs, issueRepo };
 }
 
 const ctx = (maxBudgetUsd?: number) => ({
@@ -175,5 +184,41 @@ describe("ledger recording", () => {
     await done;
     expect(t.ledger.entries).toHaveLength(1);
     expect(t.ledger.entries[0]).toMatchObject({ costUsd: 0.2, costUnknown: false });
+  });
+
+  it("budget_exceeded fixture holds BudgetExceeded and records its cost", () => {
+    const t = setup();
+    t.recorder.recordFinished(
+      ctx(0.01),
+      finished({
+        status: "budget_exceeded",
+        subtype: "error_max_budget_usd",
+        costUsd: 0.0190368,
+        numTurns: 1,
+        tokens: { input: 1211, output: 108, cacheRead: 2922, cacheCreation: 3299 },
+      }),
+    );
+    const changed = t.events.appended.filter((e) => e.type === "StateChanged");
+    expect(changed.map((e) => e.payload)).toMatchObject([
+      { to: "Held", heldReason: "BudgetExceeded" },
+    ]);
+    expect(t.ledger.entries[0]).toMatchObject({
+      costUsd: 0.0190368,
+      costUnknown: false,
+      numTurns: 1,
+      inputTokens: 1211,
+    });
+  });
+
+  it("still applies RunHeld when the ledger write fails", () => {
+    const t = setup();
+    t.ledger.record = () => {
+      throw new Error("disk");
+    };
+    expect(() =>
+      t.recorder.recordFinished(ctx(1), finished({ status: "failed", costUsd: 0.1 })),
+    ).toThrow("disk");
+    const changed = t.events.appended.filter((e) => e.type === "StateChanged");
+    expect(changed).toHaveLength(1);
   });
 });
