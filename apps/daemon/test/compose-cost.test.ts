@@ -57,6 +57,7 @@ function setup(o: Options = {}) {
     env: { FRIDAY_AUTHOR_TOKEN: "t0k3n" },
     worktrees,
     runtime: { run } as unknown as AgentRuntime,
+    createRuntime: () => ({ run }) as unknown as AgentRuntime,
     prOf: () => null,
     clock: new FakeClock(),
     lock: { pid: 101, kill: () => undefined },

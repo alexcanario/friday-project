@@ -1,5 +1,7 @@
-import type { AgentRuntime, GitHubPort, WorktreeManager } from "@friday/application";
+import { homedir } from "node:os";
+import type { AgentRuntime, GitHost, GitHubPort, WorktreeManager } from "@friday/application";
 import {
+  GitCliHost,
   GitHubRestAdapter,
   createBreakerStateRepository,
   createEventStore,
@@ -9,7 +11,9 @@ import {
   createRunRepository,
   loadFactoryConfig,
   openDatabase,
+  type ClaudeAgentSdkRuntimeDeps,
   type FridayDatabase,
+  type GitCliHostOptions,
 } from "@friday/infrastructure";
 import { createBreaker, type Breaker } from "./breaker.ts";
 import { readDispatchConfig } from "./compose-config.ts";
@@ -17,8 +21,10 @@ import { createIntake } from "./intake.ts";
 import { acquireProcessLock, type ProcessLockDeps } from "./process-lock.ts";
 import { reconcile, type ReconcileReport } from "./reconcile.ts";
 import { createRunRecorder } from "./run-recorder.ts";
+import type { RunRecordingDeps } from "./run-registration.ts";
 import { createStateDispatcher, type StateDispatcherDeps } from "./state-dispatcher.ts";
 import { readTickConfig } from "./tick-config.ts";
+import { buildRuntimeFor, mirrorDirOf, targetUrlOf } from "./runtime-wiring.ts";
 import { createTicker, type Clock, type Ticker } from "./tick.ts";
 
 type Repo = { owner: string; repo: string };
@@ -36,6 +42,10 @@ export interface ComposeOptions {
   now?: () => Date;
   log?: (message: string) => void;
   createGitHub?: (token: string, repo: Repo) => GitHubPort;
+  /** Home directory used when FRIDAY_HOME is not set; defaults to os.homedir(). */
+  homeDir?: string;
+  createRuntime?: (deps: ClaudeAgentSdkRuntimeDeps) => AgentRuntime;
+  createGitHost?: (options: GitCliHostOptions) => GitHost;
   /** Role request builders; empty in production until the roles are wired. */
   roles?: StateDispatcherDeps["roles"];
 }
@@ -49,7 +59,12 @@ export interface Daemon {
 }
 
 /** Reads the author token by variable name only (D56); fails closed. */
-function readAuthor(opts: ComposeOptions): { token: string; repo: Repo } {
+function readAuthor(opts: ComposeOptions): {
+  token: string;
+  tokenEnv: string;
+  repo: Repo;
+  repository: { owner: string; name: string };
+} {
   const loaded = loadFactoryConfig(opts.root);
   if (!loaded.ok) throw new Error("O factory.yaml está inválido ou ausente.");
   const name = loaded.config.pull_requests.author_token_env;
@@ -59,7 +74,7 @@ function readAuthor(opts: ComposeOptions): { token: string; repo: Repo } {
   if (token === undefined || token.trim() === "")
     throw new Error(`A variável ${name} está vazia ou ausente.`);
   const { owner, name: repo } = loaded.config.repository;
-  return { token, repo: { owner, repo } };
+  return { token, tokenEnv: name, repo: { owner, repo }, repository: { owner, name: repo } };
 }
 
 const defaultGitHub = (token: string, repo: Repo): GitHubPort =>
@@ -80,7 +95,12 @@ function buildBreaker(db: FridayDatabase, projectId: string, now: () => Date): B
   }
 }
 
-async function assemble(opts: ComposeOptions, db: FridayDatabase, github: GitHubPort) {
+async function assemble(
+  opts: ComposeOptions,
+  db: FridayDatabase,
+  github: GitHubPort,
+  runtimeFor: NonNullable<RunRecordingDeps["runtimeFor"]>,
+) {
   const { root, projectId, worktrees } = opts;
   const now = opts.now ?? (() => new Date());
   const issues = createIssueRepository(db);
@@ -128,7 +148,7 @@ async function assemble(opts: ComposeOptions, db: FridayDatabase, github: GitHub
     runtime: opts.runtime,
     events,
     ...(opts.log === undefined ? {} : { log: opts.log }),
-    recording: { runs, recorder: createRunRecorder({ ...recorderDeps, ledger }) },
+    recording: { runs, recorder: createRunRecorder({ ...recorderDeps, ledger }), runtimeFor },
     budget: { ledger, recorderDeps },
     breaker: { breaker, recorderDeps },
   });
@@ -137,13 +157,26 @@ async function assemble(opts: ComposeOptions, db: FridayDatabase, github: GitHub
 
 /** Process composition at startup: lock, database, reconcile, GitHub, intake and ticker. */
 export async function composeDaemon(opts: ComposeOptions): Promise<Daemon> {
-  const { token, repo } = readAuthor(opts);
+  const { token, tokenEnv, repo, repository } = readAuthor(opts);
+  const gitHost = (opts.createGitHost ?? ((o) => new GitCliHost(o)))({
+    tokenEnv,
+    mirrorDir: mirrorDirOf({ env: opts.env, homeDir: opts.homeDir ?? homedir(), repository }),
+    targetUrl: targetUrlOf(repository),
+    env: opts.env,
+  });
   const lock = acquireProcessLock(opts.root, opts.lock);
   let db: FridayDatabase | undefined;
   try {
     db = openDatabase(opts.dbPath);
     const github = (opts.createGitHub ?? defaultGitHub)(token, repo);
-    const { ticker, report } = await assemble(opts, db, github);
+    const runtimeFor = buildRuntimeFor({
+      db,
+      github,
+      gitHost,
+      env: opts.env,
+      ...(opts.createRuntime === undefined ? {} : { createRuntime: opts.createRuntime }),
+    });
+    const { ticker, report } = await assemble(opts, db, github, runtimeFor);
     const opened = db;
     return {
       ticker,
