@@ -137,6 +137,21 @@ describe("runQaForIssue", () => {
     expect(t.runs.rows.get("r1")?.status).toBe("succeeded");
   });
 
+  it("holds with QaRoundsExhausted and records QaFinished on the third failure", async () => {
+    const t = setup({ results: [finished(fail)], qaRound: 2 });
+    const text = "Critério 1 reprovado: botão salva — botão não aparece";
+    await expect(runQaForIssue(t.deps, 7)).resolves.toEqual({ applied: true, feedback: text });
+    expect(t.types()).toEqual(["RunFinished", "StateChanged", "QaFinished"]);
+    expect(t.state()[0]).toMatchObject({
+      payload: { to: "Held", heldReason: "QaRoundsExhausted", qaRound: 3 },
+    });
+    expect(t.events.appended[2]).toMatchObject({
+      runId: "r1",
+      actor: "daemon",
+      payload: { outcome: "qa_failed", feedback: text },
+    });
+  });
+
   it("holds on modified code and records a single StateChanged on budget_exceeded", async () => {
     const a = setup({ clean: false });
     await expect(runQaForIssue(a.deps, 7)).resolves.toEqual({ applied: true, feedback: null });
