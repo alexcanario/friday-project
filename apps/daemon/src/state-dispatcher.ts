@@ -61,7 +61,7 @@ export type StateDispatcher = {
   listReady(capacity?: Capacity): Promise<number[]>;
   /** Judge and QA runs in flight; they occupy a slot of maxConcurrentRuns (D68). */
   busy(): number;
-  buildRequest(issueId: number): AgentRunRequest;
+  buildRequest(issueId: number, runId?: string): AgentRunRequest;
 };
 
 const DISPATCH_LABEL = "friday";
@@ -236,12 +236,12 @@ export function createStateDispatcher(deps: StateDispatcherDeps): StateDispatche
       return [...next.keys()];
     },
     busy: () => judging.size + qaRunning.size,
-    buildRequest(issueId) {
+    buildRequest(issueId, runId) {
       const role = dispatched.get(issueId);
       const builder = role === undefined ? undefined : deps.roles[role];
       if (builder === undefined)
         throw new Error(`A issue ${issueId} não foi despachada por estado`);
-      return builder(issueId);
+      return builder(issueId, runId);
     },
   };
 }
