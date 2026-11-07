@@ -114,6 +114,19 @@ describe("runQaForIssue", () => {
     expect(t.runtimeFor).not.toHaveBeenCalled();
   });
 
+  it("passes the run id to targetOf and never runs without a target", async () => {
+    const t = setup();
+    const spy = vi.fn((_i: number, _r: string) => target());
+    t.deps.targetOf = spy;
+    await runQaForIssue(t.deps, 7);
+    expect(spy).toHaveBeenCalledTimes(1);
+    expect(spy).toHaveBeenCalledWith(7, "r1");
+    expect(t.runs.rows.get("r1")?.id).toBe("r1");
+    const none = setup({ noTarget: true });
+    await expect(runQaForIssue(none.deps, 7)).resolves.toEqual({ applied: false, feedback: null });
+    expect(none.fake.requests).toHaveLength(0);
+  });
+
   it("uses runtimeFor when present instead of the step runtime", async () => {
     const t = setup({ runtimeFor: true });
     await runQaForIssue(t.deps, 7);
