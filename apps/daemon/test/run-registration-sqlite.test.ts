@@ -53,7 +53,7 @@ function setup(withProject: boolean) {
   const ticker = createTicker({
     projectId: "p",
     clock: new FakeClock(),
-    readConfig: () => ({ enabled: true, maxConcurrentRuns: 1 }),
+    readConfig: () => ({ enabled: true, maxConcurrentRuns: 1, perIssueUsd: 5, perDayUsd: 10 }),
     issues: source,
     buildRequest: (id, runId) => {
       const request = {

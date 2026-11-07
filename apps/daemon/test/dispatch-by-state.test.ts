@@ -261,7 +261,7 @@ describe("state dispatcher", () => {
       createTicker({
         projectId: "p",
         clock: new FakeClock(),
-        readConfig: () => ({ enabled, maxConcurrentRuns: 3 }),
+        readConfig: () => ({ enabled, maxConcurrentRuns: 3, perIssueUsd: 5, perDayUsd: 10 }),
         issues: t.dispatcher,
         buildRequest: t.dispatcher.buildRequest,
         runtime,

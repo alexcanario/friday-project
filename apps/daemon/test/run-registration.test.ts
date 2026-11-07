@@ -62,7 +62,12 @@ function setup(options: Options = {}) {
   const ticker = createTicker({
     projectId: "p",
     clock,
-    readConfig: () => ({ enabled: true, maxConcurrentRuns: options.maxConcurrentRuns ?? 1 }),
+    readConfig: () => ({
+      enabled: true,
+      maxConcurrentRuns: options.maxConcurrentRuns ?? 1,
+      perIssueUsd: 5,
+      perDayUsd: 10,
+    }),
     issues,
     buildRequest: (...args: [number, string?]) => {
       built.push(args);
