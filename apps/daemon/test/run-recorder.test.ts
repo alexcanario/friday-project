@@ -113,7 +113,7 @@ describe("run recorder", () => {
       "RunFinished",
       "StateChanged",
     ]);
-    expect(issues.row?.heldReason).toBe("BudgetExceeded");
+    expect(events.appended[2]?.payload).toMatchObject({ to: "Held", heldReason: "BudgetExceeded" });
   });
 
   it("records only RunFinished when the run succeeded", () => {
