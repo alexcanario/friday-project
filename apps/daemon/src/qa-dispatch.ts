@@ -12,7 +12,7 @@ import { statusFor, type RunRecordingDeps } from "./run-registration.ts";
 
 export type QaDispatchDeps = {
   projectId: string;
-  targetOf: (issueId: number) => QaStepInput | null;
+  targetOf: (issueId: number, runId: string) => QaStepInput | null;
   step: QaStepDeps;
   recorder: RunRecorderDeps;
   recording: RunRecordingDeps;
@@ -83,7 +83,7 @@ async function execute(
 export async function runQaForIssue(deps: QaDispatchDeps, issueId: number): Promise<QaApplyResult> {
   const runId = (deps.recording.newRunId ?? randomUUID)();
   try {
-    const input = deps.targetOf(issueId);
+    const input = deps.targetOf(issueId, runId);
     if (input === null) {
       deps.log?.(`A issue ${issueId} em QA não tem entrada para o QA`);
       return NOT_APPLIED;

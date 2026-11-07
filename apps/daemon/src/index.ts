@@ -57,3 +57,11 @@ export {
 } from "./specialist-request.ts";
 export { composeDaemon, type ComposeOptions, type Daemon } from "./compose.ts";
 export { readDispatchConfig } from "./compose-config.ts";
+export {
+  buildQaStepInput,
+  qaTargetOf,
+  workReportOf,
+  type QaContext,
+  type QaRequestInput,
+  type QaTargetDeps,
+} from "./qa-request.ts";
