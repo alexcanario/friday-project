@@ -101,7 +101,19 @@ function setup(options: Options = {}) {
       .list("p", 13)
       .filter((e) => e.type === "StateChanged")
       .map((e) => e.payload as StateChangedPayload);
-  return { dispatcher, github, events, issues, store, clock, headOf, prMergeStateOf, log, changes, order };
+  return {
+    dispatcher,
+    github,
+    events,
+    issues,
+    store,
+    clock,
+    headOf,
+    prMergeStateOf,
+    log,
+    changes,
+    order,
+  };
 }
 
 describe("approval wiring", () => {

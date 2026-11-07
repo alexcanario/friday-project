@@ -110,12 +110,16 @@ export function createStateDispatcher(deps: StateDispatcherDeps): StateDispatche
       return;
     }
     if (deps.approval !== undefined && headSha !== null) {
-      recordApprovalRequest(approvalContext(deps.approval), {
-        issueId,
-        pr,
-        headSha,
-        tier: decision.risk,
-      });
+      try {
+        recordApprovalRequest(approvalContext(deps.approval), {
+          issueId,
+          pr,
+          headSha,
+          tier: decision.risk,
+        });
+      } catch (error) {
+        logError(`Falha ao gravar o pedido de aprovação da issue ${issueId}`, error);
+      }
     }
     for (const gate of decision.gates) {
       try {
