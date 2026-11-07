@@ -22,7 +22,8 @@ const IDENT = {
   GIT_COMMITTER_NAME: "t",
   GIT_COMMITTER_EMAIL: "t@example.com",
 };
-const ALLOWED = /^(PATH|HOME|USERPROFILE|SYSTEMROOT|TEMP|TMP|LANG|GIT_TERMINAL_PROMPT|GIT_CONFIG_COUNT|GIT_CONFIG_KEY_[0-9]+|GIT_CONFIG_VALUE_[0-9]+)$/;
+const ALLOWED =
+  /^(PATH|HOME|USERPROFILE|SYSTEMROOT|TEMP|TMP|LANG|GIT_TERMINAL_PROMPT|GIT_CONFIG_COUNT|GIT_CONFIG_KEY_[0-9]+|GIT_CONFIG_VALUE_[0-9]+)$/;
 
 interface Call {
   argv: string[];
@@ -197,7 +198,7 @@ describe("GitCliHost with a malicious worktree", () => {
     };
     await host(env).push({ worktree: wt, branch: "friday/182-x", commit: c1 });
     expect(git(remote, "rev-parse", "refs/heads/friday/182-x")).toBe(c1);
-    const list = git(dir, "--git-dir", mirror, "config", "--list");
+    const list = git(dir, "--git-dir", mirror, "config", "--local", "--list");
     expect(list).not.toContain(TOKEN);
     expect(list).not.toContain(B64);
     expect(list).not.toContain("insteadof");
