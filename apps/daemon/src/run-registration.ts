@@ -8,6 +8,7 @@ import type {
   RunRepository,
   ToolDenialSink,
 } from "@friday/application";
+import { heldReasonFor } from "@friday/application";
 import type { RunFinished } from "@friday/contracts";
 import type { RunContext, RunRecorder } from "./run-recorder.ts";
 
@@ -26,6 +27,7 @@ export type RegistrationEnv = {
   buildRequest: (issueId: number, runId?: string) => AgentRunRequest;
   recording: RunRecordingDeps;
   logError: (message: string, error: unknown) => void;
+  onRuntimeFailure?: () => void;
 };
 
 export type RegisteredRun = {
@@ -79,6 +81,14 @@ export function beginRun(env: RegistrationEnv, issueId: number): RegisteredRun {
   }
 }
 
+function notifyFailure(env: RegistrationEnv, runId: string): void {
+  try {
+    env.onRuntimeFailure?.();
+  } catch (error) {
+    env.logError(`Failed to record breaker failure for run ${runId}`, error);
+  }
+}
+
 /** Runs the registered run and always closes its row, whatever the runtime or recorder do. */
 export async function completeRun(env: RegistrationEnv, run: RegisteredRun): Promise<void> {
   const { ctx } = run;
@@ -91,6 +101,7 @@ export async function completeRun(env: RegistrationEnv, run: RegisteredRun): Pro
     } catch (error) {
       env.logError(`Failed to record run ${ctx.runId}`, error);
     }
+    if (heldReasonFor(finished) === "RuntimeFailed") notifyFailure(env, ctx.runId);
   } catch (error) {
     env.logError(`Run failed for issue ${ctx.issueId}`, error);
     try {
@@ -98,6 +109,7 @@ export async function completeRun(env: RegistrationEnv, run: RegisteredRun): Pro
     } catch (ledgerError) {
       env.logError(`Failed to record cost of run ${ctx.runId}`, ledgerError);
     }
+    notifyFailure(env, ctx.runId);
   }
   try {
     env.recording.runs.save({ ...run.row, status, finishedAt: env.now() });

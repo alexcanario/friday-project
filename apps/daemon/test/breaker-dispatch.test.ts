@@ -44,7 +44,10 @@ type Step = RunFinished["status"] | Error;
 
 class ScriptedRuntime implements AgentRuntime {
   readonly requests: AgentRunRequest[] = [];
-  constructor(private readonly steps: Step[]) {}
+  readonly steps: Step[];
+  constructor(steps: Step[]) {
+    this.steps = steps;
+  }
   run(request: AgentRunRequest): Promise<RunFinished> {
     this.requests.push(request);
     const step = this.steps.shift() ?? "succeeded";

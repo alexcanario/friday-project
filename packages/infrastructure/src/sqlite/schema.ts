@@ -81,6 +81,14 @@ export const ledger = sqliteTable("ledger", {
   numTurns: integer("num_turns"),
 });
 
+export const breakerState = sqliteTable("breaker_state", {
+  projectId: text("project_id")
+    .primaryKey()
+    .references(() => projects.id),
+  openedAt: text("opened_at"),
+  failuresJson: text("failures_json").notNull().default("[]"),
+});
+
 export const runResults = sqliteTable(
   "run_results",
   {

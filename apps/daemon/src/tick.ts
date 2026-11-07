@@ -1,4 +1,5 @@
 import type { AgentRunRequest, AgentRuntime, EventStore } from "@friday/application";
+import { applyInput, type RunRecorderDeps } from "./run-recorder.ts";
 import { passesBudget, type BudgetDeps } from "./budget-gate.ts";
 import { beginRun, completeRun, type RunRecordingDeps } from "./run-registration.ts";
 import type { TickConfig } from "./tick-config.ts";
@@ -29,6 +30,10 @@ export interface TickerDeps {
   log?: (message: string) => void;
   recording?: RunRecordingDeps;
   budget?: BudgetDeps;
+  breaker?: {
+    breaker: { isOpen(): boolean; recordFailure(): void };
+    recorderDeps: RunRecorderDeps;
+  };
 }
 
 export interface Ticker {
@@ -62,6 +67,18 @@ export function createTicker(deps: TickerDeps): Ticker {
     );
   }
 
+  /** True when the breaker lets the run start; otherwise holds the issue with BreakerOpen. Throws when the state cannot be read. */
+  function passesBreaker(issueId: number): boolean {
+    if (!deps.breaker || !deps.breaker.breaker.isOpen()) return true;
+    const held = applyInput(
+      deps.breaker.recorderDeps,
+      { issueId, runId: null },
+      { type: "RunHeld", reason: "BreakerOpen" },
+    );
+    if (!held) deps.log?.(`Breaker open for issue ${issueId} but RunHeld was not accepted`);
+    return false;
+  }
+
   function dispatchRecorded(
     issueId: number,
     recording: RunRecordingDeps,
@@ -75,9 +92,11 @@ export function createTicker(deps: TickerDeps): Ticker {
       buildRequest: deps.buildRequest,
       recording,
       logError,
+      ...(deps.breaker ? { onRuntimeFailure: () => deps.breaker?.breaker.recordFailure() } : {}),
     };
     let registered;
     try {
+      if (!passesBreaker(issueId)) return;
       if (!withinBudget(issueId, config)) return;
       registered = beginRun(env, issueId);
     } catch (error) {
