@@ -1,5 +1,5 @@
 import type { Octokit } from "octokit";
-import { afterAll, describe, expect, it } from "vitest";
+import { afterAll, describe, expect, it, vi } from "vitest";
 import { GitHubRestAdapter, createGitHubClient } from "../src/index.ts";
 
 // Live check of #122: runs only with FRIDAY_GH_LIVE=1 and a real token in FRIDAY_GH_TOKEN.
@@ -8,6 +8,7 @@ const repo = { owner: "alexcanario", repo: process.env.FRIDAY_GH_REPO ?? "friday
 const stamp = `${Date.now()}`;
 const branch = `friday-live-${stamp}`;
 const cleanup: Array<() => Promise<unknown>> = [];
+const SETTLE = { timeout: 15_000, interval: 1_000 };
 
 async function ensureLabel(octokit: Octokit, name: string): Promise<void> {
   try {
@@ -73,35 +74,49 @@ describe.skipIf(!LIVE)("GitHubRestAdapter (live, #122)", () => {
       }),
     );
 
-    const listed = await port.listIssuesByLabel("friday");
-    expect(listed.map((i) => i.number)).toContain(issue);
+    // GitHub lists are eventually consistent: a write can take a few seconds to show up.
+    const labelsOf = async () =>
+      (await port.listIssuesByLabel("friday")).find((i) => i.number === issue)?.labels;
+    await vi.waitFor(async () => expect(await labelsOf()).toBeDefined(), SETTLE);
 
     await port.addLabel(issue, "friday-live");
     await port.addLabel(issue, "friday-live");
-    let labels = (await port.listIssuesByLabel("friday")).find((i) => i.number === issue)?.labels;
-    expect(labels?.filter((l) => l === "friday-live")).toHaveLength(1);
+    await vi.waitFor(
+      async () => expect((await labelsOf())?.filter((l) => l === "friday-live")).toHaveLength(1),
+      SETTLE,
+    );
     await port.removeLabel(issue, "friday-live");
     await port.removeLabel(issue, "friday-live");
-    labels = (await port.listIssuesByLabel("friday")).find((i) => i.number === issue)?.labels;
-    expect(labels).not.toContain("friday-live");
+    await vi.waitFor(async () => expect(await labelsOf()).not.toContain("friday-live"), SETTLE);
 
     expect(await port.postAgentComment(issue, "qa", "teste vivo")).toEqual({ created: true });
+    await vi.waitFor(async () => {
+      const comments = await octokit.request(
+        "GET /repos/{owner}/{repo}/issues/{issue_number}/comments",
+        { ...repo, issue_number: issue },
+      );
+      expect(comments.data).toHaveLength(1);
+    }, SETTLE);
     expect(await port.postAgentComment(issue, "qa", "teste vivo")).toEqual({ created: false });
 
     await createBranchWithFile(octokit);
     const input = { head: branch, base: "develop", title: `Teste vivo ${stamp}`, body: "#122" };
     const pr = await port.createPullRequest(input);
     expect(pr.created).toBe(true);
-    const again = await port.createPullRequest(input);
-    expect(again).toEqual({ number: pr.number, headSha: pr.headSha, created: false });
+    await vi.waitFor(async () => {
+      const again = await port.createPullRequest(input);
+      expect(again).toEqual({ number: pr.number, headSha: pr.headSha, created: false });
+    }, SETTLE);
 
     const ci = await port.getCiStatus(pr.number, "check");
     expect(ci.headSha).toBe(pr.headSha);
     expect(["missing", "pending", "success", "failure"]).toContain(ci.state);
 
-    const diff = await port.getPrDiff(pr.number);
-    expect(diff.files).toEqual([{ path: `live/${stamp}.txt`, changedLines: 1, hasPatch: true }]);
-    expect(diff.diffBytes).toBeGreaterThan(0);
+    await vi.waitFor(async () => {
+      const diff = await port.getPrDiff(pr.number);
+      expect(diff.files).toEqual([{ path: `live/${stamp}.txt`, changedLines: 1, hasPatch: true }]);
+      expect(diff.diffBytes).toBeGreaterThan(0);
+    }, SETTLE);
 
     const review = await port.postReview(pr.number, {
       commitId: pr.headSha,
