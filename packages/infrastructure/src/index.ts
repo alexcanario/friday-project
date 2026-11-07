@@ -35,7 +35,7 @@ export {
   HOOK_TIMEOUT_SECONDS,
   type PreToolUseHookInput,
 } from "./pre-tool-use-hook.ts";
-export { isInside } from "./config-root-guard.ts";
+export { isInside, resolveReal } from "./config-root-guard.ts";
 export {
   createFridayMcpServer,
   resultToolShape,
