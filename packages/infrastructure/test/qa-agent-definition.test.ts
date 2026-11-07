@@ -85,14 +85,24 @@ describe("QA agent definition", () => {
     expect(result.ok).toBe(false);
     if (result.ok) return;
     expect(result.problems).toEqual(
-      expect.arrayContaining([expect.objectContaining({ file: "agents/qa.yaml", code: "secret_value" })]),
+      expect.arrayContaining([
+        expect.objectContaining({ file: "agents/qa.yaml", code: "secret_value" }),
+      ]),
     );
   });
 
   it("does not touch workflows, the package manifest or the lockfile", () => {
     const out = execFileSync(
       "git",
-      ["diff", "--name-only", "origin/develop", "--", ".github/workflows", "packages/infrastructure/package.json", "pnpm-lock.yaml"],
+      [
+        "diff",
+        "--name-only",
+        "origin/develop",
+        "--",
+        ".github/workflows",
+        "packages/infrastructure/package.json",
+        "pnpm-lock.yaml",
+      ],
       { cwd: resolve(import.meta.dirname, "../../.."), encoding: "utf8" },
     );
     expect(out.trim()).toBe("");
