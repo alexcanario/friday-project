@@ -115,7 +115,12 @@ async function execute(
     run: async (request) => {
       const finished = await deps.step.runtime.run(request);
       last = finished;
-      recorder.recordFinished({ runId, issueId }, finished);
+      // D64: an invalid verdict becomes JudgeSkipped, not Held, so only the event is recorded.
+      if (finished.status === "invalid_output") {
+        appendEvent(deps, issueId, runId, "RunFinished", finished);
+      } else {
+        recorder.recordFinished({ runId, issueId }, finished);
+      }
       return finished;
     },
   };

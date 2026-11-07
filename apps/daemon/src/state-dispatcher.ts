@@ -51,8 +51,13 @@ export type StateDispatcherDeps = {
   judge?: (issueId: number) => Promise<{ applied: boolean; feedback: string | null }>;
 };
 
+type Capacity = { active: number; max: number };
+
 export type StateDispatcher = {
-  listReady(): Promise<number[]>;
+  /** `capacity` is optional only for direct calls (tests, uses without a ticker). */
+  listReady(capacity?: Capacity): Promise<number[]>;
+  /** Judge runs in flight; they occupy a slot of maxConcurrentRuns (D68). */
+  busy(): number;
   buildRequest(issueId: number): AgentRunRequest;
 };
 
@@ -133,8 +138,10 @@ export function createStateDispatcher(deps: StateDispatcherDeps): StateDispatche
   async function handleJudge(
     issueId: number,
     judge: NonNullable<StateDispatcherDeps["judge"]>,
+    capacity: Capacity | undefined,
   ): Promise<void> {
     if (judging.has(issueId)) return;
+    if (capacity !== undefined && capacity.active + judging.size >= capacity.max) return;
     judging.add(issueId);
     try {
       await judge(issueId);
@@ -149,6 +156,7 @@ export function createStateDispatcher(deps: StateDispatcherDeps): StateDispatche
     number: number,
     labels: string[],
     next: Map<number, DispatchRole>,
+    capacity: Capacity | undefined,
   ): Promise<void> {
     const row = deps.issues.get(deps.projectId, number);
     if (row === null) return;
@@ -166,7 +174,7 @@ export function createStateDispatcher(deps: StateDispatcherDeps): StateDispatche
       return;
     }
     if (snapshot.state === "InReview" && deps.judge !== undefined) {
-      await handleJudge(number, deps.judge);
+      await handleJudge(number, deps.judge, capacity);
       return;
     }
     const role = STATE_ROLES[snapshot.state];
@@ -174,14 +182,14 @@ export function createStateDispatcher(deps: StateDispatcherDeps): StateDispatche
   }
 
   return {
-    async listReady() {
+    async listReady(capacity) {
       const next = new Map<number, DispatchRole>();
       try {
         const found = await deps.github.listIssuesByLabel(DISPATCH_LABEL);
         for (const issue of found) {
           if (next.has(issue.number)) continue;
           try {
-            await inspect(issue.number, issue.labels, next);
+            await inspect(issue.number, issue.labels, next, capacity);
           } catch (error) {
             logError(`Falha ao despachar a issue ${issue.number}`, error);
           }
@@ -192,6 +200,7 @@ export function createStateDispatcher(deps: StateDispatcherDeps): StateDispatche
       dispatched = next;
       return [...next.keys()];
     },
+    busy: () => judging.size,
     buildRequest(issueId) {
       const role = dispatched.get(issueId);
       const builder = role === undefined ? undefined : deps.roles[role];

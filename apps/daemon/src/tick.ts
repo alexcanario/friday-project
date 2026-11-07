@@ -10,7 +10,9 @@ export interface Clock {
 }
 
 export interface ReadyIssueSource {
-  listReady(): Promise<number[]>;
+  listReady(capacity?: { active: number; max: number }): Promise<number[]>;
+  /** Runs held outside the ticker (the Judge) that still occupy a slot (D68). */
+  busy?(): number;
 }
 
 export type RunRequestBuilder = (issueId: number, runId?: string) => AgentRunRequest;
@@ -97,8 +99,11 @@ export function createTicker(deps: TickerDeps): Ticker {
   async function tick(): Promise<void> {
     const config = deps.readConfig();
     if (config === null || !config.enabled) return;
-    const ready = await deps.issues.listReady();
-    const slots = config.maxConcurrentRuns - active.size;
+    const ready = await deps.issues.listReady({
+      active: active.size,
+      max: config.maxConcurrentRuns,
+    });
+    const slots = config.maxConcurrentRuns - active.size - (deps.issues.busy?.() ?? 0);
     for (const issueId of [...new Set(ready)]
       .filter((id) => !active.has(id))
       .slice(0, Math.max(0, slots))) {

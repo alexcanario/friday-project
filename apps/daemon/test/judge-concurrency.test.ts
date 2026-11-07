@@ -43,7 +43,9 @@ function setup(max: number, judge: JudgeFn, inProgress = true) {
     now: () => new Date("2026-11-05T03:00:00.000Z"),
     judge,
   });
-  const listReady = vi.fn<typeof dispatcher.listReady>((capacity) => dispatcher.listReady(capacity));
+  const listReady = vi.fn<typeof dispatcher.listReady>((capacity) =>
+    dispatcher.listReady(capacity),
+  );
   const runtime = new PendingRuntime();
   const ticker = createTicker({
     projectId: "p",
