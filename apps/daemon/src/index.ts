@@ -65,6 +65,7 @@ export {
   type QaRequestInput,
   type QaTargetDeps,
 } from "./qa-request.ts";
+export { createVerifyBranch, isInsideRoot, type VerifyBranchDeps } from "./verify-wiring.ts";
 export {
   buildRuntimeFor,
   mirrorDirOf,

@@ -23,6 +23,7 @@ import { reconcile, type ReconcileReport } from "./reconcile.ts";
 import { createRunRecorder } from "./run-recorder.ts";
 import type { RunRecordingDeps } from "./run-registration.ts";
 import { createStateDispatcher, type StateDispatcherDeps } from "./state-dispatcher.ts";
+import { createVerifyBranch } from "./verify-wiring.ts";
 import { readTickConfig } from "./tick-config.ts";
 import { buildRuntimeFor, mirrorDirOf, targetUrlOf } from "./runtime-wiring.ts";
 import { createTicker, type Clock, type Ticker } from "./tick.ts";
@@ -121,6 +122,13 @@ async function assemble(
     prOf: opts.prOf,
     now,
     ...(opts.log === undefined ? {} : { log: opts.log }),
+    verify: createVerifyBranch({
+      projectId,
+      recorder: recorderDeps,
+      root,
+      env: opts.env,
+      ...(opts.log === undefined ? {} : { log: opts.log }),
+    }),
   });
   const intake = createIntake({
     projectId,
