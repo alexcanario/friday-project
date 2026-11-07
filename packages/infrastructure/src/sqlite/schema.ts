@@ -77,6 +77,8 @@ export const ledger = sqliteTable("ledger", {
   outputTokens: integer("output_tokens").notNull().default(0),
   cacheReadTokens: integer("cache_read_tokens").notNull().default(0),
   cacheCreationTokens: integer("cache_creation_tokens").notNull().default(0),
+  issueId: integer("issue_id").notNull().default(0),
+  numTurns: integer("num_turns"),
 });
 
 export const runResults = sqliteTable(

@@ -1,7 +1,19 @@
-import { and, eq, sql } from "drizzle-orm";
-import type { LedgerRepository } from "@friday/application";
+import { and, eq, sql, type SQL } from "drizzle-orm";
+import type { DaySum, LedgerRepository } from "@friday/application";
 import type { FridayDatabase } from "./database.ts";
 import { ledger } from "./schema.ts";
+
+function sumWhere(db: FridayDatabase, where: SQL | undefined): DaySum {
+  const row = db.orm
+    .select({
+      total: sql<number>`COALESCE(SUM(${ledger.costUsd}), 0)`,
+      unknown: sql<number>`COALESCE(MAX(${ledger.costUnknown}), 0)`,
+    })
+    .from(ledger)
+    .where(where)
+    .get();
+  return { costUsd: row?.total ?? 0, anyCostUnknown: (row?.unknown ?? 0) > 0 };
+}
 
 export function createLedgerRepository(db: FridayDatabase): LedgerRepository {
   return {
@@ -12,15 +24,10 @@ export function createLedgerRepository(db: FridayDatabase): LedgerRepository {
         .run();
     },
     sumByDay(projectId, day) {
-      const row = db.orm
-        .select({
-          total: sql<number>`COALESCE(SUM(${ledger.costUsd}), 0)`,
-          unknown: sql<number>`COALESCE(MAX(${ledger.costUnknown}), 0)`,
-        })
-        .from(ledger)
-        .where(and(eq(ledger.projectId, projectId), eq(ledger.day, day)))
-        .get();
-      return { costUsd: row?.total ?? 0, anyCostUnknown: (row?.unknown ?? 0) > 0 };
+      return sumWhere(db, and(eq(ledger.projectId, projectId), eq(ledger.day, day)));
+    },
+    sumByIssue(projectId, issueId) {
+      return sumWhere(db, and(eq(ledger.projectId, projectId), eq(ledger.issueId, issueId)));
     },
   };
 }
