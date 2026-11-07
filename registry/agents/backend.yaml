@@ -1,0 +1,16 @@
+role: backend
+states: [InProgress]
+model: sonnet
+max_budget_usd: 3
+max_turns: 80
+timeout_s: 3600
+tools: [Read, Glob, Grep, Bash, Edit, Write]
+mcp_tools: [criteria_set, work_report, git_push, pr_create, pr_diff, issue_comment]
+bash_allow:
+  - "dotnet restore"
+  - "dotnet build"
+  - "dotnet test"
+  - "git status"
+  - "git diff"
+output: workReport
+prompt_file: prompts/backend.md
