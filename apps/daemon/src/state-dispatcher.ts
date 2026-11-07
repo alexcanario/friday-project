@@ -15,6 +15,7 @@ import {
   type ApprovalDeps,
 } from "./approval-wiring.ts";
 import { applyInput, snapshotOf } from "./run-recorder.ts";
+import { runGuardedVerify } from "./verify-dispatch.ts";
 import type { RunRequestBuilder } from "./tick.ts";
 
 export type DispatchRole = "triage" | "specialist" | "verify" | "qa" | "judge";
@@ -54,6 +55,8 @@ export type StateDispatcherDeps = {
   qa?: (issueId: number) => Promise<{ applied: boolean; feedback: string | null }>;
   /** Runs the specialist for an issue in progress; replaces the role-based dispatch of InProgress. */
   specialist?: (issueId: number) => Promise<{ applied: boolean; feedback: string | null }>;
+  /** Runs Verify for an issue in Verify; replaces the role-based dispatch of Verify. */
+  verify?: (issueId: number) => Promise<{ applied: boolean; feedback: string | null }>;
 };
 
 type Capacity = { active: number; max: number };
@@ -75,6 +78,9 @@ export function createStateDispatcher(deps: StateDispatcherDeps): StateDispatche
   const judging = new Set<number>();
   const qaRunning = new Set<number>();
   const specialistRunning = new Set<number>();
+  const verifyRunning = new Set<number>();
+  const inFlight = (): number =>
+    judging.size + qaRunning.size + specialistRunning.size + verifyRunning.size;
 
   const logError = (message: string, error: unknown): void => {
     deps.log?.(`${message}: ${error instanceof Error ? error.message : String(error)}`);
@@ -156,11 +162,7 @@ export function createStateDispatcher(deps: StateDispatcherDeps): StateDispatche
     capacity: Capacity | undefined,
   ): Promise<void> {
     if (judging.has(issueId)) return;
-    if (
-      capacity !== undefined &&
-      capacity.active + judging.size + qaRunning.size + specialistRunning.size >= capacity.max
-    )
-      return;
+    if (capacity !== undefined && capacity.active + inFlight() >= capacity.max) return;
     judging.add(issueId);
     try {
       await judge(issueId);
@@ -177,8 +179,7 @@ export function createStateDispatcher(deps: StateDispatcherDeps): StateDispatche
     capacity: Capacity | undefined,
   ): Promise<void> {
     if (qaRunning.has(issueId)) return;
-    const used = judging.size + qaRunning.size + specialistRunning.size;
-    if (capacity !== undefined && capacity.active + used >= capacity.max) return;
+    if (capacity !== undefined && capacity.active + inFlight() >= capacity.max) return;
     qaRunning.add(issueId);
     try {
       await qa(issueId);
@@ -195,8 +196,7 @@ export function createStateDispatcher(deps: StateDispatcherDeps): StateDispatche
     capacity: Capacity | undefined,
   ): Promise<void> {
     if (specialistRunning.has(issueId)) return;
-    const used = judging.size + qaRunning.size + specialistRunning.size;
-    if (capacity !== undefined && capacity.active + used >= capacity.max) return;
+    if (capacity !== undefined && capacity.active + inFlight() >= capacity.max) return;
     specialistRunning.add(issueId);
     try {
       await specialist(issueId);
@@ -240,6 +240,11 @@ export function createStateDispatcher(deps: StateDispatcherDeps): StateDispatche
       await handleSpecialist(number, deps.specialist, capacity);
       return;
     }
+    if (snapshot.state === "Verify" && deps.verify !== undefined) {
+      const log = (message: string): void => deps.log?.(message);
+      await runGuardedVerify(deps.verify, verifyRunning, inFlight(), capacity, number, log);
+      return;
+    }
     const role = STATE_ROLES[snapshot.state];
     if (role !== undefined && deps.roles[role] !== undefined) next.set(number, role);
   }
@@ -263,7 +268,7 @@ export function createStateDispatcher(deps: StateDispatcherDeps): StateDispatche
       dispatched = next;
       return [...next.keys()];
     },
-    busy: () => judging.size + qaRunning.size + specialistRunning.size,
+    busy: inFlight,
     buildRequest(issueId, runId) {
       const role = dispatched.get(issueId);
       const builder = role === undefined ? undefined : deps.roles[role];

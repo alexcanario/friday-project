@@ -2,7 +2,11 @@ import { describe, expect, it, vi } from "vitest";
 import type { IssueRow, StoredEvent } from "@friday/application";
 import * as daemon from "../src/index.ts";
 import { feedbackOf } from "../src/index.ts";
-import { runVerifyForIssue, verifyTargetOf, type VerifyDispatchDeps } from "../src/verify-dispatch.ts";
+import {
+  runVerifyForIssue,
+  verifyTargetOf,
+  type VerifyDispatchDeps,
+} from "../src/verify-dispatch.ts";
 import type { VerifyStepOutcome } from "../src/verify-step.ts";
 import { FakeEvents, FakeIssueRepository } from "./fakes.ts";
 
@@ -21,7 +25,9 @@ const stored = (seq: number, type: string, payload: unknown): StoredEvent => ({
   at: "2026-11-05T03:00:00.000Z",
 });
 
-function setup(o: { state?: string; verifyRound?: number; noRow?: boolean; noWork?: boolean } = {}) {
+function setup(
+  o: { state?: string; verifyRound?: number; noRow?: boolean; noWork?: boolean } = {},
+) {
   const events = new FakeEvents();
   const issues = new FakeIssueRepository(events, undefined, { projectFromEvents: true });
   if (!o.noRow) {
@@ -179,10 +185,7 @@ describe("verify dispatch", () => {
 
   it("feedbackOf of the specialist reads the recorded VerifyFinished", async () => {
     const t = setup();
-    await runVerifyForIssue(
-      deps(t, { input: { type: "VerifyFailed" }, feedback: "boom" }).d,
-      7,
-    );
+    await runVerifyForIssue(deps(t, { input: { type: "VerifyFailed" }, feedback: "boom" }).d, 7);
     expect(feedbackOf(t.events.list("p", 7))).toBe("boom");
   });
 
