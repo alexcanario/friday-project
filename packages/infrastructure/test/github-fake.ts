@@ -14,7 +14,14 @@ export type FakeIssue = {
   labels?: string[];
   pullRequest?: boolean;
 };
-export type FakePull = { number: number; head: string; headRef: string; base: string; sha: string };
+export type FakePull = {
+  number: number;
+  head: string;
+  headRef: string;
+  base: string;
+  sha: string;
+  merged?: boolean;
+};
 export type FakeCheckRun = {
   id: number;
   name: string;
@@ -78,6 +85,7 @@ function pullJson(p: FakePull): unknown {
     number: p.number,
     head: { sha: p.sha, ref: p.headRef },
     base: { ref: p.base },
+    merged: p.merged ?? false,
   };
 }
 
