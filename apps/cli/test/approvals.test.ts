@@ -176,10 +176,12 @@ describe("friday approvals", () => {
   });
 
   it("routes approvals in index.ts and keeps config check", () => {
+    const home = mkdtempSync(join(tmpdir(), "friday-home-"));
     const run = (...args: string[]) => {
       const r = spawnSync(process.execPath, ["apps/cli/src/index.ts", ...args], {
         cwd: root,
         encoding: "utf8",
+        env: { PATH: process.env.PATH, FRIDAY_HOME: home },
       });
       return { stdout: r.stdout, stderr: r.stderr, code: r.status };
     };
@@ -188,16 +190,18 @@ describe("friday approvals", () => {
     expect(none.stderr.startsWith("Uso: friday approvals")).toBe(true);
     const db = join(mkdtempSync(join(tmpdir(), "friday-appr-")), "absent.db");
     expect(run("approvals", "list", "--db", db, "--project", "p1")).toEqual({
-      stdout: "",
-      stderr: "Falha ao listar as aprovações.\n",
-      code: 1,
+      stdout: "Nenhuma aprovação pendente.\n",
+      stderr: "",
+      code: 0,
     });
-    expect(run("approvals", "approve", "00000001", "--db", db)).toEqual({
+    expect(existsSync(db)).toBe(true);
+    const db2 = join(mkdtempSync(join(tmpdir(), "friday-appr-")), "absent.db");
+    expect(run("approvals", "approve", "00000001", "--db", db2)).toEqual({
       stdout: "",
       stderr: "Falha ao decidir a aprovação.\n",
       code: 1,
     });
-    expect(existsSync(db)).toBe(false);
+    expect(existsSync(db2)).toBe(false);
     const fixture = join(root, "packages/infrastructure/test/fixtures/valid");
     expect(run("config", "check", "--root", fixture)).toEqual({
       stdout: "0 problemas\n",
