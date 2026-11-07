@@ -6,11 +6,12 @@ import {
   type IssueRepository,
 } from "@friday/application";
 import type { AgentRunRequest } from "@friday/application";
-import type { IssueState } from "@friday/domain";
+import type { IssueState, Risk } from "@friday/domain";
 import {
   handleAwaitingApproval,
   headForApproval,
   recordApprovalRequest,
+  type ApprovalContext,
   type ApprovalDeps,
 } from "./approval-wiring.ts";
 import { applyInput, snapshotOf } from "./run-recorder.ts";
@@ -76,13 +77,21 @@ export function createStateDispatcher(deps: StateDispatcherDeps): StateDispatche
     deps.log?.(`${message}: ${error instanceof Error ? error.message : String(error)}`);
   };
 
-  const approvalContext = (approval: ApprovalDeps) => ({
+  const tierOf = async (pr: number): Promise<Risk | null> => {
+    const diff = await deps.github.getPrDiff(pr);
+    const config = deps.readConfig();
+    return config === null ? null : classify(diff, config.risk).risk;
+  };
+
+  const approvalContext = (approval: ApprovalDeps): ApprovalContext => ({
     projectId: deps.projectId,
     events: deps.events,
     issues: deps.issues,
     now: deps.now,
     ...(deps.log === undefined ? {} : { log: deps.log }),
     approval,
+    prOf: deps.prOf,
+    tierOf,
   });
 
   async function handleRiskCheck(issueId: number, labels: string[]): Promise<void> {

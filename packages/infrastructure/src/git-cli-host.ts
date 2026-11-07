@@ -50,6 +50,11 @@ export class GitCliHost implements GitHost {
     if (tokenEnv.trim() === "") {
       throw new Error("O nome da variável de ambiente do token não pode ser vazio.");
     }
+    if (ALLOWED_KEYS.has(tokenEnv.toUpperCase())) {
+      throw new Error(
+        "O nome da variável de ambiente do token não pode ser uma variável da lista de permissão do ambiente do git.",
+      );
+    }
     if (!isAbsolute(mirrorDir)) {
       throw new Error("O diretório do espelho deve ser um caminho absoluto.");
     }
