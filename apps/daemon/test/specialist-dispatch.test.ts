@@ -72,6 +72,8 @@ type Opts = {
   issueCost?: number;
   dayCost?: number;
   ledgerThrows?: boolean;
+  recordLedger?: boolean;
+  failOnWorkReported?: boolean;
 };
 
 function setup(o: Opts = {}) {
@@ -93,15 +95,29 @@ function setup(o: Opts = {}) {
     o.throws ? Promise.reject(new Error("boom")) : fake.run(r),
   );
   const sum = (costUsd: number): DaySum => ({ costUsd, anyCostUnknown: false });
+  const entries: Parameters<LedgerRepository["record"]>[0][] = [];
   const ledger: LedgerRepository = {
-    record: () => undefined,
+    record: (entry) => void entries.push(entry),
     sumByDay: () => sum(o.dayCost ?? 0),
     sumByIssue: () => {
       if (o.ledgerThrows) throw new Error("ledger");
       return sum(o.issueCost ?? 0);
     },
   };
-  const recorderDeps = { projectId: "p", events, issues, now };
+  const recorderDeps = {
+    projectId: "p",
+    events,
+    issues,
+    now,
+    ...(o.recordLedger ? { ledger } : {}),
+  };
+  if (o.failOnWorkReported) {
+    const append = events.append.bind(events);
+    events.append = (e) => {
+      if (e.type === "WorkReported") throw new Error("later step");
+      return append(e);
+    };
+  }
   const recorder = createRunRecorder(recorderDeps);
   const recordUnknownCost = vi.spyOn(recorder, "recordUnknownCost");
   const log = vi.fn<(m: string) => void>();
@@ -118,7 +134,7 @@ function setup(o: Opts = {}) {
     log,
   };
   const ofType = (t: string) => events.appended.filter((e) => e.type === t);
-  return { events, issues, runs, run, deps, log, targetOf, recordUnknownCost, ofType };
+  return { events, issues, runs, run, entries, deps, log, targetOf, recordUnknownCost, ofType };
 }
 
 const NOT = { applied: false, feedback: null };
@@ -171,6 +187,20 @@ describe("runSpecialistForIssue", () => {
       maxBudgetUsd: 1,
     });
     expect(boom.runs.rows.get("run-1")?.status).toBe("failed");
+  });
+
+  it("records the run cap in the ledger when the finished run has no cost", async () => {
+    const t = setup({ recordLedger: true });
+    await runSpecialistForIssue(t.deps, 7);
+    expect(t.entries).toHaveLength(1);
+    expect(t.entries[0]).toMatchObject({ costUsd: 1, costUnknown: true });
+  });
+
+  it("does not record unknown cost again when the runtime finished and a later step throws", async () => {
+    const t = setup({ recordLedger: true, failOnWorkReported: true });
+    await expect(runSpecialistForIssue(t.deps, 7)).resolves.toEqual(NOT);
+    expect(t.recordUnknownCost).not.toHaveBeenCalled();
+    expect(t.entries).toHaveLength(1);
   });
 
   it("checks the budget before running and fails closed", async () => {
