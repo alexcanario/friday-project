@@ -9,18 +9,20 @@ import {
   FakeRunRepository,
   PendingRuntime,
   fakeRequest,
+  slackBudget,
 } from "./fakes.ts";
 
 function setup() {
   const events = new FakeEvents();
   const issues = new FakeIssues();
   const issueRepo = new FakeIssueRepository(events);
-  const recorder = createRunRecorder({
+  const recorderDeps = {
     projectId: "p",
     events,
     issues: issueRepo,
     now: () => new Date("2026-11-05T03:00:00.000Z"),
-  });
+  };
+  const recorder = createRunRecorder(recorderDeps);
   const sinks: ToolDenialSink[] = [];
   const runtimes: PendingRuntime[] = [];
   let n = 0;
@@ -45,6 +47,7 @@ function setup() {
     events,
     log: () => undefined,
     recording,
+    budget: slackBudget(recorderDeps).budget,
   });
   return { events, issues, sinks, runtimes, ticker };
 }

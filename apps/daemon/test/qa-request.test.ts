@@ -11,7 +11,7 @@ import {
   type QaContext,
   type QaRequestInput,
 } from "../src/qa-request.ts";
-import { FakeEvents, FakeIssueRepository, FakeRunRepository } from "./fakes.ts";
+import { FakeEvents, FakeIssueRepository, FakeRunRepository, slackBudget } from "./fakes.ts";
 
 const SHA = "a".repeat(40);
 const report = { worktreePath: "/tmp/wt", headSha: SHA, changedFiles: ["src/Version.cs"] };
@@ -255,6 +255,7 @@ function e2e(withReport: boolean) {
       recorder: createRunRecorder(recorderDeps),
       newRunId: () => "r1",
     },
+    ...slackBudget(recorderDeps),
     now,
   };
   return { deps, fake, issues };

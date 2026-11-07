@@ -8,7 +8,13 @@ import {
 import type { RunFinished } from "@friday/contracts";
 import { applyJudgeOutcome, createRunRecorder } from "../src/index.ts";
 import type { JudgeDispatchDeps } from "../src/judge-dispatch.ts";
-import { FakeEvents, FakeIssueRepository, FakeRunRepository, FakeStaleVerdicts } from "./fakes.ts";
+import {
+  FakeEvents,
+  FakeIssueRepository,
+  FakeRunRepository,
+  FakeStaleVerdicts,
+  slackBudget,
+} from "./fakes.ts";
 
 export const A = "a".repeat(40);
 export const B = "b".repeat(40);
@@ -121,6 +127,7 @@ export function setup(o: Options = {}) {
     },
     recorder,
     recording: { runs, recorder: createRunRecorder(recorder), newRunId: () => "r1" },
+    ...slackBudget(recorder),
     now,
     log,
   };

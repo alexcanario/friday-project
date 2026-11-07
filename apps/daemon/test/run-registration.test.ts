@@ -1,6 +1,6 @@
 import type { AgentRuntime, ToolDenialSink } from "@friday/application";
 import { RUN_STATUSES, type RunFinished } from "@friday/contracts";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { createRunRecorder, createTicker, type RunRecordingDeps } from "../src/index.ts";
 import {
   FakeClock,
@@ -10,6 +10,7 @@ import {
   FakeRunRepository,
   PendingRuntime,
   fakeRequest,
+  slackBudget,
 } from "./fakes.ts";
 
 function finished(status: RunFinished["status"]): RunFinished {
@@ -45,12 +46,13 @@ function setup(options: Options = {}) {
     qaRound: 0,
     reviewIter: 0,
   };
-  const recorder = createRunRecorder({
+  const recorderDeps = {
     projectId: "p",
     events,
     issues: issueRepo,
     now: () => new Date("2026-11-05T03:00:00.000Z"),
-  });
+  };
+  const recorder = createRunRecorder(recorderDeps);
   const built: unknown[][] = [];
   const logs: string[] = [];
   let n = 0;
@@ -76,7 +78,9 @@ function setup(options: Options = {}) {
     runtime,
     events,
     log: (m) => logs.push(m),
-    ...(options.withRecording === false ? {} : { recording }),
+    ...(options.withRecording === false
+      ? {}
+      : { recording, budget: slackBudget(recorderDeps).budget }),
   });
   return { order, clock, issues, events, runs, runtime, issueRepo, built, logs, ticker, recording };
 }
@@ -88,7 +92,7 @@ describe("run registration", () => {
     const t = setup();
     t.issues.ready = [7];
     await t.ticker.tick();
-    expect(t.built).toEqual([[7, "r1"]]);
+    expect(t.built).toEqual([[7], [7, "r1"]]);
     expect(t.runs.rows.get("r1")).toEqual({
       id: "r1",
       projectId: "p",
@@ -185,10 +189,7 @@ describe("run registration", () => {
     expect(types(t.events)).toEqual(["RunDispatched"]);
     expect(t.logs).toContain("Run failed for issue 7: boom");
     await t.ticker.tick();
-    expect(t.built).toEqual([
-      [7, "r1"],
-      [7, "r2"],
-    ]);
+    expect(t.built).toEqual([[7], [7, "r1"], [7], [7, "r2"]]);
   });
 
   it("still finishes the row when the recorder fails", async () => {
@@ -301,5 +302,29 @@ describe("run registration", () => {
     expect(t.events.appended[0]).toMatchObject({ type: "RunDispatched", runId: null });
     expect(t.built).toEqual([[7]]);
     expect(t.runs.calls).toBe(0);
+  });
+
+  it("records the ceiling when recordFinished throws", async () => {
+    const t = setup();
+    vi.spyOn(t.recording.recorder, "recordFinished").mockImplementation(() => {
+      throw new Error("disk");
+    });
+    const unknown = vi.spyOn(t.recording.recorder, "recordUnknownCost");
+    t.issues.ready = [7];
+    await t.ticker.tick();
+    t.runtime.resolveAll(finished("succeeded"));
+    await t.ticker.idle();
+    expect(unknown).toHaveBeenCalledTimes(1);
+    expect(unknown).toHaveBeenCalledWith({ runId: "r1", issueId: 7, maxBudgetUsd: 1 });
+    expect(t.logs).toContain("Failed to record run r1: disk");
+    expect(t.runs.rows.get("r1")?.status).toBe("succeeded");
+
+    const normal = setup();
+    const none = vi.spyOn(normal.recording.recorder, "recordUnknownCost");
+    normal.issues.ready = [7];
+    await normal.ticker.tick();
+    normal.runtime.resolveAll(finished("succeeded"));
+    await normal.ticker.idle();
+    expect(none).not.toHaveBeenCalled();
   });
 });

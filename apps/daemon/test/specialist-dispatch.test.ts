@@ -74,6 +74,7 @@ type Opts = {
   ledgerThrows?: boolean;
   recordLedger?: boolean;
   failOnWorkReported?: boolean;
+  recordFinishedThrows?: boolean;
 };
 
 function setup(o: Opts = {}) {
@@ -120,6 +121,11 @@ function setup(o: Opts = {}) {
   }
   const recorder = createRunRecorder(recorderDeps);
   const recordUnknownCost = vi.spyOn(recorder, "recordUnknownCost");
+  if (o.recordFinishedThrows) {
+    vi.spyOn(recorder, "recordFinished").mockImplementation(() => {
+      throw new Error("disk");
+    });
+  }
   const log = vi.fn<(m: string) => void>();
   const targetOf = vi.fn((_id: number, runId: string) => (o.noTarget ? null : request(runId)));
   const deps: SpecialistDispatchDeps = {
@@ -201,6 +207,21 @@ describe("runSpecialistForIssue", () => {
     await expect(runSpecialistForIssue(t.deps, 7)).resolves.toEqual(NOT);
     expect(t.recordUnknownCost).not.toHaveBeenCalled();
     expect(t.entries).toHaveLength(1);
+  });
+
+  it("records the ceiling when recordFinished throws and not otherwise", async () => {
+    const t = setup({ recordFinishedThrows: true });
+    await expect(runSpecialistForIssue(t.deps, 7)).resolves.toEqual(NOT);
+    expect(t.recordUnknownCost).toHaveBeenCalledTimes(1);
+    expect(t.recordUnknownCost).toHaveBeenCalledWith({
+      runId: "run-1",
+      issueId: 7,
+      maxBudgetUsd: 1,
+    });
+    expect(t.log).toHaveBeenCalledWith(expect.stringContaining("disk"));
+    const normal = setup({ recordLedger: true });
+    await runSpecialistForIssue(normal.deps, 7);
+    expect(normal.recordUnknownCost).not.toHaveBeenCalled();
   });
 
   it("checks the budget before running and fails closed", async () => {

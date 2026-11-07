@@ -33,7 +33,6 @@ function finished(costUsd: number | null): RunFinished {
 type Options = {
   perDayUsd?: number;
   perIssueUsd?: number;
-  budget?: boolean;
   state?: string;
   cost?: number | null;
   buildFails?: Error;
@@ -108,7 +107,7 @@ function setup(o: Options = {}) {
     events,
     log: (m) => logs.push(m),
     recording: { runs, recorder: createRunRecorder(recorderDeps) },
-    ...(o.budget === false ? {} : { budget: { ledger, recorderDeps } }),
+    budget: { ledger, recorderDeps },
   });
   const spend = (issueId: number, costUsd: number, day = DAY, costUnknown = false) =>
     realLedger.record({
@@ -144,14 +143,6 @@ function setup(o: Options = {}) {
 }
 
 describe("budget caps", () => {
-  it("skips the budget check without deps.budget", async () => {
-    const t = setup({ budget: false, perDayUsd: 0.05 });
-    t.spend(8, 100);
-    await t.ticker.tick();
-    await t.ticker.idle();
-    expect(t.runtime.requests).toHaveLength(1);
-  });
-
   it("holds BudgetExhausted at the daily cap without calling the runtime", async () => {
     const t = setup({ perDayUsd: 0.05 });
     t.spend(8, 0.04);

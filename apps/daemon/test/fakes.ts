@@ -7,6 +7,7 @@ import type {
   IssueRepository,
   IssueRow,
   IssueSummary,
+  LedgerRepository,
   NewEvent,
   PrDiff,
   RunRecord,
@@ -15,7 +16,9 @@ import type {
   StoredEvent,
   StaleVerdicts,
 } from "@friday/application";
+import type { BudgetCaps, BudgetDeps } from "../src/budget-gate.ts";
 import type { Clock, ReadyIssueSource } from "../src/index.ts";
+import type { RunRecorderDeps } from "../src/run-recorder.ts";
 
 export type RunResult = Awaited<ReturnType<AgentRuntime["run"]>>;
 
@@ -303,4 +306,18 @@ export class FakeApprovalStore implements ApprovalStore {
     this.records.set(id, { ...found, ...decision });
     return true;
   }
+}
+
+/** Budget deps with a ledger that sums to zero and generous caps, for tests that do not exercise the caps. */
+export function slackBudget(recorderDeps: RunRecorderDeps): {
+  budget: BudgetDeps;
+  caps: BudgetCaps;
+} {
+  const zero = { costUsd: 0, anyCostUnknown: false };
+  const ledger: LedgerRepository = {
+    record: () => undefined,
+    sumByDay: () => zero,
+    sumByIssue: () => zero,
+  };
+  return { budget: { ledger, recorderDeps }, caps: { perIssueUsd: 100, perDayUsd: 100 } };
 }

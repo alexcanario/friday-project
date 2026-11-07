@@ -12,7 +12,7 @@ import {
 } from "@friday/infrastructure";
 import { describe, expect, it } from "vitest";
 import { createRunRecorder, createTicker } from "../src/index.ts";
-import { FakeClock, FakeIssues, PendingRuntime, fakeRequest } from "./fakes.ts";
+import { FakeClock, FakeIssues, PendingRuntime, fakeRequest, slackBudget } from "./fakes.ts";
 import type { RunResult } from "./fakes.ts";
 
 function setup(withProject: boolean) {
@@ -44,7 +44,8 @@ function setup(withProject: boolean) {
     issues.rebuild("p");
   }
   const runs = createRunRepository(db);
-  const recorder = createRunRecorder({ projectId: "p", events, issues, now: () => new Date() });
+  const recorderDeps = { projectId: "p", events, issues, now: () => new Date() };
+  const recorder = createRunRecorder(recorderDeps);
   const runtime = new PendingRuntime();
   const source = new FakeIssues();
   source.ready = [7];
@@ -67,6 +68,7 @@ function setup(withProject: boolean) {
     events,
     log: (m) => logs.push(m),
     recording: { runs, recorder },
+    budget: slackBudget(recorderDeps).budget,
   });
   return { db, events, issues, runs, runtime, logs, ticker, requests };
 }
@@ -75,7 +77,7 @@ describe("run registration on SQLite", () => {
   it("registers the run in SQLite from dispatch to finish", async () => {
     const t = setup(true);
     await t.ticker.tick();
-    const runId = t.requests[0]?.friday?.runId ?? "";
+    const runId = t.requests.find((r) => r.friday?.runId)?.friday?.runId ?? "";
     expect(runId).not.toBe("");
     const active = t.runs.listActive("p");
     expect(active).toHaveLength(1);
