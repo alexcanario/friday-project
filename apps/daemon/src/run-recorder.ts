@@ -4,6 +4,7 @@ import {
   type EventStore,
   type IssueRepository,
   type IssueRow,
+  type LedgerRepository,
   type StateChangedPayload,
   type ToolDenialSink,
 } from "@friday/application";
@@ -24,12 +25,15 @@ export type RunRecorderDeps = {
   events: EventStore;
   issues: IssueRepository;
   now: () => Date;
+  ledger?: LedgerRepository;
 };
 
-export type RunContext = { runId: string; issueId: number };
+export type RunContext = { runId: string; issueId: number; maxBudgetUsd?: number };
 
 export type RunRecorder = {
   recordFinished(ctx: RunContext, finished: RunFinished): void;
+  /** Records the run ceiling as an unknown cost; used when the runtime threw. */
+  recordUnknownCost(ctx: RunContext): void;
   denialSink(ctx: RunContext): ToolDenialSink;
 };
 
@@ -96,6 +100,13 @@ export function createRunRecorder(deps: RunRecorderDeps): RunRecorder {
     at: now().toISOString(),
   });
 
+  const ledgerBase = (ctx: RunContext) => ({
+    projectId,
+    issueId: ctx.issueId,
+    runId: ctx.runId,
+    day: now().toISOString().slice(0, 10),
+  });
+
   function applyHeld(ctx: RunContext, reason: RunHeldReason): void {
     applyInput(deps, ctx, { type: "RunHeld", reason });
   }
@@ -103,8 +114,32 @@ export function createRunRecorder(deps: RunRecorderDeps): RunRecorder {
   return {
     recordFinished(ctx, finished) {
       events.append({ ...base(ctx), type: "RunFinished", payload: finished });
+      const unknown = finished.costUsd === null;
+      const tokens = finished.tokens;
+      deps.ledger?.record({
+        ...ledgerBase(ctx),
+        costUsd: unknown ? (ctx.maxBudgetUsd ?? null) : finished.costUsd,
+        costUnknown: unknown,
+        inputTokens: tokens?.input ?? 0,
+        outputTokens: tokens?.output ?? 0,
+        cacheReadTokens: tokens?.cacheRead ?? 0,
+        cacheCreationTokens: tokens?.cacheCreation ?? 0,
+        numTurns: finished.numTurns,
+      });
       const reason = heldReasonFor(finished);
       if (reason !== null) applyHeld(ctx, reason);
+    },
+    recordUnknownCost(ctx) {
+      deps.ledger?.record({
+        ...ledgerBase(ctx),
+        costUsd: ctx.maxBudgetUsd ?? null,
+        costUnknown: true,
+        inputTokens: 0,
+        outputTokens: 0,
+        cacheReadTokens: 0,
+        cacheCreationTokens: 0,
+        numTurns: null,
+      });
     },
     denialSink(ctx) {
       const seen = new Set<string>();

@@ -76,6 +76,8 @@ export interface LedgerEntry {
   outputTokens: number;
   cacheReadTokens: number;
   cacheCreationTokens: number;
+  issueId: number;
+  numTurns: number | null;
 }
 
 export interface DaySum {
@@ -86,6 +88,7 @@ export interface DaySum {
 export interface LedgerRepository {
   record(entry: LedgerEntry): void;
   sumByDay(projectId: string, day: string): DaySum;
+  sumByIssue(projectId: string, issueId: number): DaySum;
 }
 
 /** Runs `work` in one transaction: if it throws, everything it wrote is undone and the error is rethrown. */
