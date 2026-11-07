@@ -1,4 +1,14 @@
+import { mkdtempSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import type { AgentRuntime, LedgerEntry, LedgerRepository } from "@friday/application";
+import {
+  createEventStore,
+  createIssueRepository,
+  createLedgerRepository,
+  createRunRepository,
+  openDatabase,
+} from "@friday/infrastructure";
 import type { RunFinished } from "@friday/contracts";
 import { describe, expect, it } from "vitest";
 import { createRunRecorder } from "../src/index.ts";
@@ -220,5 +230,72 @@ describe("ledger recording", () => {
     ).toThrow("disk");
     const changed = t.events.appended.filter((e) => e.type === "StateChanged");
     expect(changed).toHaveLength(1);
+  });
+});
+
+describe("ledger recording on SQLite", () => {
+  it("keeps the ceiling in the ledger after a failed record", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "friday-ledger-"));
+    const db = openDatabase(join(dir, "friday.db"));
+    db.sqlite.prepare("INSERT INTO projects (id) VALUES ('p')").run();
+    const events = createEventStore(db);
+    const issues = createIssueRepository(db);
+    events.append({
+      type: "StateChanged",
+      projectId: "p",
+      issueId: 7,
+      runId: null,
+      actor: "seed",
+      at: "2026-11-07T09:00:00.000Z",
+      payload: {
+        type: "StateChanged",
+        issueId: "7",
+        from: "Todo",
+        to: "InProgress",
+        trigger: "SpecialistAssigned",
+        heldReason: null,
+        verifyRound: 0,
+        qaRound: 0,
+        reviewIter: 0,
+      },
+    });
+    issues.rebuild("p");
+    const real = createLedgerRepository(db);
+    let first = true;
+    const ledger: LedgerRepository = {
+      record: (entry) => {
+        if (first) {
+          first = false;
+          throw new Error("disk");
+        }
+        real.record(entry);
+      },
+      sumByDay: (p, d) => real.sumByDay(p, d),
+      sumByIssue: (p, i) => real.sumByIssue(p, i),
+    };
+    const recorder = createRunRecorder({
+      projectId: "p",
+      events,
+      issues,
+      now: () => new Date("2026-11-07T10:00:00.000Z"),
+      ledger,
+    });
+    const logs: string[] = [];
+    const runtime = new PendingRuntime();
+    const env: RegistrationEnv = {
+      projectId: "p",
+      now: () => "2026-11-07T10:00:00.000Z",
+      events,
+      runtime,
+      buildRequest: (issueId) => fakeRequest(issueId),
+      recording: { runs: createRunRepository(db), recorder, newRunId: () => "r1" },
+      logError: (m, e) => logs.push(`${m}: ${e instanceof Error ? e.message : String(e)}`),
+    };
+    const done = completeRun(env, beginRun(env, 7));
+    runtime.resolveAll(finished({ costUsd: 0.5 }));
+    await done;
+    expect(real.sumByIssue("p", 7)).toEqual({ costUsd: 1, anyCostUnknown: true });
+    expect(logs.some((l) => l.includes("disk"))).toBe(true);
+    db.close();
   });
 });

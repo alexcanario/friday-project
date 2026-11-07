@@ -19,7 +19,7 @@ export interface ReadyIssueSource {
 
 export type RunRequestBuilder = (issueId: number, runId?: string) => AgentRunRequest;
 
-export interface TickerDeps {
+type TickerBaseDeps = {
   projectId: string;
   clock: Clock;
   readConfig: () => TickConfig | null;
@@ -28,13 +28,18 @@ export interface TickerDeps {
   runtime: AgentRuntime;
   events: EventStore;
   log?: (message: string) => void;
-  recording?: RunRecordingDeps;
-  budget?: BudgetDeps;
   breaker?: {
     breaker: { isOpen(): boolean; recordFailure(): void };
     recorderDeps: RunRecorderDeps;
   };
-}
+};
+
+/** Recording needs the budget caps: both are present or neither is. */
+export type TickerDeps = TickerBaseDeps &
+  (
+    | { recording: RunRecordingDeps; budget: BudgetDeps }
+    | { recording?: undefined; budget?: undefined }
+  );
 
 export interface Ticker {
   tick(): Promise<void>;
@@ -52,10 +57,9 @@ export function createTicker(deps: TickerDeps): Ticker {
 
   const iso = (): string => new Date(deps.clock.now()).toISOString();
 
-  function withinBudget(issueId: number, config: TickConfig): boolean {
-    if (!deps.budget) return true;
+  function withinBudget(budget: BudgetDeps, issueId: number, config: TickConfig): boolean {
     return passesBudget(
-      deps.budget,
+      budget,
       config,
       {
         projectId: deps.projectId,
@@ -82,6 +86,7 @@ export function createTicker(deps: TickerDeps): Ticker {
   function dispatchRecorded(
     issueId: number,
     recording: RunRecordingDeps,
+    budget: BudgetDeps,
     config: TickConfig,
   ): void {
     const env = {
@@ -97,7 +102,7 @@ export function createTicker(deps: TickerDeps): Ticker {
     let registered;
     try {
       if (!passesBreaker(issueId)) return;
-      if (!withinBudget(issueId, config)) return;
+      if (!withinBudget(budget, issueId, config)) return;
       registered = beginRun(env, issueId);
     } catch (error) {
       logError(`Failed to dispatch issue ${issueId}`, error);
@@ -110,7 +115,7 @@ export function createTicker(deps: TickerDeps): Ticker {
   }
 
   function dispatch(issueId: number, config: TickConfig): void {
-    if (deps.recording) return dispatchRecorded(issueId, deps.recording, config);
+    if (deps.recording) return dispatchRecorded(issueId, deps.recording, deps.budget, config);
     let request: AgentRunRequest;
     try {
       request = deps.buildRequest(issueId);

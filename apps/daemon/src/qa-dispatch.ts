@@ -6,6 +6,7 @@ import {
   type QaStepInput,
 } from "@friday/application";
 import type { RunFinished } from "@friday/contracts";
+import { passesBudget, type BudgetCaps, type BudgetDeps } from "./budget-gate.ts";
 import { applyQaOutcome, type QaApplyResult } from "./qa-apply.ts";
 import type { RunRecorderDeps } from "./run-recorder.ts";
 import { statusFor, type RunRecordingDeps } from "./run-registration.ts";
@@ -16,6 +17,8 @@ export type QaDispatchDeps = {
   step: QaStepDeps;
   recorder: RunRecorderDeps;
   recording: RunRecordingDeps;
+  budget: BudgetDeps;
+  caps: BudgetCaps;
   now: () => Date;
   log?: (message: string) => void;
 };
@@ -88,6 +91,18 @@ export async function runQaForIssue(deps: QaDispatchDeps, issueId: number): Prom
       deps.log?.(`A issue ${issueId} em QA não tem entrada para o QA`);
       return NOT_APPLIED;
     }
+    const allowed = passesBudget(
+      deps.budget,
+      deps.caps,
+      {
+        projectId: deps.projectId,
+        issueId,
+        runCeilingUsd: input.request.agent.maxBudgetUsd,
+        nowMs: deps.now().getTime(),
+      },
+      deps.log ?? (() => {}),
+    );
+    if (!allowed) return NOT_APPLIED;
     return await execute(deps, issueId, runId, input);
   } catch (error) {
     const text = error instanceof Error ? error.message : String(error);

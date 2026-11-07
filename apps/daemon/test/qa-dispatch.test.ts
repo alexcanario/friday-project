@@ -4,7 +4,13 @@ import type { RunFinished } from "@friday/contracts";
 import * as daemon from "../src/index.ts";
 import { createRunRecorder } from "../src/index.ts";
 import { runQaForIssue, type QaDispatchDeps } from "../src/qa-dispatch.ts";
-import { FakeEvents, FakeIssueRepository, FakeRunRepository, fakeRequest } from "./fakes.ts";
+import {
+  FakeEvents,
+  FakeIssueRepository,
+  FakeRunRepository,
+  fakeRequest,
+  slackBudget,
+} from "./fakes.ts";
 
 const now = () => new Date("2026-11-05T03:00:00.000Z");
 const FINISHED_AT = "2026-11-05T03:00:00.000Z";
@@ -85,6 +91,7 @@ function setup(o: Opts = {}) {
       newRunId: () => "r1",
       ...(o.runtimeFor ? { runtimeFor } : {}),
     },
+    ...slackBudget(recorderDeps),
     now,
     log,
   };

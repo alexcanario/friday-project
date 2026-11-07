@@ -5,6 +5,7 @@ import {
   createEventStore,
   createGitHubClient,
   createIssueRepository,
+  createLedgerRepository,
   createRunRepository,
   loadFactoryConfig,
   openDatabase,
@@ -16,7 +17,7 @@ import { createIntake } from "./intake.ts";
 import { acquireProcessLock, type ProcessLockDeps } from "./process-lock.ts";
 import { reconcile, type ReconcileReport } from "./reconcile.ts";
 import { createRunRecorder } from "./run-recorder.ts";
-import { createStateDispatcher } from "./state-dispatcher.ts";
+import { createStateDispatcher, type StateDispatcherDeps } from "./state-dispatcher.ts";
 import { readTickConfig } from "./tick-config.ts";
 import { createTicker, type Clock, type Ticker } from "./tick.ts";
 
@@ -35,6 +36,8 @@ export interface ComposeOptions {
   now?: () => Date;
   log?: (message: string) => void;
   createGitHub?: (token: string, repo: Repo) => GitHubPort;
+  /** Role request builders; empty in production until the roles are wired. */
+  roles?: StateDispatcherDeps["roles"];
 }
 
 export interface Daemon {
@@ -85,6 +88,7 @@ async function assemble(opts: ComposeOptions, db: FridayDatabase, github: GitHub
   const runs = createRunRepository(db);
   db.sqlite.prepare("INSERT OR IGNORE INTO projects (id) VALUES (?)").run(projectId);
   const breaker = buildBreaker(db, projectId, now);
+  const ledger = createLedgerRepository(db);
   const recorderDeps = { projectId, events, issues, now };
   const report = await reconcile({ projectId, root, runs, issues, events, worktrees, now });
   const dispatcher = createStateDispatcher({
@@ -92,7 +96,7 @@ async function assemble(opts: ComposeOptions, db: FridayDatabase, github: GitHub
     github,
     issues,
     events,
-    roles: {},
+    roles: opts.roles ?? {},
     readConfig: () => readDispatchConfig(root),
     prOf: opts.prOf,
     now,
@@ -124,7 +128,8 @@ async function assemble(opts: ComposeOptions, db: FridayDatabase, github: GitHub
     runtime: opts.runtime,
     events,
     ...(opts.log === undefined ? {} : { log: opts.log }),
-    recording: { runs, recorder: createRunRecorder(recorderDeps) },
+    recording: { runs, recorder: createRunRecorder({ ...recorderDeps, ledger }) },
+    budget: { ledger, recorderDeps },
     breaker: { breaker, recorderDeps },
   });
   return { ticker, report };

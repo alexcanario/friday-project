@@ -89,6 +89,15 @@ function notifyFailure(env: RegistrationEnv, runId: string): void {
   }
 }
 
+/** Writes the ceiling as unknown cost; a failure here is only logged. */
+function recordCeiling(env: RegistrationEnv, ctx: RunContext): void {
+  try {
+    env.recording.recorder.recordUnknownCost(ctx);
+  } catch (ledgerError) {
+    env.logError(`Failed to record cost of run ${ctx.runId}`, ledgerError);
+  }
+}
+
 /** Runs the registered run and always closes its row, whatever the runtime or recorder do. */
 export async function completeRun(env: RegistrationEnv, run: RegisteredRun): Promise<void> {
   const { ctx } = run;
@@ -100,15 +109,12 @@ export async function completeRun(env: RegistrationEnv, run: RegisteredRun): Pro
       env.recording.recorder.recordFinished(ctx, finished);
     } catch (error) {
       env.logError(`Failed to record run ${ctx.runId}`, error);
+      recordCeiling(env, ctx);
     }
     if (heldReasonFor(finished) === "RuntimeFailed") notifyFailure(env, ctx.runId);
   } catch (error) {
     env.logError(`Run failed for issue ${ctx.issueId}`, error);
-    try {
-      env.recording.recorder.recordUnknownCost(ctx);
-    } catch (ledgerError) {
-      env.logError(`Failed to record cost of run ${ctx.runId}`, ledgerError);
-    }
+    recordCeiling(env, ctx);
     notifyFailure(env, ctx.runId);
   }
   try {
