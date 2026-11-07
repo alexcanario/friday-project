@@ -125,4 +125,16 @@ export default tseslint.config(
       ["@friday/daemon/*", "@friday/cli/*", "**/apps/daemon/**", "**/apps/cli/**"],
     ),
   },
+  {
+    files: [
+      "apps/daemon/test/breaker-dispatch.test.ts",
+      "apps/daemon/test/breaker-end-to-end.test.ts",
+      "apps/daemon/test/breaker-dispatch-helpers.ts",
+    ],
+    rules: { "max-lines": ["error", 300] },
+  },
+  {
+    files: ["apps/daemon/test/breaker-dispatch-helpers.ts"],
+    rules: { "max-lines-per-function": ["error", 50] },
+  },
 );

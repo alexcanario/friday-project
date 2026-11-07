@@ -1,59 +1,8 @@
-import { mkdtempSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
-import type { AgentRunRequest, AgentRuntime, LedgerRepository } from "@friday/application";
-import type { RunFinished } from "@friday/contracts";
-import {
-  createBreakerStateRepository,
-  createEventStore,
-  createIssueRepository,
-  createLedgerRepository,
-  createRunRepository,
-  openDatabase,
-} from "@friday/infrastructure";
 import { describe, expect, it } from "vitest";
-import { createBreaker, createRunRecorder, createTicker } from "../src/index.ts";
+import { createRunRecorder } from "../src/index.ts";
 import { beginRun, completeRun, type RegistrationEnv } from "../src/run-registration.ts";
-import {
-  FakeClock,
-  FakeEvents,
-  FakeIssueRepository,
-  FakeIssues,
-  FakeRunRepository,
-  fakeRequest,
-} from "./fakes.ts";
-
-const T0 = Date.parse("2026-11-07T10:00:00.000Z");
-const MIN = 60000;
-
-function finished(status: RunFinished["status"] = "succeeded"): RunFinished {
-  return {
-    status,
-    subtype: null,
-    model: null,
-    costUsd: 0.001,
-    tokens: null,
-    numTurns: null,
-    durationMs: null,
-    output: null,
-    violations: [],
-  };
-}
-
-type Step = RunFinished["status"] | Error;
-
-class ScriptedRuntime implements AgentRuntime {
-  readonly requests: AgentRunRequest[] = [];
-  readonly steps: Step[];
-  constructor(steps: Step[]) {
-    this.steps = steps;
-  }
-  run(request: AgentRunRequest): Promise<RunFinished> {
-    this.requests.push(request);
-    const step = this.steps.shift() ?? "succeeded";
-    return step instanceof Error ? Promise.reject(step) : Promise.resolve(finished(step));
-  }
-}
+import { FakeEvents, FakeIssueRepository, FakeRunRepository, fakeRequest } from "./fakes.ts";
+import { ScriptedRuntime, T0, setup, type Step } from "./breaker-dispatch-helpers.ts";
 
 describe("onRuntimeFailure in completeRun", () => {
   function regSetup(steps: Step[], recordFails = false) {
@@ -131,113 +80,6 @@ describe("onRuntimeFailure in completeRun", () => {
   });
 });
 
-type Options = { state?: string; steps?: Step[]; isOpenThrows?: boolean; open?: boolean };
-
-function setup(o: Options = {}) {
-  const dir = mkdtempSync(join(tmpdir(), "friday-breaker-"));
-  const db = openDatabase(join(dir, "friday.db"));
-  db.sqlite.prepare("INSERT INTO projects (id) VALUES ('p')").run();
-  const events = createEventStore(db);
-  const issues = createIssueRepository(db);
-  for (const id of [7, 8, 9, 10, 11, 12]) {
-    events.append({
-      type: "StateChanged",
-      projectId: "p",
-      issueId: id,
-      runId: null,
-      actor: "seed",
-      at: "2026-11-05T02:00:00.000Z",
-      payload: {
-        type: "StateChanged",
-        issueId: String(id),
-        from: "Todo",
-        to: o.state ?? "InProgress",
-        trigger: "SpecialistAssigned",
-        heldReason: null,
-        verifyRound: 0,
-        qaRound: 0,
-        reviewIter: 0,
-      },
-    });
-  }
-  issues.rebuild("p");
-  const runs = createRunRepository(db);
-  const realLedger = createLedgerRepository(db);
-  const sums = { n: 0 };
-  const ledger: LedgerRepository = {
-    record: (e) => realLedger.record(e),
-    sumByDay: (p, d) => {
-      sums.n += 1;
-      return realLedger.sumByDay(p, d);
-    },
-    sumByIssue: (p, i) => {
-      sums.n += 1;
-      return realLedger.sumByIssue(p, i);
-    },
-  };
-  const clock = new FakeClock();
-  clock.advance(T0);
-  const recorderDeps = {
-    projectId: "p",
-    events,
-    issues,
-    now: () => new Date(clock.now()),
-    ledger,
-  };
-  const real = createBreaker({
-    now: () => new Date(clock.now()),
-    threshold: 3,
-    windowMs: 900000,
-    openMs: 1800000,
-    persist: { store: createBreakerStateRepository(db), projectId: "p" },
-  });
-  const breaker = {
-    isOpen: () => {
-      if (o.isOpenThrows) throw new Error("estado ilegível");
-      return o.open ?? real.isOpen();
-    },
-    recordFailure: () => real.recordFailure(),
-  };
-  const runtime = new ScriptedRuntime(o.steps ?? []);
-  const source = new FakeIssues();
-  source.ready = [7];
-  const logs: string[] = [];
-  const base = {
-    projectId: "p",
-    clock,
-    readConfig: () => ({ enabled: true, maxConcurrentRuns: 4, perDayUsd: 10, perIssueUsd: 5 }),
-    issues: source,
-    buildRequest: (id: number) => fakeRequest(id),
-    runtime,
-    events,
-    log: (m: string) => logs.push(m),
-    recording: { runs, recorder: createRunRecorder(recorderDeps) },
-    budget: { ledger, recorderDeps },
-  };
-  const make = (withBreaker: boolean) =>
-    createTicker({ ...base, ...(withBreaker ? { breaker: { breaker, recorderDeps } } : {}) });
-  const runCount = () =>
-    (db.sqlite.prepare("SELECT COUNT(*) AS n FROM runs").get() as { n: number }).n;
-  const dispatched = (id = 7) =>
-    events.list("p", id).filter((e) => e.type === "RunDispatched").length;
-  return {
-    db,
-    events,
-    issues,
-    clock,
-    runtime,
-    source,
-    logs,
-    sums,
-    real,
-    runCount,
-    dispatched,
-    ticker: make(true),
-    plain: make(false),
-    recorderDeps,
-  };
-}
-
 describe("breaker in the ticker", () => {
   it("holds BreakerOpen without calling the runtime", async () => {
     const t = setup({ open: true });
@@ -294,37 +136,5 @@ describe("breaker in the ticker", () => {
     await closed.ticker.tick();
     expect(closed.issues.get("p", 7)).toMatchObject({ heldReason: "BudgetExhausted" });
     expect(closed.runtime.requests).toHaveLength(0);
-  });
-});
-
-describe("breaker end to end", () => {
-  async function runOne(t: ReturnType<typeof setup>, id: number) {
-    t.source.ready = [id];
-    await t.ticker.tick();
-    await t.ticker.idle();
-  }
-
-  it("opens after three runtime failures and closes after 30 minutes", async () => {
-    const t = setup({ steps: ["failed", "timeout", new Error("boom")] });
-    for (const id of [7, 8, 9]) await runOne(t, id);
-    expect(t.real.isOpen()).toBe(true);
-    const row = t.db.sqlite.prepare("SELECT opened_at FROM breaker_state").get() as {
-      opened_at: string | null;
-    };
-    expect(row.opened_at).not.toBeNull();
-    await runOne(t, 10);
-    expect(t.runtime.requests).toHaveLength(3);
-    expect(t.issues.get("p", 10)).toMatchObject({ state: "Held", heldReason: "BreakerOpen" });
-    t.clock.advance(30 * MIN);
-    await runOne(t, 11);
-    expect(t.runtime.requests).toHaveLength(4);
-  });
-
-  it("other statuses do not open the breaker", async () => {
-    const t = setup({ steps: ["failed", "timeout", "succeeded", "budget_exceeded"] });
-    for (const id of [7, 8, 9, 10]) await runOne(t, id);
-    expect(t.real.isOpen()).toBe(false);
-    await runOne(t, 11);
-    expect(t.runtime.requests).toHaveLength(5);
   });
 });

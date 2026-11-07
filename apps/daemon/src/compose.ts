@@ -1,6 +1,7 @@
 import type { AgentRuntime, GitHubPort, WorktreeManager } from "@friday/application";
 import {
   GitHubRestAdapter,
+  createBreakerStateRepository,
   createEventStore,
   createGitHubClient,
   createIssueRepository,
@@ -9,6 +10,7 @@ import {
   openDatabase,
   type FridayDatabase,
 } from "@friday/infrastructure";
+import { createBreaker, type Breaker } from "./breaker.ts";
 import { readDispatchConfig } from "./compose-config.ts";
 import { createIntake } from "./intake.ts";
 import { acquireProcessLock, type ProcessLockDeps } from "./process-lock.ts";
@@ -60,6 +62,21 @@ function readAuthor(opts: ComposeOptions): { token: string; repo: Repo } {
 const defaultGitHub = (token: string, repo: Repo): GitHubPort =>
   new GitHubRestAdapter(createGitHubClient(token), repo);
 
+/** Builds the breaker from the persisted state; unreadable state fails closed. */
+function buildBreaker(db: FridayDatabase, projectId: string, now: () => Date): Breaker {
+  try {
+    return createBreaker({
+      now,
+      threshold: 3,
+      windowMs: 900000,
+      openMs: 1800000,
+      persist: { store: createBreakerStateRepository(db), projectId },
+    });
+  } catch {
+    throw new Error("O estado do breaker está ilegível ou corrompido.");
+  }
+}
+
 async function assemble(opts: ComposeOptions, db: FridayDatabase, github: GitHubPort) {
   const { root, projectId, worktrees } = opts;
   const now = opts.now ?? (() => new Date());
@@ -67,6 +84,8 @@ async function assemble(opts: ComposeOptions, db: FridayDatabase, github: GitHub
   const events = createEventStore(db);
   const runs = createRunRepository(db);
   db.sqlite.prepare("INSERT OR IGNORE INTO projects (id) VALUES (?)").run(projectId);
+  const breaker = buildBreaker(db, projectId, now);
+  const recorderDeps = { projectId, events, issues, now };
   const report = await reconcile({ projectId, root, runs, issues, events, worktrees, now });
   const dispatcher = createStateDispatcher({
     projectId,
@@ -105,7 +124,8 @@ async function assemble(opts: ComposeOptions, db: FridayDatabase, github: GitHub
     runtime: opts.runtime,
     events,
     ...(opts.log === undefined ? {} : { log: opts.log }),
-    recording: { runs, recorder: createRunRecorder({ projectId, events, issues, now }) },
+    recording: { runs, recorder: createRunRecorder(recorderDeps) },
+    breaker: { breaker, recorderDeps },
   });
   return { ticker, report };
 }
