@@ -39,7 +39,7 @@ export function statusFor(finished: RunFinished): RunRecordStatus {
   return finished.status === "succeeded" ? "succeeded" : "failed";
 }
 
-/** Saves the running row, appends RunDispatched and picks the runtime. Throws when the run must not start. */
+/** Saves the running row, picks the runtime and appends RunDispatched (so a failing runtimeFor leaves no dangling event). Throws when the run must not start. */
 export function beginRun(env: RegistrationEnv, issueId: number): RegisteredRun {
   const { recording } = env;
   const runId = (recording.newRunId ?? randomUUID)();
@@ -56,6 +56,9 @@ export function beginRun(env: RegistrationEnv, issueId: number): RegisteredRun {
   };
   recording.runs.save(row);
   try {
+    const runtime = recording.runtimeFor
+      ? recording.runtimeFor(ctx, recording.recorder.denialSink(ctx))
+      : env.runtime;
     env.events.append({
       projectId: env.projectId,
       issueId,
@@ -65,9 +68,6 @@ export function beginRun(env: RegistrationEnv, issueId: number): RegisteredRun {
       actor: "daemon",
       at: env.now(),
     });
-    const runtime = recording.runtimeFor
-      ? recording.runtimeFor(ctx, recording.recorder.denialSink(ctx))
-      : env.runtime;
     return { ctx, row, request, runtime };
   } catch (error) {
     try {

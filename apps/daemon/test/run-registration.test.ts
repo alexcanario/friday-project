@@ -101,6 +101,31 @@ describe("run registration", () => {
       actor: "daemon",
     });
     expect(t.order).toEqual(["runs.save", "events.append", "runtime.run"]);
+    expect(types(t.events).filter((x) => x === "RunDispatched")).toHaveLength(1);
+  });
+
+  it("records no RunDispatched when runtimeFor throws", async () => {
+    const t = setup();
+    t.recording.runtimeFor = () => {
+      throw new Error("boom");
+    };
+    t.issues.ready = [7];
+    await t.ticker.tick();
+    expect(t.events.appended).toHaveLength(0);
+    expect(t.runtime.requests).toHaveLength(0);
+  });
+
+  it("fails the row and logs the dispatch error when runtimeFor throws", async () => {
+    const t = setup();
+    t.recording.runtimeFor = () => {
+      throw new Error("boom");
+    };
+    t.issues.ready = [7];
+    await t.ticker.tick();
+    const row = t.runs.rows.get("r1");
+    expect(row?.status).toBe("failed");
+    expect(row?.finishedAt).not.toBeNull();
+    expect(t.logs).toContain("Failed to dispatch issue 7: boom");
   });
 
   it("finishes the row as succeeded and records only RunFinished", async () => {
@@ -203,6 +228,7 @@ describe("run registration", () => {
     const denied = t.events.appended.filter((e) => e.type === "ToolDenied");
     expect(denied).toHaveLength(1);
     expect(denied[0]).toMatchObject({ runId: "r1", issueId: 7, payload: denial });
+    expect(types(t.events).filter((x) => x === "RunDispatched")).toHaveLength(1);
     own.resolveAll(finished("succeeded"));
     await t.ticker.idle();
 
