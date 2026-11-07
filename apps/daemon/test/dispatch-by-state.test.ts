@@ -163,10 +163,22 @@ describe("state dispatcher", () => {
     const t = setup();
     await t.dispatcher.listReady();
     expect(t.dispatcher.buildRequest(10)).toEqual(fakeRequest(10));
-    expect(t.tb).toHaveBeenCalledWith(10);
+    expect(t.tb).toHaveBeenCalledWith(10, undefined);
     t.dispatcher.buildRequest(11);
-    expect(t.sb).toHaveBeenCalledWith(11);
+    expect(t.sb).toHaveBeenCalledWith(11, undefined);
     expect(() => t.dispatcher.buildRequest(99)).toThrow("A issue 99 não foi despachada por estado");
+  });
+
+  it("buildRequest forwards runId to the role builder", async () => {
+    const t = setup();
+    await t.dispatcher.listReady();
+    t.dispatcher.buildRequest(10, "run-abc");
+    expect(t.tb).toHaveBeenLastCalledWith(10, "run-abc");
+    t.dispatcher.buildRequest(10);
+    expect(t.tb).toHaveBeenLastCalledWith(10, undefined);
+    expect(() => t.dispatcher.buildRequest(99, "run-abc")).toThrow(
+      "A issue 99 não foi despachada por estado",
+    );
   });
 
   it("handles RiskCheck with one classifyRisk, one decideGates, one RiskAssessed event and the gate labels", async () => {
