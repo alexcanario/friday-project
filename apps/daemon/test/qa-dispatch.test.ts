@@ -45,6 +45,7 @@ type Opts = {
   noTarget?: boolean;
   runtimeFor?: boolean;
   throws?: boolean;
+  qaRound?: number;
 };
 
 function setup(o: Opts = {}) {
@@ -57,7 +58,7 @@ function setup(o: Opts = {}) {
     state: "QA",
     heldReason: null,
     verifyRound: 0,
-    qaRound: 0,
+    qaRound: o.qaRound ?? 0,
     reviewIter: 0,
   };
   issues.rows.set(7, qaRow);
