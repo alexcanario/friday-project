@@ -97,7 +97,7 @@ describe("QA agent definition", () => {
       [
         "diff",
         "--name-only",
-        "origin/develop",
+        "origin/develop...HEAD",
         "--",
         ".github/workflows",
         "packages/infrastructure/package.json",
