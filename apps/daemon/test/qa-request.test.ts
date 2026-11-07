@@ -16,8 +16,16 @@ import { FakeEvents, FakeIssueRepository, FakeRunRepository } from "./fakes.ts";
 const SHA = "a".repeat(40);
 const report = { worktreePath: "/tmp/wt", headSha: SHA, changedFiles: ["src/Version.cs"] };
 const criteria = [
-  { index: 1, claim: "Retorna 200", proof: { kind: "command" as const, command: "curl localhost/version" } },
-  { index: 2, claim: "Mostra a versão", proof: { kind: "browser" as const, step: "abrir /version" } },
+  {
+    index: 1,
+    claim: "Retorna 200",
+    proof: { kind: "command" as const, command: "curl localhost/version" },
+  },
+  {
+    index: 2,
+    claim: "Mostra a versão",
+    proof: { kind: "browser" as const, step: "abrir /version" },
+  },
 ];
 const agent = {
   model: "sonnet",
@@ -114,9 +122,9 @@ describe("buildQaStepInput", () => {
   it("throws for a branch equal to base, another issue branch or an invalid issue number", () => {
     expect(() => buildQaStepInput({ ...input, branch: "develop" })).toThrow(Error);
     expect(() => buildQaStepInput({ ...input, branch: "friday/8-x" })).toThrow(Error);
-    expect(() =>
-      buildQaStepInput({ ...input, issue: { ...input.issue, number: 0 } }),
-    ).toThrow(Error);
+    expect(() => buildQaStepInput({ ...input, issue: { ...input.issue, number: 0 } })).toThrow(
+      Error,
+    );
   });
 });
 
@@ -147,7 +155,10 @@ describe("qaTargetOf", () => {
     const cases: { events: StoredEvent[]; ctx: QaContext | null; called: boolean }[] = [
       { events: [ev(1, "CriteriaSet", { criteria })], ctx: context, called: false },
       {
-        events: [ev(1, "CriteriaSet", { criteria }), ev(2, "WorkReported", { ...report, headSha: "a".repeat(39) })],
+        events: [
+          ev(1, "CriteriaSet", { criteria }),
+          ev(2, "WorkReported", { ...report, headSha: "a".repeat(39) }),
+        ],
         ctx: context,
         called: false,
       },
@@ -208,9 +219,25 @@ function e2e(withReport: boolean) {
     reviewIter: 0,
   };
   issues.rows.set(7, row);
-  events.append({ projectId: "p", issueId: 7, runId: null, type: "CriteriaSet", payload: { criteria }, actor: "daemon", at: "2026-11-05T03:00:00.000Z" });
+  events.append({
+    projectId: "p",
+    issueId: 7,
+    runId: null,
+    type: "CriteriaSet",
+    payload: { criteria },
+    actor: "daemon",
+    at: "2026-11-05T03:00:00.000Z",
+  });
   if (withReport)
-    events.append({ projectId: "p", issueId: 7, runId: null, type: "WorkReported", payload: report, actor: "daemon", at: "2026-11-05T03:00:00.000Z" });
+    events.append({
+      projectId: "p",
+      issueId: 7,
+      runId: null,
+      type: "WorkReported",
+      payload: report,
+      actor: "daemon",
+      at: "2026-11-05T03:00:00.000Z",
+    });
   const fake = new FakeAgentRuntime([finished(pass)]);
   const now = () => new Date("2026-11-05T03:00:00.000Z");
   const recorderDeps = { projectId: "p", events, issues, now };

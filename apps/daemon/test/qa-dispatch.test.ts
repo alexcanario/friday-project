@@ -116,7 +116,7 @@ describe("runQaForIssue", () => {
 
   it("passes the run id to targetOf and never runs without a target", async () => {
     const t = setup();
-    const spy = vi.fn((_i: number, _r: string) => target());
+    const spy = vi.fn<QaDispatchDeps["targetOf"]>(() => target());
     t.deps.targetOf = spy;
     await runQaForIssue(t.deps, 7);
     expect(spy).toHaveBeenCalledTimes(1);
