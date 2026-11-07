@@ -7,6 +7,8 @@ export type CreatedPr = { number: number; headSha: string; created: boolean };
 export type MergeResult =
   { merged: true; sha: string } | { merged: false; reason: "head_changed" | "not_mergeable" };
 
+export type PrMergeState = { merged: boolean; headSha: string };
+
 export type ReviewEvent = "APPROVE" | "REQUEST_CHANGES" | "COMMENT";
 
 export interface GitHubPort {
@@ -22,6 +24,7 @@ export interface GitHubPort {
   }): Promise<CreatedPr>;
   getCiStatus(pr: number, checkName: string): Promise<CiStatus>;
   getPrDiff(pr: number): Promise<PrDiff>;
+  getPrMergeState(pr: number): Promise<PrMergeState>;
   squashMerge(pr: number, expectedHeadSha: string): Promise<MergeResult>;
   postReview(
     pr: number,

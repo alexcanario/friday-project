@@ -65,6 +65,7 @@ export type {
   GitHubPort,
   IssueSummary,
   MergeResult,
+  PrMergeState,
   ReviewEvent,
 } from "./github-port.ts";
 export type { StaleVerdicts } from "./stale-verdicts.ts";

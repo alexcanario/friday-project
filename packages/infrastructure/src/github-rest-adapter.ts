@@ -5,6 +5,7 @@ import type {
   IssueSummary,
   MergeResult,
   PrDiff,
+  PrMergeState,
   ReviewEvent,
 } from "@friday/application";
 import type { Octokit } from "octokit";
@@ -135,6 +136,14 @@ export class GitHubRestAdapter implements GitHubPort {
         0,
       ),
     };
+  }
+
+  async getPrMergeState(pr: number): Promise<PrMergeState> {
+    const res = await this.octokit.request("GET /repos/{owner}/{repo}/pulls/{pull_number}", {
+      ...this.repo,
+      pull_number: pr,
+    });
+    return { merged: res.data.merged, headSha: res.data.head.sha };
   }
 
   async squashMerge(pr: number, expectedHeadSha: string): Promise<MergeResult> {
