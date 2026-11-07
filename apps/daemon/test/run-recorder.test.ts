@@ -108,7 +108,11 @@ describe("run recorder", () => {
     expect(events.appended.map((e) => e.type)).toEqual(["RunFinished"]);
     expect(issues.row?.state).toBe("InProgress");
     recorder.recordFinished(ctx, finished("budget_exceeded"));
-    expect(events.appended.map((e) => e.type)).toEqual(["RunFinished", "RunFinished", "StateChanged"]);
+    expect(events.appended.map((e) => e.type)).toEqual([
+      "RunFinished",
+      "RunFinished",
+      "StateChanged",
+    ]);
     expect(issues.row?.heldReason).toBe("BudgetExceeded");
   });
 
