@@ -1,16 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import type { ApprovalRecord, IssueRow, PrDiff, StateChangedPayload } from "@friday/application";
-import {
-  createStateDispatcher,
-  type ApprovalDeps,
-  type DispatchConfig,
-} from "../src/index.ts";
-import {
-  FakeApprovalStore,
-  FakeEvents,
-  FakeGitHub,
-  FakeIssueRepository,
-} from "./fakes.ts";
+import { createStateDispatcher, type ApprovalDeps, type DispatchConfig } from "../src/index.ts";
+import { FakeApprovalStore, FakeEvents, FakeGitHub, FakeIssueRepository } from "./fakes.ts";
 
 const T0 = Date.parse("2026-11-06T03:00:00.000Z");
 const A = "a".repeat(40);
@@ -101,7 +92,8 @@ function setup(options: Options = {}) {
     prOf: () => 5,
     now: () => new Date(clock.ms),
     log,
-    classifyRisk: () => (options.low ? { risk: "low", rules: [] } : { risk: "high", rules: ["ci"] }),
+    classifyRisk: () =>
+      options.low ? { risk: "low", rules: [] } : { risk: "high", rules: ["ci"] },
     ...(options.withApproval === false ? {} : { approval }),
   });
   const changes = () =>
@@ -176,12 +168,13 @@ describe("approval wiring", () => {
 
   it("applies a stored denial once", async () => {
     const t = setup({ state: "AwaitingApproval" });
-    t.store.seed(
-      record({ decision: "denied", decidedAt: T0 + 1000, decidedBy: "human:cli" }),
-    );
+    t.store.seed(record({ decision: "denied", decidedAt: T0 + 1000, decidedBy: "human:cli" }));
     await t.dispatcher.listReady();
     expect(t.changes()).toHaveLength(1);
-    expect(t.changes()[0]).toMatchObject({ trigger: "ApprovalDenied", heldReason: "ApprovalDenied" });
+    expect(t.changes()[0]).toMatchObject({
+      trigger: "ApprovalDenied",
+      heldReason: "ApprovalDenied",
+    });
     expect(t.issues.rows.get(13)?.state).toBe("Held");
     await t.dispatcher.listReady();
     expect(t.changes()).toHaveLength(1);
@@ -248,7 +241,9 @@ describe("approval wiring", () => {
     const t = setup({ state: "AwaitingApproval" });
     await expect(t.dispatcher.listReady()).resolves.toEqual([]);
     expect(t.events.list("p", 13)).toHaveLength(0);
-    expect(t.log).toHaveBeenCalledWith("A issue 13 em AwaitingApproval não tem pedido de aprovação");
+    expect(t.log).toHaveBeenCalledWith(
+      "A issue 13 em AwaitingApproval não tem pedido de aprovação",
+    );
   });
 
   it("logs and does nothing when an approved request has no decidedAt", async () => {
