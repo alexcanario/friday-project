@@ -230,4 +230,20 @@ describe("GitCliHost with a malicious worktree", () => {
     expect(git(remote, "rev-parse", "refs/heads/friday/182-x")).toBe(c1);
     expect(existsSync(marker)).toBe(false);
   });
+
+  it("rejects a tokenEnv that is in the allowlist (PATH, HOME, path)", () => {
+    for (const tokenEnv of ["PATH", "HOME", "path"]) {
+      expect(() => new GitCliHost({ tokenEnv, mirrorDir: mirror, targetUrl })).toThrow(
+        new Error(
+          "O nome da variável de ambiente do token não pode ser uma variável da lista de permissão do ambiente do git.",
+        ),
+      );
+    }
+  });
+
+  it("accepts a tokenEnv outside the allowlist", () => {
+    expect(
+      () => new GitCliHost({ tokenEnv: "GITHUB_TOKEN", mirrorDir: mirror, targetUrl }),
+    ).not.toThrow();
+  });
 });
