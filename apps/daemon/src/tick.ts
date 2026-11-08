@@ -1,7 +1,8 @@
 import type { AgentRunRequest, AgentRuntime, EventStore } from "@friday/application";
-import { applyInput, type RunRecorderDeps } from "./run-recorder.ts";
-import { passesBudget, type BudgetDeps } from "./budget-gate.ts";
-import { beginRun, completeRun, type RunRecordingDeps } from "./run-registration.ts";
+import type { RunRecorderDeps } from "./run-recorder.ts";
+import type { BudgetDeps } from "./budget-gate.ts";
+import type { RunRecordingDeps } from "./run-registration.ts";
+import { dispatchIssue } from "./tick-dispatch.ts";
 import type { TickConfig } from "./tick-config.ts";
 
 export const TICK_INTERVAL_MS = 30000;
@@ -50,98 +51,6 @@ export interface Ticker {
 export function createTicker(deps: TickerDeps): Ticker {
   const active = new Map<number, Promise<void>>();
 
-  function logError(message: string, error: unknown): void {
-    const detail = error instanceof Error ? error.message : String(error);
-    deps.log?.(`${message}: ${detail}`);
-  }
-
-  const iso = (): string => new Date(deps.clock.now()).toISOString();
-
-  function withinBudget(budget: BudgetDeps, issueId: number, config: TickConfig): boolean {
-    return passesBudget(
-      budget,
-      config,
-      {
-        projectId: deps.projectId,
-        issueId,
-        runCeilingUsd: deps.buildRequest(issueId).agent.maxBudgetUsd,
-        nowMs: deps.clock.now(),
-      },
-      (message) => deps.log?.(message),
-    );
-  }
-
-  /** True when the breaker lets the run start; otherwise holds the issue with BreakerOpen. Throws when the state cannot be read. */
-  function passesBreaker(issueId: number): boolean {
-    if (!deps.breaker || !deps.breaker.breaker.isOpen()) return true;
-    const held = applyInput(
-      deps.breaker.recorderDeps,
-      { issueId, runId: null },
-      { type: "RunHeld", reason: "BreakerOpen" },
-    );
-    if (!held) deps.log?.(`Breaker open for issue ${issueId} but RunHeld was not accepted`);
-    return false;
-  }
-
-  function dispatchRecorded(
-    issueId: number,
-    recording: RunRecordingDeps,
-    budget: BudgetDeps,
-    config: TickConfig,
-  ): void {
-    const env = {
-      projectId: deps.projectId,
-      now: iso,
-      events: deps.events,
-      runtime: deps.runtime,
-      buildRequest: deps.buildRequest,
-      recording,
-      logError,
-      ...(deps.breaker ? { onRuntimeFailure: () => deps.breaker?.breaker.recordFailure() } : {}),
-    };
-    let registered;
-    try {
-      if (!passesBreaker(issueId)) return;
-      if (!withinBudget(budget, issueId, config)) return;
-      registered = beginRun(env, issueId);
-    } catch (error) {
-      logError(`Failed to dispatch issue ${issueId}`, error);
-      return;
-    }
-    active.set(
-      issueId,
-      completeRun(env, registered).finally(() => active.delete(issueId)),
-    );
-  }
-
-  function dispatch(issueId: number, config: TickConfig): void {
-    if (deps.recording) return dispatchRecorded(issueId, deps.recording, deps.budget, config);
-    let request: AgentRunRequest;
-    try {
-      request = deps.buildRequest(issueId);
-      deps.events.append({
-        projectId: deps.projectId,
-        issueId,
-        runId: null,
-        type: "RunDispatched",
-        payload: {},
-        actor: "daemon",
-        at: new Date(deps.clock.now()).toISOString(),
-      });
-    } catch (error) {
-      logError(`Failed to dispatch issue ${issueId}`, error);
-      return;
-    }
-    const run = Promise.resolve()
-      .then(() => deps.runtime.run(request))
-      .then(
-        () => undefined,
-        (error: unknown) => logError(`Run failed for issue ${issueId}`, error),
-      )
-      .finally(() => active.delete(issueId));
-    active.set(issueId, run);
-  }
-
   async function tick(): Promise<void> {
     const config = deps.readConfig();
     if (config === null || !config.enabled) return;
@@ -153,7 +62,7 @@ export function createTicker(deps: TickerDeps): Ticker {
     for (const issueId of [...new Set(ready)]
       .filter((id) => !active.has(id))
       .slice(0, Math.max(0, slots))) {
-      dispatch(issueId, config);
+      dispatchIssue(deps, active, issueId, config);
     }
   }
 

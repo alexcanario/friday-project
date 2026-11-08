@@ -91,6 +91,31 @@ export function applyInput(
   return true;
 }
 
+const NO_USAGE = {
+  inputTokens: 0,
+  outputTokens: 0,
+  cacheReadTokens: 0,
+  cacheCreationTokens: 0,
+  numTurns: null,
+};
+
+function denialSinkOf(
+  events: RunRecorderDeps["events"],
+  base: (
+    ctx: RunContext,
+  ) => Omit<Parameters<RunRecorderDeps["events"]["append"]>[0], "type" | "payload">,
+  ctx: RunContext,
+): ReturnType<RunRecorder["denialSink"]> {
+  const seen = new Set<string>();
+  return {
+    record({ toolName, toolUseId }) {
+      if (toolUseId !== "" && seen.has(toolUseId)) return;
+      events.append({ ...base(ctx), type: "ToolDenied", payload: { toolName, toolUseId } });
+      if (toolUseId !== "") seen.add(toolUseId);
+    },
+  };
+}
+
 export function createRunRecorder(deps: RunRecorderDeps): RunRecorder {
   const { projectId, events, now } = deps;
   const base = (ctx: RunContext) => ({
@@ -138,22 +163,9 @@ export function createRunRecorder(deps: RunRecorderDeps): RunRecorder {
         ...ledgerBase(ctx),
         costUsd: ctx.maxBudgetUsd ?? null,
         costUnknown: true,
-        inputTokens: 0,
-        outputTokens: 0,
-        cacheReadTokens: 0,
-        cacheCreationTokens: 0,
-        numTurns: null,
+        ...NO_USAGE,
       });
     },
-    denialSink(ctx) {
-      const seen = new Set<string>();
-      return {
-        record({ toolName, toolUseId }) {
-          if (toolUseId !== "" && seen.has(toolUseId)) return;
-          events.append({ ...base(ctx), type: "ToolDenied", payload: { toolName, toolUseId } });
-          if (toolUseId !== "") seen.add(toolUseId);
-        },
-      };
-    },
+    denialSink: (ctx) => denialSinkOf(events, base, ctx),
   };
 }

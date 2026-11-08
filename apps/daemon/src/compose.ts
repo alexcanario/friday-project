@@ -179,6 +179,32 @@ function ingestingIssues(
   };
 }
 
+function tickerOf(opts: ComposeOptions, ctx: DispatcherContext, breaker: Breaker): Ticker {
+  const { events, recording, budget, recorderDeps } = ctx;
+  const dispatcher = dispatcherOf(opts, ctx);
+  const intake = createIntake({
+    projectId: opts.projectId,
+    github: ctx.github,
+    issues: ctx.issues,
+    events,
+    now: ctx.now,
+    ...(opts.log === undefined ? {} : { log: opts.log }),
+  });
+  return createTicker({
+    projectId: opts.projectId,
+    clock: opts.clock,
+    readConfig: () => readGuardedTickConfig(opts.root, opts.log),
+    issues: ingestingIssues(opts, intake, dispatcher),
+    buildRequest: (id, runId) => dispatcher.buildRequest(id, runId),
+    runtime: opts.runtime,
+    events,
+    ...(opts.log === undefined ? {} : { log: opts.log }),
+    recording,
+    budget,
+    breaker: { breaker, recorderDeps },
+  });
+}
+
 async function assemble(
   opts: ComposeOptions,
   db: FridayDatabase,
@@ -206,46 +232,20 @@ async function assemble(
     now,
   });
   const recorder = createRunRecorder({ ...recorderDeps, ledger });
-  const recording = { runs, recorder, runtimeFor };
-  const budget = { ledger, recorderDeps };
-  const clientFor = opts.createGitHub ?? defaultGitHub;
-  const prOf = opts.prOf ?? createPrOf(events, projectId);
   const ctx = {
     db,
     github,
     repo,
-    clientFor,
+    clientFor: opts.createGitHub ?? defaultGitHub,
     recorderDeps,
-    recording,
-    budget,
+    recording: { runs, recorder, runtimeFor },
+    budget: { ledger, recorderDeps },
     now,
     issues,
     events,
-    prOf,
+    prOf: opts.prOf ?? createPrOf(events, projectId),
   };
-  const dispatcher = dispatcherOf(opts, ctx);
-  const intake = createIntake({
-    projectId,
-    github,
-    issues,
-    events,
-    now,
-    ...(opts.log === undefined ? {} : { log: opts.log }),
-  });
-  const ticker = createTicker({
-    projectId,
-    clock: opts.clock,
-    readConfig: () => readGuardedTickConfig(root, opts.log),
-    issues: ingestingIssues(opts, intake, dispatcher),
-    buildRequest: (id, runId) => dispatcher.buildRequest(id, runId),
-    runtime: opts.runtime,
-    events,
-    ...(opts.log === undefined ? {} : { log: opts.log }),
-    recording,
-    budget,
-    breaker: { breaker, recorderDeps },
-  });
-  return { ticker, report };
+  return { ticker: tickerOf(opts, ctx, breaker), report };
 }
 
 /** Process composition at startup: lock, database, reconcile, GitHub, intake and ticker. */

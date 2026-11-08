@@ -141,4 +141,11 @@ export default tseslint.config(
     files: ["apps/daemon/test/breaker-dispatch-helpers.ts"],
     rules: { "max-lines-per-function": ["error", 50] },
   },
+  {
+    files: ["apps/*/src/**/*.ts", "packages/*/src/**/*.ts"],
+    rules: {
+      "max-lines-per-function": ["error", { max: 50, skipBlankLines: true, skipComments: true }],
+      "max-lines": ["error", { max: 300, skipBlankLines: true, skipComments: true }],
+    },
+  },
 );

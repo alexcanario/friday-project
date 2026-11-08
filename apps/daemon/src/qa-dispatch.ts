@@ -25,6 +25,22 @@ export type QaDispatchDeps = {
 
 const NOT_APPLIED: QaApplyResult = { applied: false, feedback: null };
 
+function appendQaFailed(
+  deps: QaDispatchDeps,
+  ids: { issueId: number; runId: string },
+  feedback: QaApplyResult["feedback"],
+): void {
+  deps.recorder.events.append({
+    projectId: deps.projectId,
+    issueId: ids.issueId,
+    runId: ids.runId,
+    type: "QaFinished",
+    payload: { outcome: "qa_failed", feedback },
+    actor: "daemon",
+    at: deps.recorder.now().toISOString(),
+  });
+}
+
 /** Runs the QA step with a registered run row and a recording runtime, then applies the outcome. */
 async function execute(
   deps: QaDispatchDeps,
@@ -63,15 +79,7 @@ async function execute(
     held = outcome.input.type === "RunHeld";
     const result = applyQaOutcome(deps.recorder, { issueId, runId }, outcome);
     if (result.applied && outcome.input.type === "QaFailed") {
-      deps.recorder.events.append({
-        projectId: deps.projectId,
-        issueId,
-        runId,
-        type: "QaFinished",
-        payload: { outcome: "qa_failed", feedback: result.feedback },
-        actor: "daemon",
-        at: deps.recorder.now().toISOString(),
-      });
+      appendQaFailed(deps, { issueId, runId }, result.feedback);
     }
     return result;
   } finally {
