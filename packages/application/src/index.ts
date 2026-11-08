@@ -1,5 +1,13 @@
 export { configProblem, type ConfigProblem, type ConfigProblemCode } from "./config-problem.ts";
 export { checkRoster } from "./roster-check.ts";
+export {
+  buildNightDigest,
+  type NightComment,
+  type NightIssue,
+  type NightPull,
+  type NightReader,
+} from "./night-digest.ts";
+export { nightDigestSchema, type NightDigest } from "@friday/contracts";
 export { toAgentRunOptions, type AgentRunOptions } from "./agent-run-options.ts";
 export { type AgentRuntime, type AgentRunRequest } from "./agent-runtime.ts";
 export { buildEffectsRun, type EffectsRun } from "./effects-run.ts";
