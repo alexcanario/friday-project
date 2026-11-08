@@ -74,4 +74,3 @@ export async function runUntilSignal(s: ReturnType<typeof setup>, args = ["daemo
   s.fire();
   return p;
 }
-

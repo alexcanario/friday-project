@@ -2,7 +2,7 @@ import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { AlreadyRunningError, type Daemon } from "@friday/daemon";
+import { AlreadyRunningError } from "@friday/daemon";
 import { runDaemonCommand, startDaemon } from "../src/daemon.ts";
 import { runUntilSignal, setup, validRoot } from "./daemon-helpers.ts";
 

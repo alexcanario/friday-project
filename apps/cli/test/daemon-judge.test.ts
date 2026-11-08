@@ -35,10 +35,7 @@ describe("daemon judge input", () => {
     const central = join(homeDir, ".friday");
     mkdirSync(central);
     cpSync(validRoot(), central, { recursive: true });
-    const cases = [
-      setup({ FRIDAY_HOME: validRoot() }),
-      setup({}, {}, homeDir),
-    ];
+    const cases = [setup({ FRIDAY_HOME: validRoot() }), setup({}, {}, homeDir)];
     for (const s of cases) {
       await runUntilSignal(s);
       const opts = optsOf(s);
