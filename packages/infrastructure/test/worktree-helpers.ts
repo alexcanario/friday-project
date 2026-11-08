@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, realpathSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -14,7 +14,8 @@ export interface Fixture {
 
 /** Temporary repo with a local `origin`, branches `main` and `develop` at different commits. */
 export function makeFixture(): Fixture {
-  const base = mkdtempSync(join(tmpdir(), "friday-wt-"));
+  // Long form: on Windows tmpdir() may be an 8.3 name (RUNNER~1) while git reports the long one.
+  const base = realpathSync.native(mkdtempSync(join(tmpdir(), "friday-wt-")));
   const origin = join(base, "origin.git");
   const repoDir = join(base, "repo");
   mkdirSync(origin);
