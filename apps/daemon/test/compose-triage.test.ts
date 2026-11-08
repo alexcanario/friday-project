@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
 import * as daemon from "../src/index.ts";
 import { composeDaemon } from "../src/index.ts";
 import { setup } from "./compose-helpers.ts";
-import { FICHA, GOOD, finished } from "./triage-fakes.ts";
+import { AGENT_CONFIG, GOOD, finished } from "./triage-fakes.ts";
 import { FakeTriageGitHub } from "./triage-fakes.ts";
 
 function triageScenario() {
@@ -24,7 +24,7 @@ function triageScenario() {
 describe("composeDaemon triage wiring", () => {
   it("triages an ingested issue on tick with the factory.yaml flow", async () => {
     const t = triageScenario();
-    const daemonHandle = await composeDaemon({ ...t.opts, triage: FICHA });
+    const daemonHandle = await composeDaemon({ ...t.opts, triage: AGENT_CONFIG });
     await daemonHandle.ticker.tick();
     await daemonHandle.ticker.idle();
     expect(t.runtime.requests).toHaveLength(1);
@@ -47,7 +47,7 @@ describe("composeDaemon triage wiring", () => {
     daemonHandle.release();
   });
 
-  it("leaves Todo alone without the option and rejects an invalid ficha before the lock", async () => {
+  it("leaves Todo alone without the option and rejects an invalid agent config before the lock", async () => {
     const t = triageScenario();
     const plain = await composeDaemon(t.opts);
     await plain.ticker.tick();
@@ -57,7 +57,7 @@ describe("composeDaemon triage wiring", () => {
     plain.release();
 
     const u = triageScenario();
-    await expect(composeDaemon({ ...u.opts, triage: { ...FICHA, maxTurns: 0 } })).rejects.toThrow(
+    await expect(composeDaemon({ ...u.opts, triage: { ...AGENT_CONFIG, maxTurns: 0 } })).rejects.toThrow(
       "A ficha da triagem é inválida.",
     );
     expect(existsSync(join(u.root, ".friday", "daemon.lock"))).toBe(false);
