@@ -26,7 +26,7 @@ type TickerBaseDeps = {
   readConfig: () => TickConfig | null;
   issues: ReadyIssueSource;
   buildRequest: RunRequestBuilder;
-  runtime: AgentRuntime;
+  runtime?: AgentRuntime;
   events: EventStore;
   log?: (message: string) => void;
   breaker?: {

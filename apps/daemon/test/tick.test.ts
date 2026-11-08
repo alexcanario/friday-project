@@ -202,3 +202,25 @@ describe("ticker", () => {
     expect(s.runtime.requests).toHaveLength(0);
   });
 });
+
+describe("ticker without a runtime", () => {
+  it("logs and starts no run when there is neither runtime nor runtimeFor", async () => {
+    const issues = new FakeIssues();
+    const events = new FakeEvents();
+    const logs: string[] = [];
+    const ticker = createTicker({
+      projectId: "p1",
+      clock: new FakeClock(),
+      readConfig: () => ({ enabled: true, maxConcurrentRuns: 1, perIssueUsd: 5, perDayUsd: 10 }),
+      issues,
+      buildRequest: (id) => fakeRequest(id),
+      events,
+      log: (message) => logs.push(message),
+    });
+    issues.ready = [5];
+    await expect(ticker.tick()).resolves.toBeUndefined();
+    await ticker.idle();
+    expect(events.appended).toHaveLength(0);
+    expect(logs.join("\n")).toContain("Nenhum runtime configurado para a run.");
+  });
+});

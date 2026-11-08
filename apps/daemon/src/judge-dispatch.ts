@@ -9,7 +9,7 @@ import {
 import type { RunFinished } from "@friday/contracts";
 import { passesBudget, type BudgetCaps, type BudgetDeps } from "./budget-gate.ts";
 import { applyInput, type RunRecorderDeps } from "./run-recorder.ts";
-import { statusFor, type RunRecordingDeps } from "./run-registration.ts";
+import { baseRuntimeOf, statusFor, type RunRecordingDeps } from "./run-registration.ts";
 
 export type JudgeApplyResult = { applied: boolean; feedback: string | null };
 
@@ -18,7 +18,7 @@ export type JudgeDispatchDeps = {
   prOf: (issueId: number) => number | null;
   getIssue: (issueId: number) => Promise<{ body: string; labels: string[] }>;
   judgeInput: (issueId: number) => { cwd: string; prompt: string; configRoot: string };
-  step: Omit<JudgeStepDeps, "reviewer" | "readPrHead">;
+  step: Omit<JudgeStepDeps, "reviewer" | "readPrHead" | "runtime"> & { runtime?: AgentRuntime };
   readPrHead: JudgeStepDeps["readPrHead"];
   reviewerFor: JudgeStepDeps["reviewer"];
   recorder: RunRecorderDeps;
@@ -102,10 +102,8 @@ function recordingRuntime(
   ctx: { runId: string; issueId: number },
   tracker: Tracker,
 ): AgentRuntime {
-  const { recorder, runtimeFor } = deps.recording;
-  const base: AgentRuntime = runtimeFor
-    ? runtimeFor(ctx, recorder.denialSink(ctx))
-    : deps.step.runtime;
+  const { recorder } = deps.recording;
+  const base = baseRuntimeOf(deps.recording, ctx, deps.step.runtime);
   return {
     run: async (request) => {
       const finished = await base.run(request);
@@ -138,8 +136,8 @@ async function execute(
   runs.save({ ...row, status: "running" });
   const tracker: Tracker = { last: null };
   let completed = false;
-  const runtime = recordingRuntime(deps, { runId, issueId }, tracker);
   try {
+    const runtime = recordingRuntime(deps, { runId, issueId }, tracker);
     const issue = await deps.getIssue(issueId);
     const outcome = await runJudgeStep(
       { ...deps.step, runtime, readPrHead: deps.readPrHead, reviewer: deps.reviewerFor },

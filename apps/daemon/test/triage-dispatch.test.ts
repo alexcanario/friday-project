@@ -177,3 +177,17 @@ describe("runTriageForIssue", () => {
     expect(GOOD.specialist).toBe("backend");
   });
 });
+
+describe("runTriageForIssue without a runtime", () => {
+  it("fails the run without runtime and runtimeFor", async () => {
+    const t = triageSetup({ state: "Triage" });
+    delete (t.deps as { runtime?: unknown }).runtime;
+    await expect(runTriageForIssue(t.deps, t.issue)).resolves.toEqual(NOT);
+    expect(t.runs.get("r1")?.status).toBe("failed");
+    expect(t.runs.get("r1")?.finishedAt).not.toBeNull();
+    expect(t.log).toHaveBeenCalledWith(
+      "Falha na triagem da issue 10: Nenhum runtime configurado para a run.",
+    );
+    expect(t.github.calls).toEqual([]);
+  });
+});

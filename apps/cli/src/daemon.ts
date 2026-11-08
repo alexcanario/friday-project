@@ -1,10 +1,5 @@
 import { isAbsolute, join } from "node:path";
-import {
-  toAgentRunOptions,
-  type AgentRunOptions,
-  type AgentRuntime,
-  type WorktreeManager,
-} from "@friday/application";
+import { toAgentRunOptions, type AgentRunOptions, type WorktreeManager } from "@friday/application";
 import { composeDaemon, type Clock, type Daemon } from "@friday/daemon";
 import {
   GitWorktreeManager,
@@ -26,11 +21,6 @@ export type DaemonDeps = {
 };
 
 const USAGE = "Uso: friday daemon\n";
-
-/** Provisional until #248 makes ComposeOptions.runtime optional; unreachable in practice. */
-const unwiredRuntime: AgentRuntime = {
-  run: () => Promise.reject(new Error("O runtime do ticker não está ligado.")),
-};
 
 const realClock: Clock = {
   now: Date.now,
@@ -129,7 +119,6 @@ export async function startDaemon(deps: DaemonDeps): Promise<Result> {
       homeDir,
       worktrees,
       clock: deps.clock ?? realClock,
-      runtime: unwiredRuntime,
       triage: triage.agent,
       judge: {
         agents: judgeAgents,

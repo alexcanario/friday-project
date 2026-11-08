@@ -211,3 +211,17 @@ describe("runQaForIssue", () => {
     expect(typeof daemon.runQaForIssue).toBe("function");
   });
 });
+
+describe("runQaForIssue without a runtime", () => {
+  it("fails the run without runtime and runtimeFor", async () => {
+    const t = setup();
+    delete (t.deps.step as { runtime?: unknown }).runtime;
+    await expect(runQaForIssue(t.deps, 7)).resolves.toEqual({ applied: false, feedback: null });
+    expect(t.runs.rows.get("r1")?.status).toBe("failed");
+    expect(t.runs.rows.get("r1")?.finishedAt).not.toBeNull();
+    expect(t.log).toHaveBeenCalledWith(
+      "Falha no QA da issue 7: Nenhum runtime configurado para a run.",
+    );
+    expect(t.types()).toEqual([]);
+  });
+});

@@ -16,7 +16,7 @@ export type BranchOptions = {
   projectId: string;
   root: string;
   env: Record<string, string | undefined>;
-  runtime: AgentRuntime;
+  runtime?: AgentRuntime;
   worktrees: WorktreeManager;
   log?: (message: string) => void;
   judge?: JudgeCompose;
@@ -53,7 +53,7 @@ export function judgeBranchOf(opts: BranchOptions, ctx: BranchContext) {
       reviewerFor: (token) => clientFor(token, repo),
       compose: opts.judge,
       env: opts.env,
-      runtime: opts.runtime,
+      ...(opts.runtime === undefined ? {} : { runtime: opts.runtime }),
       prOf: ctx.prOf,
       recorder: recorderDeps,
       recording,
@@ -74,7 +74,7 @@ export function triageBranchOf(opts: BranchOptions, ctx: BranchContext) {
       root: opts.root,
       agentConfig: opts.triage,
       github,
-      runtime: opts.runtime,
+      ...(opts.runtime === undefined ? {} : { runtime: opts.runtime }),
       recorder: recorderDeps,
       recording,
       budget,
@@ -93,7 +93,7 @@ export function qaBranchOf(opts: BranchOptions, ctx: BranchContext) {
       projectId: opts.projectId,
       root: opts.root,
       compose: opts.qa,
-      runtime: opts.runtime,
+      ...(opts.runtime === undefined ? {} : { runtime: opts.runtime }),
       worktrees: opts.worktrees,
       recorder: recorderDeps,
       recording,
@@ -116,7 +116,7 @@ export function specialistBranchOf(opts: BranchOptions, ctx: BranchContext) {
       compose: opts.specialist,
       github,
       worktrees: opts.worktrees,
-      runtime: opts.runtime,
+      ...(opts.runtime === undefined ? {} : { runtime: opts.runtime }),
       recorder: recorderDeps,
       recording,
       budget,

@@ -53,7 +53,7 @@ export interface ComposeOptions {
   projectId: string;
   env: Record<string, string | undefined>;
   worktrees: WorktreeManager;
-  runtime: AgentRuntime;
+  runtime?: AgentRuntime;
   /** Reads the PR of an issue; defaults to the last PrOpened event of the database (D71, D74). */
   prOf?: (issueId: number) => number | null;
   clock: Clock;
@@ -196,7 +196,7 @@ function tickerOf(opts: ComposeOptions, ctx: DispatcherContext, breaker: Breaker
     readConfig: () => readGuardedTickConfig(opts.root, opts.log),
     issues: ingestingIssues(opts, intake, dispatcher),
     buildRequest: (id, runId) => dispatcher.buildRequest(id, runId),
-    runtime: opts.runtime,
+    ...(opts.runtime === undefined ? {} : { runtime: opts.runtime }),
     events,
     ...(opts.log === undefined ? {} : { log: opts.log }),
     recording,

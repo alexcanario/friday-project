@@ -19,11 +19,24 @@ export type RunRecordingDeps = {
   runtimeFor?: (ctx: RunContext, sink: ToolDenialSink) => AgentRuntime;
 };
 
+export const NO_RUNTIME_MESSAGE = "Nenhum runtime configurado para a run.";
+
+/** The run's base runtime: `runtimeFor` when present, else the fallback; throws when neither exists. */
+export function baseRuntimeOf(
+  recording: Pick<RunRecordingDeps, "runtimeFor" | "recorder">,
+  ctx: RunContext,
+  fallback: AgentRuntime | undefined,
+): AgentRuntime {
+  if (recording.runtimeFor) return recording.runtimeFor(ctx, recording.recorder.denialSink(ctx));
+  if (fallback === undefined) throw new Error(NO_RUNTIME_MESSAGE);
+  return fallback;
+}
+
 export type RegistrationEnv = {
   projectId: string;
   now: () => string;
   events: EventStore;
-  runtime: AgentRuntime;
+  runtime?: AgentRuntime;
   buildRequest: (issueId: number, runId?: string) => AgentRunRequest;
   recording: RunRecordingDeps;
   logError: (message: string, error: unknown) => void;
@@ -58,9 +71,7 @@ export function beginRun(env: RegistrationEnv, issueId: number): RegisteredRun {
   };
   recording.runs.save(row);
   try {
-    const runtime = recording.runtimeFor
-      ? recording.runtimeFor(ctx, recording.recorder.denialSink(ctx))
-      : env.runtime;
+    const runtime = baseRuntimeOf(recording, ctx, env.runtime);
     env.events.append({
       projectId: env.projectId,
       issueId,
