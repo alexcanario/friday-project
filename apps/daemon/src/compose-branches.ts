@@ -1,9 +1,11 @@
+import { join } from "node:path";
 import type { AgentRuntime, GitHubPort, WorktreeManager } from "@friday/application";
 import type { BudgetDeps } from "./budget-gate.ts";
 import { createJudgeBranch, type JudgeCompose } from "./judge-wiring.ts";
 import { createQaBranch, type QaCompose } from "./qa-wiring.ts";
 import type { RunRecorderDeps } from "./run-recorder.ts";
 import type { RunRecordingDeps } from "./run-registration.ts";
+import { createSpecialistBranch, type SpecialistCompose } from "./specialist-wiring.ts";
 import type { TriageAgentConfig } from "./triage-request.ts";
 import { createTriageBranch } from "./triage-wiring.ts";
 
@@ -19,6 +21,8 @@ export type BranchOptions = {
   log?: (message: string) => void;
   judge?: JudgeCompose;
   qa?: QaCompose;
+  specialist?: SpecialistCompose;
+  worktreesRoot?: string;
   triage?: TriageAgentConfig;
 };
 
@@ -91,6 +95,28 @@ export function qaBranchOf(opts: BranchOptions, ctx: BranchContext) {
       compose: opts.qa,
       runtime: opts.runtime,
       worktrees: opts.worktrees,
+      recorder: recorderDeps,
+      recording,
+      budget,
+      now,
+      ...logOf(opts),
+    }),
+  };
+}
+
+/** The specialist branch, or nothing when `opts.specialist` is absent (D70, D75). */
+export function specialistBranchOf(opts: BranchOptions, ctx: BranchContext) {
+  if (opts.specialist === undefined) return {};
+  const { github, recorderDeps, recording, budget, now } = ctx;
+  return {
+    specialist: createSpecialistBranch({
+      projectId: opts.projectId,
+      root: opts.root,
+      worktreesRoot: opts.worktreesRoot ?? join(opts.root, "worktrees"),
+      compose: opts.specialist,
+      github,
+      worktrees: opts.worktrees,
+      runtime: opts.runtime,
       recorder: recorderDeps,
       recording,
       budget,

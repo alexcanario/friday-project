@@ -99,3 +99,10 @@ export {
   type QaBranchDeps,
   type QaCompose,
 } from "./qa-wiring.ts";
+export {
+  assertSpecialistAgentConfig,
+  createSpecialistBranch,
+  SPECIALIST_ALLOWED_TOOLS,
+  type SpecialistBranchDeps,
+  type SpecialistCompose,
+} from "./specialist-wiring.ts";
