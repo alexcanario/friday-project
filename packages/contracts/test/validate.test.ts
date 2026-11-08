@@ -125,6 +125,7 @@ describe("validateContract", () => {
         "contractJsonSchema",
         "criteriaSchema",
         "diagnosisSchema",
+        "nightDigestSchema",
         "parseAndValidateContract",
         "qaReportSchema",
         "reviewVerdictSchema",
