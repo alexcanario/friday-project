@@ -114,9 +114,13 @@ async function execute(
   runs.save({ ...row, status: "running" });
   let last: RunFinished | null = null;
   let completed = false;
+  const ctx = { runId, issueId };
+  const base: AgentRuntime = deps.recording.runtimeFor
+    ? deps.recording.runtimeFor(ctx, recorder.denialSink(ctx))
+    : deps.step.runtime;
   const runtime: AgentRuntime = {
     run: async (request) => {
-      const finished = await deps.step.runtime.run(request);
+      const finished = await base.run(request);
       last = finished;
       // D64: an invalid verdict becomes JudgeSkipped, not Held, so the ledger is written without RunHeld.
       recorder.recordFinished(

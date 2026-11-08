@@ -23,6 +23,7 @@ import { reconcile, type ReconcileReport } from "./reconcile.ts";
 import { createRunRecorder } from "./run-recorder.ts";
 import type { RunRecordingDeps } from "./run-registration.ts";
 import { createStateDispatcher, type StateDispatcherDeps } from "./state-dispatcher.ts";
+import { createJudgeBranch, type JudgeCompose } from "./judge-wiring.ts";
 import { createVerifyBranch } from "./verify-wiring.ts";
 import { readTickConfig } from "./tick-config.ts";
 import { buildRuntimeFor, mirrorDirOf, targetUrlOf } from "./runtime-wiring.ts";
@@ -49,6 +50,8 @@ export interface ComposeOptions {
   createGitHost?: (options: GitCliHostOptions) => GitHost;
   /** Role request builders; empty in production until the roles are wired. */
   roles?: StateDispatcherDeps["roles"];
+  /** Judge agents and input; without it InReview is not dispatched (D64, D73). */
+  judge?: JudgeCompose;
 }
 
 export interface Daemon {
@@ -101,6 +104,7 @@ async function assemble(
   db: FridayDatabase,
   github: GitHubPort,
   runtimeFor: NonNullable<RunRecordingDeps["runtimeFor"]>,
+  repo: Repo,
 ) {
   const { root, projectId, worktrees } = opts;
   const now = opts.now ?? (() => new Date());
@@ -112,7 +116,31 @@ async function assemble(
   const ledger = createLedgerRepository(db);
   const recorderDeps = { projectId, events, issues, now };
   const report = await reconcile({ projectId, root, runs, issues, events, worktrees, now });
+  const recorder = createRunRecorder({ ...recorderDeps, ledger });
+  const recording = { runs, recorder, runtimeFor };
+  const budget = { ledger, recorderDeps };
+  const judge =
+    opts.judge === undefined
+      ? {}
+      : {
+          judge: createJudgeBranch({
+            projectId,
+            root,
+            github,
+            reviewerFor: (token) => (opts.createGitHub ?? defaultGitHub)(token, repo),
+            compose: opts.judge,
+            env: opts.env,
+            runtime: opts.runtime,
+            prOf: opts.prOf,
+            recorder: recorderDeps,
+            recording,
+            budget,
+            now,
+            ...(opts.log === undefined ? {} : { log: opts.log }),
+          }),
+        };
   const dispatcher = createStateDispatcher({
+    ...judge,
     projectId,
     github,
     issues,
@@ -156,8 +184,8 @@ async function assemble(
     runtime: opts.runtime,
     events,
     ...(opts.log === undefined ? {} : { log: opts.log }),
-    recording: { runs, recorder: createRunRecorder({ ...recorderDeps, ledger }), runtimeFor },
-    budget: { ledger, recorderDeps },
+    recording,
+    budget,
     breaker: { breaker, recorderDeps },
   });
   return { ticker, report };
@@ -184,7 +212,7 @@ export async function composeDaemon(opts: ComposeOptions): Promise<Daemon> {
       env: opts.env,
       ...(opts.createRuntime === undefined ? {} : { createRuntime: opts.createRuntime }),
     });
-    const { ticker, report } = await assemble(opts, db, github, runtimeFor);
+    const { ticker, report } = await assemble(opts, db, github, runtimeFor, repo);
     const opened = db;
     return {
       ticker,

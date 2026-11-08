@@ -1,9 +1,4 @@
-import type {
-  AgentRunRequest,
-  AgentRuntime,
-  CiStatus,
-  GitHubPort,
-} from "@friday/application";
+import type { AgentRunRequest, AgentRuntime, CiStatus, GitHubPort } from "@friday/application";
 import type { RunFinished } from "@friday/contracts";
 import { FakeGitHub } from "./fakes.ts";
 import { finished, verdict } from "./judge-dispatch-helpers.ts";

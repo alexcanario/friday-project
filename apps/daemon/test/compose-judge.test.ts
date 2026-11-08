@@ -14,7 +14,12 @@ import { composeDaemon, type ComposeOptions, type Daemon } from "../src/index.ts
 import { fakeWorktrees, fixture, NOW } from "./compose-helpers.ts";
 import { FakeClock, fakeRequest } from "./fakes.ts";
 import { agents, finished, verdict } from "./judge-dispatch-helpers.ts";
-import { CountingPendingRuntime, FakeCiGitHub, FakeReviewer, SharedRuntime } from "./judge-fakes.ts";
+import {
+  CountingPendingRuntime,
+  FakeCiGitHub,
+  FakeReviewer,
+  SharedRuntime,
+} from "./judge-fakes.ts";
 
 const A = "a".repeat(40);
 const input = () => ({ cwd: "/tmp/wt", prompt: "judge", configRoot: "/tmp/cfg" });
@@ -133,41 +138,41 @@ describe("composeDaemon with the Judge", () => {
     expect(skipped[0]!.payload).toMatchObject({ reason: "head_mismatch", headSha: A });
   });
 
-  it.each([{ FRIDAY_AUTHOR_TOKEN: "t0k3n" }, { FRIDAY_AUTHOR_TOKEN: "t0k3n", FRIDAY_REVIEW_TOKEN: "" }])(
-    "logs and keeps InReview when the review token variable is empty",
-    async (env) => {
-      const t = await runJudge({ env });
-      expect(t.reviewers.flatMap((r) => r.posted)).toHaveLength(0);
-      expect(stateOf(t.daemon, 7)).toBe("InReview");
-      const text = t.logs.join("\n");
-      expect(text).toContain("Falha no Judge da issue 7:");
-      expect(text).toContain("A variável de ambiente FRIDAY_REVIEW_TOKEN não está definida.");
-      expect(text).not.toContain("t0k3n");
-    },
-  );
+  it.each([
+    { FRIDAY_AUTHOR_TOKEN: "t0k3n" },
+    { FRIDAY_AUTHOR_TOKEN: "t0k3n", FRIDAY_REVIEW_TOKEN: "" },
+  ])("logs and keeps InReview when the review token variable is empty", async (env) => {
+    const t = await runJudge({ env });
+    expect(t.reviewers.flatMap((r) => r.posted)).toHaveLength(0);
+    expect(stateOf(t.daemon, 7)).toBe("InReview");
+    const text = t.logs.join("\n");
+    expect(text).toContain("Falha no Judge da issue 7:");
+    expect(text).toContain("A variável de ambiente FRIDAY_REVIEW_TOKEN não está definida.");
+    expect(text).not.toContain("t0k3n");
+  });
 
   it("logs when review_token_env is missing without failing the startup", async () => {
-    const t = await runJudge({ yaml: (y) => y.replace("  review_token_env: FRIDAY_REVIEW_TOKEN\n", "") });
+    const t = await runJudge({
+      yaml: (y) => y.replace("  review_token_env: FRIDAY_REVIEW_TOKEN\n", ""),
+    });
     expect(t.reviewers.flatMap((r) => r.posted)).toHaveLength(0);
-    expect(t.logs.join("\n")).toContain("A chave pull_requests.review_token_env não está configurada.");
+    expect(t.logs.join("\n")).toContain(
+      "A chave pull_requests.review_token_env não está configurada.",
+    );
   });
 
   it("never logs the review token", async () => {
     const t = setup();
     const daemon = await composeDaemon(t.opts);
-    const original = t.opts.createGitHub!;
-    void original;
     put(daemon, 7, "InReview");
-    // make every reviewer reject with the token inside the message
-    t.createRuntime.mockImplementation(() => t.runtime);
     const post = vi
       .spyOn(FakeReviewer.prototype, "postReview")
       .mockRejectedValue(new Error("401 jud9e"));
     await daemon.ticker.tick();
     await daemon.ticker.idle();
+    expect(post).toHaveBeenCalled();
     post.mockRestore();
     const text = t.logs.join("\n");
-    expect(post).toHaveBeenCalled();
     expect(text).not.toContain("jud9e");
     expect(text).toContain("***");
     expect(stateOf(daemon, 7)).toBe("InReview");
@@ -218,6 +223,7 @@ describe("composeDaemon with the Judge", () => {
     expect(t.reviewers.flatMap((r) => r.posted)).toHaveLength(0);
     shared.releaseSpecialist();
     await daemon.ticker.idle();
+    put(daemon, 8, "Done"); // the specialist finished its work
     await daemon.ticker.tick();
     await daemon.ticker.idle();
     expect(shared.requests).toHaveLength(2);
