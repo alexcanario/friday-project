@@ -45,7 +45,11 @@ describe("createIntake", () => {
     expect(github.listCalls).toEqual(["friday"]);
     const common = { projectId: "p", issueId: 7, actor: "daemon", runId: null, at: NOW };
     expect(events.appended).toEqual([
-      { ...common, type: "IssueIngested", payload: { number: 7, title: "T", labels: ["friday"] } },
+      {
+        ...common,
+        type: "IssueIngested",
+        payload: { number: 7, title: "T", body: "B", labels: ["friday"] },
+      },
       {
         ...common,
         type: "StateChanged",
@@ -62,9 +66,20 @@ describe("createIntake", () => {
         },
       },
     ]);
-    expect(events.appended[0]?.payload).not.toHaveProperty("body");
     expect(issues.rebuilds).toEqual([{ projectId: "p", appendedCount: 2 }]);
     expect(issues.get("p", 7)?.state).toBe("Todo");
+  });
+
+  it("records the issue body in IssueIngested", async () => {
+    const { events, github, intake } = setup();
+    github.issues.push(issue(7));
+    await intake.ingest();
+    expect(events.appended[0]?.payload).toEqual({
+      number: 7,
+      title: "T",
+      body: "B",
+      labels: ["friday"],
+    });
   });
 
   it("ignores an issue that already has a row and records no event", async () => {

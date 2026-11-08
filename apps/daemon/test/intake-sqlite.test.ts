@@ -38,6 +38,15 @@ describe("intake with SQLite", () => {
     expect(types()).toEqual(["IssueIngested", "StateChanged"]);
   });
 
+  it("persists the issue body in IssueIngested", async () => {
+    const { db, intake } = setup(true);
+    await intake.ingest();
+    const ingested = createEventStore(db)
+      .list("p", 7)
+      .find((e) => e.type === "IssueIngested");
+    expect((ingested?.payload as { body?: unknown }).body).toBe("B");
+  });
+
   it("logs the foreign key failure when the project row is missing", async () => {
     const { db, intake, logs } = setup(false);
     expect(await intake.ingest()).toEqual([]);
