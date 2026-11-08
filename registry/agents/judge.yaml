@@ -1,0 +1,12 @@
+role: judge
+states: [InReview]
+model: sonnet
+max_budget_usd: 1.5
+max_turns: 40
+timeout_s: 1800
+tools: [Read, Glob, Grep]
+mcp_tools:
+  - review_verdict
+  - pr_diff
+output: reviewVerdict
+prompt_file: prompts/judge.md

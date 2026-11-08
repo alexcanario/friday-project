@@ -1,0 +1,12 @@
+role: judge-strong
+states: [InReview]
+model: opus
+max_budget_usd: 3
+max_turns: 40
+timeout_s: 1800
+tools: [Read, Glob, Grep]
+mcp_tools:
+  - review_verdict
+  - pr_diff
+output: reviewVerdict
+prompt_file: prompts/judge.md
