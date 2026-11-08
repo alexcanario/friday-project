@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { runTriageForIssue } from "../src/index.ts";
-import { GOOD, finished, triageSetup } from "./triage-fakes.ts";
+import { criteriaOf, runTriageForIssue } from "../src/index.ts";
+import { CRITERIA, GOOD, finished, triageSetup } from "./triage-fakes.ts";
 
+const NOW_ISO = "2026-11-05T03:00:00.000Z";
 const OK = { applied: true, feedback: null };
 const NOT = { applied: false, feedback: null };
 
@@ -27,7 +28,7 @@ describe("runTriageForIssue", () => {
 
   it("moves a Todo issue through Triage to InProgress", async () => {
     const t = triageSetup({
-      results: [finished({ specialist: "frontend", reason: "Tela de listagem" })],
+      results: [finished({ ...GOOD, specialist: "frontend", reason: "Tela de listagem" })],
     });
     await runTriageForIssue(t.deps, t.issue);
     expect(t.github.labelCalls).toEqual([{ issue: 10, label: "specialist:frontend" }]);
@@ -72,16 +73,46 @@ describe("runTriageForIssue", () => {
     }
   });
 
-  it("skips the runtime when the issue already has a specialist label", async () => {
+  it("appends CriteriaSet before the state change", async () => {
+    const t = triageSetup({ state: "Triage" });
+    await runTriageForIssue(t.deps, t.issue);
+    const all = t.events.list("p", 10);
+    const sets = all.filter((e) => e.type === "CriteriaSet");
+    expect(sets).toHaveLength(1);
+    expect(sets[0]).toMatchObject({
+      payload: { criteria: CRITERIA },
+      actor: "daemon",
+      runId: "r1",
+      at: NOW_ISO,
+    });
+    const lastChange = all.filter((e) => e.type === "StateChanged").at(-1)!;
+    expect(all.indexOf(sets[0]!)).toBeLessThan(all.indexOf(lastChange));
+    expect(criteriaOf(all)).toEqual(CRITERIA);
+  });
+
+  it("records no CriteriaSet and holds with SchemaInvalid on invalid criteria", async () => {
+    const item = { index: 2, claim: "a", proof: { kind: "command", command: "x" } };
+    const outputs = [
+      { specialist: "backend", reason: "API" },
+      { specialist: "backend", reason: "API", criteria: [item] },
+    ];
+    for (const output of outputs) {
+      const t = triageSetup({ results: [finished(output)] });
+      await runTriageForIssue(t.deps, t.issue);
+      expect(t.events.list("p", 10).filter((e) => e.type === "CriteriaSet")).toHaveLength(0);
+      expect(t.row()?.state).toBe("Held");
+      expect(t.row()?.heldReason).toBe("SchemaInvalid");
+      expect(t.stateEvents().some((e) => e.to === "InProgress")).toBe(false);
+    }
+  });
+
+  it("records CriteriaSet for an issue with a specialist label", async () => {
     const t = triageSetup({ labels: ["friday", "specialist:database"] });
     await runTriageForIssue(t.deps, t.issue);
-    expect(t.runtime.run).not.toHaveBeenCalled();
-    expect(t.runs.list("p")).toHaveLength(0);
-    expect(t.github.calls).toEqual([]);
+    expect(t.runtime.run).toHaveBeenCalledTimes(1);
+    expect(t.events.list("p", 10).filter((e) => e.type === "CriteriaSet")).toHaveLength(1);
+    expect(t.github.calls.some((c) => c.startsWith("addLabel"))).toBe(false);
     expect(t.row()?.state).toBe("InProgress");
-    const p = triageSetup({ labels: ["friday", "specialist:planner"] });
-    await runTriageForIssue(p.deps, p.issue);
-    expect(p.runtime.run).toHaveBeenCalledTimes(1);
   });
 
   it("stops on budget cap, missing config, GitHub failure and runtime rejection", async () => {

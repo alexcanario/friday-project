@@ -1,7 +1,12 @@
 import { existsSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { FakeAgentRuntime } from "@friday/application";
-import { createIssueRepository, createLedgerRepository, isInside } from "@friday/infrastructure";
+import {
+  createEventStore,
+  createIssueRepository,
+  createLedgerRepository,
+  isInside,
+} from "@friday/infrastructure";
 import { describe, expect, it } from "vitest";
 import * as daemon from "../src/index.ts";
 import { composeDaemon } from "../src/index.ts";
@@ -44,6 +49,10 @@ describe("composeDaemon triage wiring", () => {
       costUsd: 0.3,
       anyCostUnknown: false,
     });
+    const criteriaEvents = createEventStore(daemonHandle.db)
+      .list("p", 7)
+      .filter((e) => e.type === "CriteriaSet");
+    expect(criteriaEvents).toHaveLength(1);
     daemonHandle.release();
   });
 

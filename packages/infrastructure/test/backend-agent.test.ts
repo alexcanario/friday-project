@@ -34,6 +34,19 @@ describe("backend agent definition", () => {
     expect(agent.mcp_tools).not.toContain("review_verdict");
   });
 
+  it("backend registry files do not grant criteria_set", () => {
+    expect(agent.mcp_tools).toEqual([
+      "work_report",
+      "git_push",
+      "pr_create",
+      "pr_diff",
+      "issue_comment",
+    ]);
+    expect(SPECIALIST_ALLOWED_MCP).not.toContain("mcp__friday__criteria_set");
+    expect(SPECIALIST_ALLOWED_MCP).toContain("mcp__friday__work_report");
+    expect(prompt).not.toContain("criteria_set");
+  });
+
   it("prompt targets .NET 10 and xUnit", () => {
     expect(agent.prompt_file).toBe("prompts/backend.md");
     expect(prompt.trim()).not.toBe("");

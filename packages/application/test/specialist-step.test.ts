@@ -34,7 +34,6 @@ const makeRequest = (agentOver: Record<string, unknown> = {}): AgentRunRequest =
     timeoutMs: 1000,
     tools: ["Read", "Glob", "Grep", "Bash", "Edit", "Write"],
     allowedTools: [
-      "mcp__friday__criteria_set",
       "mcp__friday__work_report",
       "mcp__friday__git_push",
       "mcp__friday__pr_create",

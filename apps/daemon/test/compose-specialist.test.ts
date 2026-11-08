@@ -15,7 +15,6 @@ const validAgent: AgentRunOptions = {
   timeoutMs: 3600000,
   tools: ["Read", "Glob", "Grep", "Bash", "Edit", "Write"],
   allowedTools: [
-    "mcp__friday__criteria_set",
     "mcp__friday__work_report",
     "mcp__friday__git_push",
     "mcp__friday__pr_create",
@@ -150,7 +149,6 @@ describe("composeDaemon with the specialist branch", () => {
     expect(req.prompt).toContain("1. c [command: pnpm test]");
     expect(req.friday?.effects?.run.branch).toBe("friday/7-adiciona-maquina-de-estados");
     expect(req.friday?.agent.mcp_tools).toEqual([
-      "criteria_set",
       "work_report",
       "git_push",
       "pr_create",

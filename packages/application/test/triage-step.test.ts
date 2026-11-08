@@ -50,6 +50,12 @@ const makeRequest = (over: Record<string, unknown> = {}): AgentRunRequest => ({
   } as unknown as AgentRunRequest["agent"],
 });
 
+const CRITERIA = [
+  { index: 1, claim: "a", proof: { kind: "command", command: "pnpm -r test" } },
+  { index: 2, claim: "b", proof: { kind: "browser", step: "abrir a tela" } },
+];
+const good = (specialist: string, reason = "x") => ({ specialist, reason, criteria: CRITERIA });
+
 const flow = { model: "haiku", maxBudgetUsd: 0.5 };
 
 const makeInput = (over: Partial<TriageStepInput> = {}): TriageStepInput => ({
@@ -103,7 +109,7 @@ function apply(inputs: WorkflowInput[]): WorkflowSnapshot {
 
 describe("runTriageStep", () => {
   it("assigns the backend specialist, labels the issue and comments the reason", async () => {
-    const s = setup([finished({ specialist: "backend", reason: "Endpoint de API" })]);
+    const s = setup([finished(good("backend", "Endpoint de API"))]);
     const request = makeRequest();
     const out = await runTriageStep(s, makeInput({ request }));
     expect(s.runtime.requests).toEqual([request]);
@@ -115,7 +121,7 @@ describe("runTriageStep", () => {
   });
 
   it("starts from Todo with NeedsTriage and reaches InProgress", async () => {
-    const s = setup([finished({ specialist: "frontend", reason: "Tela de listagem" })]);
+    const s = setup([finished(good("frontend", "Tela de listagem"))]);
     const out = await runTriageStep(s, makeInput({ state: "Todo" }));
     expect(out.inputs).toEqual([{ type: "NeedsTriage" }, { type: "SpecialistAssigned" }]);
     expect(out.specialist).toBe("frontend");
@@ -124,28 +130,70 @@ describe("runTriageStep", () => {
     expect(apply(out.inputs).state).toBe("InProgress");
   });
 
-  it("skips the triage when the issue already has a valid specialist label", async () => {
+  it("returns the criteria of a valid triage output", async () => {
+    const s = setup([finished(good("backend", "API"))]);
+    const out = await runTriageStep(s, makeInput());
+    expect(s.runtime.requests).toHaveLength(1);
+    expect(s.labels).toEqual([[10, "specialist:backend"]]);
+    expect(out.specialist).toBe("backend");
+    expect(out.criteria).toEqual(CRITERIA);
+    expect(out.inputs.at(-1)).toEqual({ type: "SpecialistAssigned" });
+  });
+
+  it("runs the triage and keeps the specialist label as the specialist", async () => {
     expect(SPECIALIST_LABEL_PREFIX).toBe("specialist:");
     for (const state of ["Todo", "Triage"] as const) {
-      const s = setup([]);
+      const s = setup([finished(good("backend"))]);
       const out = await runTriageStep(
         s,
         makeInput({ state, issue: issue(["friday", "specialist:database"]) }),
       );
-      expect(s.runtime.requests).toHaveLength(0);
-      expect(s.calls).toHaveLength(0);
+      expect(s.runtime.requests).toHaveLength(1);
+      expect(s.labels).toHaveLength(0);
       expect(out.specialist).toBe("database");
-      expect(out.inputs).toEqual([{ type: "SpecialistAssigned" }]);
+      expect(out.criteria).toEqual(CRITERIA);
+      expect(out.inputs.at(-1)).toEqual({ type: "SpecialistAssigned" });
     }
-    const first = setup([]);
+    const first = setup([finished(good("backend"))]);
     const firstOut = await runTriageStep(
       first,
       makeInput({ issue: issue(["specialist:security", "specialist:backend"]) }),
     );
     expect(firstOut.specialist).toBe("security");
-    const s = setup([finished({ specialist: "backend", reason: "x" })]);
-    await runTriageStep(s, makeInput({ issue: issue(["friday", "specialist:planner"]) }));
+    const s = setup([finished(good("backend"))]);
+    const out = await runTriageStep(
+      s,
+      makeInput({ issue: issue(["friday", "specialist:planner"]) }),
+    );
     expect(s.runtime.requests).toHaveLength(1);
+    expect(s.labels).toEqual([[10, "specialist:backend"]]);
+    expect(out.specialist).toBe("backend");
+  });
+
+  it("holds with SchemaInvalid when the criteria are missing or invalid", async () => {
+    const item = { index: 2, claim: "a", proof: { kind: "command", command: "x" } };
+    const outputs = [
+      { specialist: "backend", reason: "API" },
+      { specialist: "backend", reason: "API", criteria: [] },
+      { specialist: "backend", reason: "API", criteria: [item] },
+    ];
+    for (const output of outputs) {
+      const s = setup([finished(output)]);
+      const out = await runTriageStep(s, makeInput());
+      expect(s.calls).toHaveLength(0);
+      expect(out.criteria).toBeNull();
+      expect(out.inputs.at(-1)).toEqual({ type: "RunHeld", reason: "SchemaInvalid" });
+    }
+    const s = setup([finished(good("planner"))]);
+    const out = await runTriageStep(s, makeInput());
+    expect(out.criteria).toBeNull();
+    expect(out.inputs.at(-1)).toEqual({ type: "TriageFailed" });
+    const labeled = setup([finished({ specialist: "planner", reason: "x" })]);
+    const labeledOut = await runTriageStep(
+      labeled,
+      makeInput({ issue: issue(["specialist:database"]) }),
+    );
+    expect(labeledOut.inputs.at(-1)).toEqual({ type: "TriageFailed" });
   });
 
   it("holds with TriageFailed on invalid output", async () => {
@@ -192,10 +240,11 @@ describe("runTriageStep", () => {
       makeRequest({ model: "sonnet" }),
       makeRequest({ tools: ["Bash"] }),
       makeRequest({ allowedTools: ["mcp__friday__issue_comment"] }),
+      makeRequest({ allowedTools: ["mcp__friday__criteria_set"] }),
       makeRequest({ outputKind: "qaReport" }),
     ];
     for (const request of broken) {
-      const s = setup([finished({ specialist: "backend", reason: "x" })]);
+      const s = setup([finished(good("backend"))]);
       const out = await runTriageStep(s, makeInput({ request }));
       expect(out.inputs).toEqual([{ type: "RunHeld", reason: "RunMisconfigured" }]);
       expect(s.runtime.requests).toHaveLength(0);
@@ -206,7 +255,7 @@ describe("runTriageStep", () => {
       { type: "NeedsTriage" },
       { type: "RunHeld", reason: "RunMisconfigured" },
     ]);
-    const ok = setup([finished({ specialist: "infra", reason: "x" })]);
+    const ok = setup([finished(good("infra"))]);
     await runTriageStep(ok, makeInput());
     expect(ok.runtime.requests).toHaveLength(1);
   });
@@ -216,7 +265,7 @@ describe("runTriageStep", () => {
     await expect(runTriageStep(s, makeInput({ state: "QA" as "Todo" }))).rejects.toThrow(
       "Estado sem triagem: QA",
     );
-    const f = setup([finished({ specialist: "backend", reason: "x" })], true);
+    const f = setup([finished(good("backend"))], true);
     await expect(runTriageStep(f, makeInput())).rejects.toThrow();
     expect(f.comments).toHaveLength(0);
   });
