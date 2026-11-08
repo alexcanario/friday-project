@@ -67,6 +67,7 @@ export const RUN_HELD_REASONS: readonly RunHeldReason[] = [
   "SchemaInvalid",
   "Reconciled",
   "PausedByHuman",
+  "SpecialistWithoutAgent",
 ];
 
 export const RUN_HELD_FROM: readonly IssueState[] = [

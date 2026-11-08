@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   HELD_REASONS,
   ISSUE_STATES,
+  RUN_HELD_REASONS,
   TRANSITIONS,
   createWorkflow,
   transition,
@@ -68,8 +69,9 @@ describe("issue workflow", () => {
   it("exposes the states and held reasons", () => {
     expect(ISSUE_STATES).toHaveLength(13);
     expect(new Set(ISSUE_STATES).size).toBe(13);
-    expect(HELD_REASONS).toHaveLength(23);
-    expect(new Set(HELD_REASONS).size).toBe(23);
+    expect(new Set(HELD_REASONS).size).toBe(HELD_REASONS.length);
+    expect(HELD_REASONS).toContain("SpecialistWithoutAgent");
+    expect(RUN_HELD_REASONS).toContain("SpecialistWithoutAgent");
     expect(TRANSITIONS).toHaveLength(30);
     expect(allowed).toHaveLength(30);
     expect(INPUT_TYPES).toHaveLength(25);

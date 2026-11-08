@@ -7,6 +7,7 @@ import {
   type IssueSummary,
 } from "@friday/application";
 import type { AgentConfig, RunFinished } from "@friday/contracts";
+import { STAFFED_SPECIALISTS } from "./staffed-specialists.ts";
 import { passesBudget, type BudgetCaps, type BudgetDeps } from "./budget-gate.ts";
 import { applyInput, snapshotOf, type RunContext, type RunRecorderDeps } from "./run-recorder.ts";
 import { baseRuntimeOf, statusFor, type RunRecordingDeps } from "./run-registration.ts";
@@ -86,7 +87,7 @@ async function execute(
   try {
     const outcome = await runTriageStep(
       { runtime: wrapped.runtime, github: deps.github },
-      { issue, state, request: deps.request(issue, flow), flow },
+      { issue, state, request: deps.request(issue, flow), flow, staffed: STAFFED_SPECIALISTS },
     );
     if (outcome.criteria !== null) {
       deps.recorder.events.append({

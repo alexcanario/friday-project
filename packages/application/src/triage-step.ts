@@ -22,6 +22,8 @@ export type TriageStepInput = {
   state: "Todo" | "Triage";
   request: AgentRunRequest;
   flow: { model: string; maxBudgetUsd: number };
+  /** Specialists that have a ficha; any other choice is held (D84). */
+  staffed: readonly Triage["specialist"][];
 };
 
 export type TriageStepOutcome = {
@@ -91,5 +93,6 @@ export async function runTriageStep(
     "triage",
     `Triagem: ${specialist}. Motivo: "${why}"`,
   );
+  if (!input.staffed.includes(specialist)) return held(state, "SpecialistWithoutAgent");
   return outcome(state, [{ type: "SpecialistAssigned" }], specialist, checked.data.criteria);
 }

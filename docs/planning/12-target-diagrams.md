@@ -132,6 +132,7 @@ Origem: diagramas (b.1), (b.2), (d), (e.2), (f); `09`. Nomes sem fonte em `08`/`
 | `IncidentOpen` | incidente pós-merge diagnosticado | (b.2) **[DECIDIR o nome]** |
 | `Reconciled` | run órfã na partida (`canceled_by_reconciliation`) | FHP-016 **[DECIDIR o nome]** |
 | `PausedByHuman` | botão Pausar do painel | FHP-039 **[DECIDIR o nome]** |
+| `SpecialistWithoutAgent` | triagem escolhe especialista sem ficha | D84; #318 |
 
 ## (c) Sequência de uma execução completa
 Origem: `08` §4.6–4.9. Uma run de especialista seguida de verify, QA e Judge, até o gate humano. Os agentes nunca falam com o GitHub: as ferramentas `fhp` executam dentro do orquestrador, que usa as identidades de bot. Sem mudança na S8.

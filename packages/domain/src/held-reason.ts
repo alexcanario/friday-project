@@ -22,6 +22,7 @@ export const HELD_REASONS = [
   "IncidentOpen",
   "Reconciled",
   "PausedByHuman",
+  "SpecialistWithoutAgent",
 ] as const;
 
 export type HeldReason = (typeof HELD_REASONS)[number];
@@ -38,6 +39,7 @@ export const RUN_HELD_REASONS = [
   "SchemaInvalid",
   "Reconciled",
   "PausedByHuman",
+  "SpecialistWithoutAgent",
 ] as const satisfies readonly HeldReason[];
 
 export type RunHeldReason = (typeof RUN_HELD_REASONS)[number];
