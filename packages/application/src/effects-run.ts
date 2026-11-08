@@ -6,6 +6,8 @@ export interface EffectsRun {
   base: string;
   worktree: string;
   getPullRequest: () => number | null;
+  /** Set by the daemon per run; called once `pr_create` has opened or found the PR. */
+  onPrCreated?: (pr: number) => void;
 }
 
 /** Validates and returns the run for the effect tools. Pure, no I/O. */

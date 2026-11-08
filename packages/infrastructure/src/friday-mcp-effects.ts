@@ -70,6 +70,11 @@ async function execute(
         title: args.title,
         body: args.body,
       });
+      try {
+        run.onPrCreated?.(pr.number);
+      } catch {
+        // O PR já existe; um gancho com defeito não pode virar 500.
+      }
       return reply(`200: PR #${pr.number} ${pr.created ? "aberto" : "já existia"}.`);
     }
     case "pr_diff": {

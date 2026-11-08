@@ -12,6 +12,12 @@ const VALID: EffectsRun = {
 };
 
 describe("buildEffectsRun", () => {
+  it("accepts the optional onPrCreated and still works without it", () => {
+    const onPrCreated = (): void => {};
+    expect(() => buildEffectsRun({ ...VALID, onPrCreated })).not.toThrow();
+    expect(() => buildEffectsRun(VALID)).not.toThrow();
+  });
+
   it("returns the run with the same six fields", () => {
     const run = buildEffectsRun(VALID);
     expect(run.issue).toBe(96);
