@@ -247,4 +247,34 @@ describe("loadFactoryConfig", () => {
       },
     ]);
   });
+
+  it("loads a config with only the backend specialist", () => {
+    const root = makeRoot();
+    for (const r of ["database", "frontend", "infra", "security"]) {
+      rmSync(join(root, `agents/${r}.yaml`));
+    }
+    const result = loadFactoryConfig(root);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(Object.keys(result.agents).sort()).toEqual(["backend", "judge", "qa"]);
+  });
+
+  it("rejects a config missing qa or backend", () => {
+    let root = makeRoot();
+    rmSync(join(root, QA));
+    expect(problemsOf(root)).toEqual([
+      { file: "agents", line: 1, code: "state_without_agent", message: "Estado sem agente: QA." },
+    ]);
+
+    root = makeRoot();
+    rmSync(join(root, "agents/backend.yaml"));
+    expect(problemsOf(root)).toEqual([
+      {
+        file: "agents",
+        line: 1,
+        code: "specialist_without_agent",
+        message: "Especialista sem ficha em InProgress: backend.",
+      },
+    ]);
+  });
 });
