@@ -16,6 +16,7 @@
   "dependencies": {
     "@friday/domain": "workspace:*",
     "@friday/application": "workspace:*",
-    "@friday/infrastructure": "workspace:*"
+    "@friday/infrastructure": "workspace:*",
+    "@friday/daemon": "workspace:*"
   }
 }

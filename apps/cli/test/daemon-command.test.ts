@@ -5,7 +5,10 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { AlreadyRunningError, type Daemon } from "@friday/daemon";
 import { runDaemonCommand, startDaemon, type DaemonDeps } from "../src/daemon.ts";
 
-const fixture = resolve(import.meta.dirname, "../../../packages/infrastructure/test/fixtures/valid");
+const fixture = resolve(
+  import.meta.dirname,
+  "../../../packages/infrastructure/test/fixtures/valid",
+);
 const cwd = process.cwd();
 afterEach(() => process.chdir(cwd));
 
