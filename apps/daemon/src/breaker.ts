@@ -10,6 +10,20 @@ export type BreakerOptions = {
 
 export type Breaker = { recordFailure(): void; isOpen(): boolean };
 
+const ISO = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/;
+
+function isIso(value: unknown): value is string {
+  return typeof value === "string" && ISO.test(value) && !Number.isNaN(Date.parse(value));
+}
+
+function assertValidState(state: BreakerState): void {
+  const valid =
+    (state.openedAt === null || isIso(state.openedAt)) &&
+    Array.isArray(state.failures) &&
+    state.failures.every(isIso);
+  if (!valid) throw new Error("Persisted breaker state has an invalid timestamp.");
+}
+
 /** Opens after `threshold` runtime failures within `windowMs`, for `openMs`; state survives a restart through `persist`. */
 export function createBreaker(options: BreakerOptions): Breaker {
   const { persist } = options;
@@ -17,6 +31,7 @@ export function createBreaker(options: BreakerOptions): Breaker {
     openedAt: null,
     failures: [],
   };
+  assertValidState(initial);
   let openedAt: number | null = initial.openedAt === null ? null : Date.parse(initial.openedAt);
   let failures: number[] = initial.failures.map((f) => Date.parse(f));
 

@@ -74,9 +74,7 @@ function seed(dbPath: string, failuresJson: string, openedAt: string | null = nu
   const db = openDatabase(dbPath);
   db.sqlite.prepare("INSERT INTO projects (id) VALUES ('p')").run();
   db.sqlite
-    .prepare(
-      "INSERT INTO breaker_state (project_id, opened_at, failures_json) VALUES ('p', ?, ?)",
-    )
+    .prepare("INSERT INTO breaker_state (project_id, opened_at, failures_json) VALUES ('p', ?, ?)")
     .run(openedAt, failuresJson);
   db.close();
 }
