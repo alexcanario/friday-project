@@ -21,9 +21,6 @@ export type DaemonDeps = {
 
 const USAGE = "Uso: friday daemon\n";
 
-/** Provisional until #246 delivers createPrOf. */
-const prOf = (): number | null => null;
-
 /** Provisional until #248 makes ComposeOptions.runtime optional; unreachable in practice. */
 const unwiredRuntime: AgentRuntime = {
   run: () => Promise.reject(new Error("O runtime do ticker não está ligado.")),
@@ -110,7 +107,6 @@ export async function startDaemon(deps: DaemonDeps): Promise<Result> {
       env,
       homeDir,
       worktrees,
-      prOf,
       clock: deps.clock ?? realClock,
       runtime: unwiredRuntime,
     });

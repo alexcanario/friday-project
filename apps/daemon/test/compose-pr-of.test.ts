@@ -1,7 +1,7 @@
 import { cpSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { FakeAgentRuntime, type GitHubPort } from "@friday/application";
+import { FakeAgentRuntime } from "@friday/application";
 import { createEventStore, createIssueRepository } from "@friday/infrastructure";
 import { describe, expect, it } from "vitest";
 import { composeDaemon, type ComposeOptions, type Daemon } from "../src/index.ts";

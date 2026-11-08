@@ -30,6 +30,7 @@ import {
   readGuardedTickConfig,
 } from "./compose-config.ts";
 import { assertQaAgentConfig, type QaCompose } from "./qa-wiring.ts";
+import { createPrOf } from "./pr-of.ts";
 import { createIntake } from "./intake.ts";
 import type { JudgeCompose } from "./judge-wiring.ts";
 import { acquireProcessLock, type ProcessLockDeps } from "./process-lock.ts";
@@ -51,7 +52,8 @@ export interface ComposeOptions {
   env: Record<string, string | undefined>;
   worktrees: WorktreeManager;
   runtime: AgentRuntime;
-  prOf: (issueId: number) => number | null;
+  /** Reads the PR of an issue; defaults to the last PrOpened event of the database (D71, D74). */
+  prOf?: (issueId: number) => number | null;
   clock: Clock;
   lock?: ProcessLockDeps;
   now?: () => Date;
@@ -137,7 +139,7 @@ function dispatcherOf(opts: ComposeOptions, ctx: DispatcherContext) {
     events,
     roles: opts.roles ?? {},
     readConfig: () => readDispatchConfig(root),
-    prOf: opts.prOf,
+    prOf: ctx.prOf,
     now,
     approval: createApprovalDeps({
       db,
@@ -194,7 +196,20 @@ async function assemble(
   const recording = { runs, recorder, runtimeFor };
   const budget = { ledger, recorderDeps };
   const clientFor = opts.createGitHub ?? defaultGitHub;
-  const ctx = { db, github, repo, clientFor, recorderDeps, recording, budget, now, issues, events };
+  const prOf = opts.prOf ?? createPrOf(events, projectId);
+  const ctx = {
+    db,
+    github,
+    repo,
+    clientFor,
+    recorderDeps,
+    recording,
+    budget,
+    now,
+    issues,
+    events,
+    prOf,
+  };
   const dispatcher = dispatcherOf(opts, ctx);
   const intake = createIntake({
     projectId,

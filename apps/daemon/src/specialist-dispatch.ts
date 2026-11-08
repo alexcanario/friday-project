@@ -163,9 +163,10 @@ async function execute(
       { request: hooked, snapshot },
     );
     held = outcome.inputs.some((i) => i.type === "RunHeld");
+    // Grava o PR antes de aplicar o desfecho: um lançamento no apply não pode perder um PR já aberto.
+    if (tracker.last !== null && box.number !== null) appendPrOpened(deps, ctx, box.number);
     const result = applySpecialistOutcome(deps.recorder, { issueId, runId }, outcome);
     if (result.applied) appendWorkReported(deps, ctx, request, outcome);
-    if (tracker.last !== null && box.number !== null) appendPrOpened(deps, ctx, box.number);
     return { applied: result.applied, feedback: null };
   } catch (error) {
     // Só registra o teto quando o runtime lançou; se a run terminou, recordFinished já gravou o custo.

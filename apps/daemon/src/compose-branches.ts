@@ -16,7 +16,6 @@ export type BranchOptions = {
   env: Record<string, string | undefined>;
   runtime: AgentRuntime;
   worktrees: WorktreeManager;
-  prOf: (issueId: number) => number | null;
   log?: (message: string) => void;
   judge?: JudgeCompose;
   qa?: QaCompose;
@@ -33,6 +32,7 @@ export type BranchContext = {
   recording: RunRecordingDeps;
   budget: BudgetDeps;
   now: () => Date;
+  prOf: (issueId: number) => number | null;
 };
 
 const logOf = (opts: BranchOptions) => (opts.log === undefined ? {} : { log: opts.log });
@@ -50,7 +50,7 @@ export function judgeBranchOf(opts: BranchOptions, ctx: BranchContext) {
       compose: opts.judge,
       env: opts.env,
       runtime: opts.runtime,
-      prOf: opts.prOf,
+      prOf: ctx.prOf,
       recorder: recorderDeps,
       recording,
       budget,

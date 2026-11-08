@@ -56,6 +56,7 @@ export {
   feedbackOf,
   type SpecialistRequestInput,
 } from "./specialist-request.ts";
+export { createPrOf } from "./pr-of.ts";
 export { composeDaemon, type ComposeOptions, type Daemon } from "./compose.ts";
 export {
   assertSingleConcurrentRun,
