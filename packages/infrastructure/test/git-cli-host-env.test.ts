@@ -22,8 +22,14 @@ const IDENT = {
   GIT_COMMITTER_NAME: "t",
   GIT_COMMITTER_EMAIL: "t@example.com",
 };
-const ALLOWED =
-  /^(PATH|HOME|USERPROFILE|SYSTEMROOT|TEMP|TMP|LANG|GIT_TERMINAL_PROMPT|GIT_CONFIG_COUNT|GIT_CONFIG_KEY_[0-9]+|GIT_CONFIG_VALUE_[0-9]+)$/;
+// On win32, libuv (Node's process spawner) re-adds these from the parent environment to every child.
+const WIN_INJECTED =
+  process.platform === "win32"
+    ? "|HOMEDRIVE|HOMEPATH|LOGONSERVER|SYSTEMDRIVE|USERDOMAIN|USERNAME|WINDIR"
+    : "";
+const ALLOWED = new RegExp(
+  `^(PATH|HOME|USERPROFILE|SYSTEMROOT|TEMP|TMP|LANG|GIT_TERMINAL_PROMPT|GIT_CONFIG_COUNT|GIT_CONFIG_KEY_[0-9]+|GIT_CONFIG_VALUE_[0-9]+${WIN_INJECTED})$`,
+);
 
 interface Call {
   argv: string[];
@@ -151,6 +157,7 @@ describe("GitCliHost environment allowlist", () => {
       for (const key of Object.keys(call.env)) expect(key).toMatch(ALLOWED);
       expect(call.env.GIT_TERMINAL_PROMPT).toBe("0");
     }
+    if (process.platform !== "win32") expect(fetchCall.env).not.toHaveProperty("HOMEDRIVE");
     expect(fetchCall.env.GIT_CONFIG_COUNT).toBe("1");
     expect(pushCall.env.GIT_CONFIG_COUNT).toBe("2");
     expect(pushCall.env.GIT_CONFIG_KEY_0).toBe("http.https://github.com/.extraheader");

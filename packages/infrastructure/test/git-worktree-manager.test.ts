@@ -1,4 +1,11 @@
-import { existsSync, mkdirSync, mkdtempSync, symlinkSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  realpathSync,
+  symlinkSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -20,7 +27,8 @@ beforeEach(() => {
   mgr = new GitWorktreeManager({ repoDir: fx.repoDir });
 });
 
-describe("GitWorktreeManager", () => {
+// Each test runs dozens of git commands; on the Windows runner one took 7 s.
+describe("GitWorktreeManager", { timeout: 30_000 }, () => {
   it("create makes the worktree directory and rejects a duplicate", async () => {
     const r = await mgr.create(req(15));
     const path = join(fx.root, fx.project, "15");
@@ -154,7 +162,7 @@ describe("GitWorktreeManager", () => {
   });
 
   it("list keeps a worktree under a root with accents", async () => {
-    const root = join(mkdtempSync(join(tmpdir(), "friday-wt-")), "ação");
+    const root = join(realpathSync.native(mkdtempSync(join(tmpdir(), "friday-wt-"))), "ação");
     const created = await mgr.create({ ...req(15), root });
     if (!created.ok) throw new Error("create failed");
     const r = await mgr.list({ root, project: fx.project });
