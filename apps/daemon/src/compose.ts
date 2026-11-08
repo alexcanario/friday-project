@@ -23,7 +23,7 @@ import { reconcile, type ReconcileReport } from "./reconcile.ts";
 import { createRunRecorder } from "./run-recorder.ts";
 import type { RunRecordingDeps } from "./run-registration.ts";
 import { createStateDispatcher, type StateDispatcherDeps } from "./state-dispatcher.ts";
-import { createJudgeBranch, type JudgeCompose } from "./judge-wiring.ts";
+import { createJudgeBranch, type JudgeBranchDeps, type JudgeCompose } from "./judge-wiring.ts";
 import { createVerifyBranch } from "./verify-wiring.ts";
 import { readTickConfig } from "./tick-config.ts";
 import { buildRuntimeFor, mirrorDirOf, targetUrlOf } from "./runtime-wiring.ts";
@@ -99,6 +99,87 @@ function buildBreaker(db: FridayDatabase, projectId: string, now: () => Date): B
   }
 }
 
+type JudgeWiringContext = {
+  github: GitHubPort;
+  repo: Repo;
+  recorderDeps: JudgeBranchDeps["recorder"];
+  recording: JudgeBranchDeps["recording"];
+  budget: JudgeBranchDeps["budget"];
+  now: () => Date;
+};
+
+function judgeBranchOf(opts: ComposeOptions, ctx: JudgeWiringContext) {
+  if (opts.judge === undefined) return {};
+  const { github, repo, recorderDeps, recording, budget, now } = ctx;
+  return {
+    judge: createJudgeBranch({
+      projectId: opts.projectId,
+      root: opts.root,
+      github,
+      reviewerFor: (token) => (opts.createGitHub ?? defaultGitHub)(token, repo),
+      compose: opts.judge,
+      env: opts.env,
+      runtime: opts.runtime,
+      prOf: opts.prOf,
+      recorder: recorderDeps,
+      recording,
+      budget,
+      now,
+      ...(opts.log === undefined ? {} : { log: opts.log }),
+    }),
+  };
+}
+
+type DispatcherContext = {
+  github: GitHubPort;
+  issues: ReturnType<typeof createIssueRepository>;
+  events: ReturnType<typeof createEventStore>;
+  recorderDeps: JudgeBranchDeps["recorder"];
+  judge: ReturnType<typeof judgeBranchOf>;
+  now: () => Date;
+};
+
+function dispatcherOf(opts: ComposeOptions, ctx: DispatcherContext) {
+  const { github, issues, events, recorderDeps, judge, now } = ctx;
+  const { root, projectId } = opts;
+  return createStateDispatcher({
+    ...judge,
+    projectId,
+    github,
+    issues,
+    events,
+    roles: opts.roles ?? {},
+    readConfig: () => readDispatchConfig(root),
+    prOf: opts.prOf,
+    now,
+    ...(opts.log === undefined ? {} : { log: opts.log }),
+    verify: createVerifyBranch({
+      projectId,
+      recorder: recorderDeps,
+      root,
+      env: opts.env,
+      ...(opts.log === undefined ? {} : { log: opts.log }),
+    }),
+  });
+}
+
+function ingestingIssues(
+  opts: ComposeOptions,
+  intake: ReturnType<typeof createIntake>,
+  dispatcher: ReturnType<typeof dispatcherOf>,
+) {
+  return {
+    listReady: async (capacity?: { active: number; max: number }) => {
+      await intake.ingest().catch((error: unknown) => {
+        const detail = error instanceof Error ? error.message : String(error);
+        opts.log?.(`Failed to ingest issues: ${detail}`);
+      });
+      return dispatcher.listReady(capacity);
+    },
+    busy: () => dispatcher.busy(),
+  };
+}
+
 async function assemble(
   opts: ComposeOptions,
   db: FridayDatabase,
@@ -119,45 +200,8 @@ async function assemble(
   const recorder = createRunRecorder({ ...recorderDeps, ledger });
   const recording = { runs, recorder, runtimeFor };
   const budget = { ledger, recorderDeps };
-  const judge =
-    opts.judge === undefined
-      ? {}
-      : {
-          judge: createJudgeBranch({
-            projectId,
-            root,
-            github,
-            reviewerFor: (token) => (opts.createGitHub ?? defaultGitHub)(token, repo),
-            compose: opts.judge,
-            env: opts.env,
-            runtime: opts.runtime,
-            prOf: opts.prOf,
-            recorder: recorderDeps,
-            recording,
-            budget,
-            now,
-            ...(opts.log === undefined ? {} : { log: opts.log }),
-          }),
-        };
-  const dispatcher = createStateDispatcher({
-    ...judge,
-    projectId,
-    github,
-    issues,
-    events,
-    roles: opts.roles ?? {},
-    readConfig: () => readDispatchConfig(root),
-    prOf: opts.prOf,
-    now,
-    ...(opts.log === undefined ? {} : { log: opts.log }),
-    verify: createVerifyBranch({
-      projectId,
-      recorder: recorderDeps,
-      root,
-      env: opts.env,
-      ...(opts.log === undefined ? {} : { log: opts.log }),
-    }),
-  });
+  const judge = judgeBranchOf(opts, { github, repo, recorderDeps, recording, budget, now });
+  const dispatcher = dispatcherOf(opts, { github, issues, events, recorderDeps, judge, now });
   const intake = createIntake({
     projectId,
     github,
@@ -170,16 +214,7 @@ async function assemble(
     projectId,
     clock: opts.clock,
     readConfig: () => readTickConfig(root),
-    issues: {
-      listReady: async (capacity) => {
-        await intake.ingest().catch((error: unknown) => {
-          const detail = error instanceof Error ? error.message : String(error);
-          opts.log?.(`Failed to ingest issues: ${detail}`);
-        });
-        return dispatcher.listReady(capacity);
-      },
-      busy: () => dispatcher.busy(),
-    },
+    issues: ingestingIssues(opts, intake, dispatcher),
     buildRequest: (id, runId) => dispatcher.buildRequest(id, runId),
     runtime: opts.runtime,
     events,
