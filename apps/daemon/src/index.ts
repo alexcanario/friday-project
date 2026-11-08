@@ -74,3 +74,12 @@ export {
   type RuntimeRepository,
   type RuntimeWiringDeps,
 } from "./runtime-wiring.ts";
+export { createJudgeBranch, type JudgeBranchDeps, type JudgeCompose } from "./judge-wiring.ts";
+export { buildTriageRequest, type TriageFicha, type TriageRequestInput } from "./triage-request.ts";
+export {
+  runTriageForIssue,
+  type TriageDispatchDeps,
+  type TriageFlow,
+  type TriageResult,
+} from "./triage-dispatch.ts";
+export { createTriageBranch, type TriageBranchDeps } from "./triage-wiring.ts";
