@@ -1,11 +1,4 @@
-import {
-  existsSync,
-  mkdirSync,
-  mkdtempSync,
-  realpathSync,
-  symlinkSync,
-  writeFileSync,
-} from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -161,7 +154,7 @@ describe("GitWorktreeManager", () => {
   });
 
   it("list keeps a worktree under a root with accents", async () => {
-    const root = join(realpathSync.native(mkdtempSync(join(tmpdir(), "friday-wt-"))), "ação");
+    const root = join(mkdtempSync(join(tmpdir(), "friday-wt-")), "ação");
     const created = await mgr.create({ ...req(15), root });
     if (!created.ok) throw new Error("create failed");
     const r = await mgr.list({ root, project: fx.project });

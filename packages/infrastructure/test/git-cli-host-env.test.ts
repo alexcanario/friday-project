@@ -27,13 +27,6 @@ const ALLOWED = new RegExp(
   `^(PATH|HOME|USERPROFILE|SYSTEMROOT|TEMP|TMP|LANG|GIT_TERMINAL_PROMPT|GIT_CONFIG_COUNT|GIT_CONFIG_KEY_[0-9]+|GIT_CONFIG_VALUE_[0-9]+${WIN_INJECTED})$`,
 );
 
-/**
- * On win32 the OS adds variables of its own to the child (HOMEDRIVE, HOMEPATH, LOGONSERVER...);
- * there only keys the host could have passed on (from its input env, or GIT_*) are checked.
- */
-const passedOn = (key: string, input: Record<string, string>): boolean =>
-  process.platform !== "win32" || key in input || key.startsWith("GIT_");
-
 interface Call {
   argv: string[];
   env: Record<string, string>;
@@ -157,8 +150,7 @@ describe("GitCliHost environment allowlist", () => {
     const env = { PATH: "/usr/bin", FOO: "1", GIT_DIR: "/d", FRIDAY_AUTHOR_TOKEN: TOKEN };
     const [fetchCall, pushCall] = await runFake(env);
     for (const call of [fetchCall, pushCall]) {
-      for (const key of Object.keys(call.env).filter((k) => passedOn(k, env)))
-        expect(key).toMatch(ALLOWED);
+      for (const key of Object.keys(call.env)) expect(key).toMatch(ALLOWED);
       expect(call.env.GIT_TERMINAL_PROMPT).toBe("0");
     }
     if (process.platform !== "win32") expect(fetchCall.env).not.toHaveProperty("HOMEDRIVE");

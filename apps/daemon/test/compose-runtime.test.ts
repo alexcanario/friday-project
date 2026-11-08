@@ -1,12 +1,12 @@
 import { existsSync } from "node:fs";
-import { join, relative, isAbsolute } from "node:path";
+import { join, relative, isAbsolute, sep } from "node:path";
 import { describe, expect, it } from "vitest";
 import { composeDaemon } from "../src/index.ts";
 import { setupCompose } from "./compose-runtime-helpers.ts";
 
 const isInside = (child: string, parent: string) => {
   const rel = relative(parent, child);
-  return rel !== "" && !rel.startsWith("..") && !isAbsolute(rel);
+  return rel !== "" && rel !== ".." && !rel.startsWith(".." + sep) && !isAbsolute(rel);
 };
 
 describe("composeDaemon runtime wiring", () => {
