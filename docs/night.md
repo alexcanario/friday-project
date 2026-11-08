@@ -38,6 +38,7 @@ Três tarefas agendadas do Claude Code na nuvem (limite atual do plano: 3 sessõ
    - `failed` ⇒ `status:needs-human` + `gate:budget`, com o diagnóstico.
    - `needs-human` ⇒ `status:needs-human` + o gate indicado.
 4. Parar ao atingir 3 issues ou se uma falha for de ambiente (CI, rede, permissão): nesse caso não tentar as próximas.
+5. Comentar na issue de relatório: "Fase B: implementadas #… (PR #…) ; falharam #… ; aguardando você: #…". Sem issue pronta, comentar "Fase B: nenhuma issue pronta".
 
 ## Fase C · Revisar, testar, merge e relatório (05:17)
 1. Primeiro, conferir o interruptor `night:stop`.
@@ -49,7 +50,7 @@ Três tarefas agendadas do Claude Code na nuvem (limite atual do plano: 3 sessõ
       - QA `pass` e Judge `approve` no **mesmo** `head_sha` (correção depois do QA ⇒ QA de novo nesse SHA) + CI verde + **sem gate** + `risk` do veredito que vale `low` ou `medium` ⇒ esperar 2 min e ler de novo os comentários de revisão do PR; comentário novo no `head_sha` ⇒ Judge de novo (D59). Sem comentário novo ⇒ merge squash com `sha` = `head_sha` (`PUT .../pulls/<pr>/merge`) ⇒ a issue fecha pelo `Closes #n`.
       - Com gate, ou `risk` `high` ⇒ não mesclar (D63): `status:needs-human`, comentário com o `summary_ptbr` do Judge e o que o dono deve olhar.
       - Judge `request_changes` ⇒ 1 rodada de correção e Judge de novo; senão `needs-human` + `gate:budget`.
-3. Subagente `reporter` publica o relatório da noite na issue `type:report`.
+3. Subagente `reporter`, com os JSON da fase C e o número da issue `type:report`. Ele lê os comentários das fases A e B dessa noite na própria issue de relatório e publica **um único** relatório da noite. As sugestões fora do escopo de um PR viram issues `status:backlog`, no máximo 3 por noite.
 
 ## Notas para o Agile e o Lens
 Quando, e só quando, uma fase encontra um bug, uma lacuna ou uma melhoria real para o `agile@canary` ou o `legacy-lens`, anota em `docs/agile/retro-log.md` uma nota `⏳ plugin: agile|lens`, no formato que as sessões dos plugins leem (`/agile:sync` no Agile; no Lens, uma sessão no repositório dele registra cada nota com `/agile:idea`). A noite nunca escreve nos repositórios dos plugins. A nota entra num PR comum (sem gate) e o relatório da manhã lista as notas novas.
