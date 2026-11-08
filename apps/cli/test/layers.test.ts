@@ -43,7 +43,7 @@ const rejected: Array<[string, string[]]> = [
     ["@friday/daemon", "@friday/cli", "../../../apps/cli/src/index.ts"],
   ],
   ["apps/daemon/src/x.ts", ["@friday/cli"]],
-  ["apps/cli/src/x.ts", ["@friday/daemon"]],
+  ["apps/cli/src/x.ts", ["@friday/api"]],
 ];
 
 const accepted: Array<[string, string[]]> = [
@@ -51,7 +51,10 @@ const accepted: Array<[string, string[]]> = [
   ["packages/application/src/x.ts", ["@friday/domain"]],
   ["packages/infrastructure/src/x.ts", ["@friday/domain", "@friday/application"]],
   ["apps/daemon/src/x.ts", ["@friday/domain", "@friday/application", "@friday/infrastructure"]],
-  ["apps/cli/src/x.ts", ["@friday/domain", "@friday/application", "@friday/infrastructure"]],
+  [
+    "apps/cli/src/x.ts",
+    ["@friday/domain", "@friday/application", "@friday/infrastructure", "@friday/daemon"],
+  ],
 ];
 
 describe("layer boundaries", () => {
@@ -81,14 +84,19 @@ describe("layer boundaries", () => {
       "@friday/application": 1,
       "@friday/infrastructure": 2,
       "@friday/daemon": 3,
-      "@friday/cli": 3,
+      "@friday/cli": 4,
     };
     const required: Record<string, string[]> = {
       "@friday/domain": [],
       "@friday/application": ["@friday/domain"],
       "@friday/infrastructure": ["@friday/domain", "@friday/application"],
       "@friday/daemon": ["@friday/domain", "@friday/application", "@friday/infrastructure"],
-      "@friday/cli": ["@friday/domain", "@friday/application", "@friday/infrastructure"],
+      "@friday/cli": [
+        "@friday/domain",
+        "@friday/application",
+        "@friday/infrastructure",
+        "@friday/daemon",
+      ],
     };
     for (const [name, dir] of Object.entries(requiredPackages)) {
       const deps = Object.keys(readJson(`${dir}/package.json`).dependencies ?? {}).filter((d) =>
