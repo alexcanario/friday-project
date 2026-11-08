@@ -44,6 +44,8 @@ import { createTicker, type Clock, type Ticker } from "./tick.ts";
 
 export interface ComposeOptions {
   root: string;
+  /** Directory the Verify worktreePath must stay inside; defaults to `root`. */
+  worktreesRoot?: string;
   dbPath: string;
   projectId: string;
   env: Record<string, string | undefined>;
@@ -147,6 +149,7 @@ function dispatcherOf(opts: ComposeOptions, ctx: DispatcherContext) {
       projectId,
       recorder: recorderDeps,
       root,
+      ...(opts.worktreesRoot === undefined ? {} : { worktreesRoot: opts.worktreesRoot }),
       env: opts.env,
       ...(opts.log === undefined ? {} : { log: opts.log }),
     }),
@@ -248,8 +251,11 @@ export async function composeDaemon(opts: ComposeOptions): Promise<Daemon> {
       db: opened,
       report,
       release() {
-        lock.release();
-        opened.close();
+        try {
+          lock.release();
+        } finally {
+          opened.close();
+        }
       },
     };
   } catch (error) {

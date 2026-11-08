@@ -9,6 +9,8 @@ export type VerifyBranchDeps = {
   projectId: string;
   recorder: RunRecorderDeps;
   root: string;
+  /** Directory the worktreePath must stay inside; defaults to `root`. */
+  worktreesRoot?: string;
   env: Record<string, string | undefined>;
   readHead?: (cwd: string) => Promise<string>;
   log?: (message: string) => void;
@@ -24,7 +26,7 @@ export function createVerifyBranch(
   deps: VerifyBranchDeps,
 ): (issueId: number) => Promise<VerifyApplyResult> {
   const step = (input: VerifyStepInput): Promise<VerifyStepOutcome> => {
-    if (!isInsideRoot(deps.root, input.worktreePath)) {
+    if (!isInsideRoot(deps.worktreesRoot ?? deps.root, input.worktreePath)) {
       deps.log?.(`O worktreePath ${input.worktreePath} está fora da raiz do daemon`);
       return Promise.resolve({ input: { type: "RunHeld", reason: "RunMisconfigured" } });
     }
