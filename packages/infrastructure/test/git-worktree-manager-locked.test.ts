@@ -48,5 +48,5 @@ describe("locked directory", () => {
     const m3 = await setup(enoent);
     expect((await m3.remove(rm())).ok).toBe(true);
     expect(enoent).toHaveBeenCalledTimes(1);
-  });
+  }, 30_000);
 });

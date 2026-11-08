@@ -13,11 +13,11 @@ describe("runtime wiring", () => {
   it("uses FRIDAY_HOME for the mirror directory", () => {
     expect(
       mirrorDirOf({ env: { FRIDAY_HOME: "/srv/friday" }, homeDir: "/home/u", repository }),
-    ).toBe("/srv/friday/mirrors/alexcanario__friday-sandbox.git");
+    ).toBe(join("/srv/friday", "mirrors", "alexcanario__friday-sandbox.git"));
   });
 
   it("falls back to ~/.friday when FRIDAY_HOME is missing or blank", () => {
-    const expected = "/home/u/.friday/mirrors/alexcanario__friday-sandbox.git";
+    const expected = join("/home/u", ".friday", "mirrors", "alexcanario__friday-sandbox.git");
     for (const env of [{}, { FRIDAY_HOME: "" }, { FRIDAY_HOME: "   " }]) {
       expect(mirrorDirOf({ env, homeDir: "/home/u", repository })).toBe(expected);
     }

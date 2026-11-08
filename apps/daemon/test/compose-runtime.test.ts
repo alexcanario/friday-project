@@ -1,10 +1,13 @@
 import { existsSync } from "node:fs";
-import { join } from "node:path";
+import { join, relative, isAbsolute } from "node:path";
 import { describe, expect, it } from "vitest";
 import { composeDaemon } from "../src/index.ts";
 import { setupCompose } from "./compose-runtime-helpers.ts";
 
-const isInside = (child: string, parent: string) => child.startsWith(`${parent}/`);
+const isInside = (child: string, parent: string) => {
+  const rel = relative(parent, child);
+  return rel !== "" && !rel.startsWith("..") && !isAbsolute(rel);
+};
 
 describe("composeDaemon runtime wiring", () => {
   it("composes the GitCliHost once with token variable name, mirror and target URL", async () => {
@@ -15,7 +18,7 @@ describe("composeDaemon runtime wiring", () => {
     expect(options).toEqual(
       expect.objectContaining({
         tokenEnv: "FRIDAY_AUTHOR_TOKEN",
-        mirrorDir: `${t.home}/mirrors/alexcanario__friday-sandbox.git`,
+        mirrorDir: join(t.home, "mirrors", "alexcanario__friday-sandbox.git"),
         targetUrl: "https://github.com/alexcanario/friday-sandbox.git",
       }),
     );

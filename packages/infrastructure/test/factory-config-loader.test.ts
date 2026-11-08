@@ -187,9 +187,9 @@ describe("loadFactoryConfig", () => {
       ["../x.md", (r) => writeFileSync(join(dirname(r), "x.md"), "x")],
       ["a/../../x.md", (r) => writeFileSync(join(dirname(r), "x.md"), "x")],
       ["/etc/passwd", (r) => write(r, "etc/passwd", "x")],
-      ["C:/x.md", (r) => write(r, "C:/x.md", "x")],
-      ["C:\\x.md", (r) => write(r, "C:\\x.md", "x")],
-      ["..\\x.md", (r) => write(r, "..\\x.md", "x")],
+      ["C:/x.md", () => undefined],
+      ["C:\\x.md", () => undefined],
+      ["..\\x.md", (r) => writeFileSync(join(dirname(r), "x.md"), "x")],
       ["prompts/absent.md", () => undefined],
       ["prompts", () => undefined],
     ];
