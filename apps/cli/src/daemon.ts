@@ -60,6 +60,32 @@ function startOrRelease(daemon: Daemon): () => void {
   }
 }
 
+/** Waits for the stop signal, then stops the ticker, drains it and releases the daemon. */
+function untilSignal(
+  daemon: Daemon,
+  stop: () => void,
+  onSignal: (handler: () => void) => void,
+): Promise<Result> {
+  return new Promise<Result>((resolve) => {
+    let done = false;
+    onSignal(() => {
+      if (done) return;
+      done = true;
+      stop();
+      void daemon.ticker
+        .idle()
+        .then(() => {
+          daemon.release();
+          resolve({ stdout: "", stderr: "", code: 0 });
+        })
+        .catch((error: unknown) => {
+          daemon.release();
+          resolve(fail(`${error instanceof Error ? error.message : String(error)}\n`));
+        });
+    });
+  });
+}
+
 export async function startDaemon(deps: DaemonDeps): Promise<Result> {
   if (rootRefusal(deps.env)) return fail("A variável FRIDAY_HOME deve ser um caminho absoluto.\n");
   const { env, homeDir } = deps;
@@ -89,24 +115,7 @@ export async function startDaemon(deps: DaemonDeps): Promise<Result> {
       runtime: unwiredRuntime,
     });
     const stop = startOrRelease(daemon);
-    return await new Promise<Result>((resolve) => {
-      let done = false;
-      (deps.onSignal ?? defaultOnSignal)(() => {
-        if (done) return;
-        done = true;
-        stop();
-        void daemon.ticker
-          .idle()
-          .then(() => {
-            daemon.release();
-            resolve({ stdout: "", stderr: "", code: 0 });
-          })
-          .catch((error: unknown) => {
-            daemon.release();
-            resolve(fail(`${error instanceof Error ? error.message : String(error)}\n`));
-          });
-      });
-    });
+    return await untilSignal(daemon, stop, deps.onSignal ?? defaultOnSignal);
   } catch (error) {
     return fail(`${error instanceof Error ? error.message : String(error)}\n`);
   }
