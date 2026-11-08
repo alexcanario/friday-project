@@ -12,7 +12,7 @@ O MVP de 4 semanas (de `planning/13-second-opinion.md` §8), com o painel e o wo
 |---|---|---|---|
 | **S1 · Fundação e spikes** | 05/11 → 15/11 | monorepo + CI, contratos Zod, máquina de estados, 3 spikes, linha de base, D13 decidido | #2–#13, #29 e #31 (7 do dono) |
 | **S2 · Workflow e runner** | 16/11 → 22/11 | persistência, worktrees, runtime do agente, política de permissões, GitHub, orquestrador, verify, Judge, ledger e tetos | #14–#21 e #30 |
-| **S3 · Painel** | 23/11 → 29/11 | API Fastify + OpenAPI, painel Blazor (lista e detalhe), aprovar/rejeitar preso ao SHA + merge, SSE | #22–#25 |
+| **S3 · Painel** | 23/11 → 29/11 | API Fastify + OpenAPI, painel React (lista e detalhe), aprovar/rejeitar preso ao SHA + merge, SSE | #22–#25 |
 | **S4 · Medição e decisão** | 30/11 → 06/12 | 15–20 issues reais no sandbox; métricas; go/no-go | #26–#27 |
 
 ## Linha do tempo
@@ -44,6 +44,7 @@ gantt
 | Data | Decisão | Base |
 |---|---|---|
 | 04/11 | **D13**: Blazor WASM no painel (decidido) | #5 |
+| 08/11 | **D80**: painel em React, substitui a D13 (decidido) | conversa com o dono |
 | até 14/11 | **D16**: usar o `agile@canary` pelo SDK? | spike #10 |
 | 15/11 | Ajustar os tetos da noite | relatórios da semana 1 |
 | 06/12 | **Go/no-go** do Friday completo | relatório de métricas (S4) |

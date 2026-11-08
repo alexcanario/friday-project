@@ -1,6 +1,6 @@
 # Friday
 
-Orquestrador de uma **fábrica de software agêntica**: issues são refinadas, implementadas, revisadas, testadas e entregues por agentes de IA, e o humano só entra nos gates. Stack: TypeScript, Claude Agent SDK, Fastify, SQLite e painel em Blazor WASM.
+Orquestrador de uma **fábrica de software agêntica**: issues são refinadas, implementadas, revisadas, testadas e entregues por agentes de IA, e o humano só entra nos gates. Stack: TypeScript, Claude Agent SDK, Fastify, SQLite e painel em React.
 
 O Friday é construído por uma **fábrica noturna**: três tarefas agendadas do Claude Code na nuvem, que seguem o mesmo processo que o Friday vai automatizar.
 
@@ -27,4 +27,3 @@ Para suspender a noite, crie uma issue com a label `night:stop`. Para retomar, f
 ## Siglas
 - **CI:** Continuous Integration.
 - **SDK:** Software Development Kit.
-- **WASM:** WebAssembly.
