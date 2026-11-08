@@ -33,6 +33,8 @@ jobs:
       - run: pnpm --dir spikes/isolation test
       - run: pnpm --dir spikes/agile-plugin --ignore-workspace install --frozen-lockfile
       - run: pnpm --dir spikes/agile-plugin test
+      - run: pnpm --dir spikes/docs-mcp --ignore-workspace install --frozen-lockfile
+      - run: pnpm --dir spikes/docs-mcp test
 
   sqlite-windows:
     runs-on: windows-latest
