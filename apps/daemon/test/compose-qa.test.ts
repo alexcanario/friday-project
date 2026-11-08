@@ -10,7 +10,13 @@ import {
   createRunRepository,
 } from "@friday/infrastructure";
 import { describe, expect, it, vi } from "vitest";
-import { composeDaemon, type ComposeOptions, type Daemon, type QaCompose } from "../src/index.ts";
+import {
+  composeDaemon,
+  type ComposeOptions,
+  type Daemon,
+  type QaCompose,
+  type QaReadPort,
+} from "../src/index.ts";
 import { NOW, setup as baseSetup } from "./compose-helpers.ts";
 
 const SHA = "a".repeat(40);
@@ -187,9 +193,27 @@ describe("composeDaemon with the QA branch", () => {
     expect(rows[0]).toMatchObject({ cost_usd: 1.5, cost_unknown: 1 });
   });
 
+  it("passes the read port as third argument of qa.context", async () => {
+    const seen: { projectId: string; types: string[]; state: string | undefined }[] = [];
+    const context: QaCompose["context"] = (id, runId, read) => {
+      seen.push({
+        projectId: read.projectId,
+        types: read.events.list(read.projectId, id).map((e) => e.type),
+        state: read.issues.get(read.projectId, id)?.state,
+      });
+      return contextFor(id, runId, read);
+    };
+    await runQa({ context });
+    expect(seen.length).toBeGreaterThan(0);
+    const last = seen[seen.length - 1]!;
+    expect(last.projectId).toBe("p");
+    expect(last.types).toContain("WorkReported");
+    expect(last.state).toBe("QA");
+  });
+
   it("ignores agent and configRoot from the context (R4)", async () => {
-    const hostile = ((id: number, runId: string) => ({
-      ...contextFor(id, runId)!,
+    const hostile = ((id: number, runId: string, read: QaReadPort) => ({
+      ...contextFor(id, runId, read)!,
       agent: { ...validAgent, bashAllow: ["rm -rf /"] },
       configRoot: "/tmp/hostile-worktree",
     })) as unknown as QaCompose["context"];
@@ -204,8 +228,8 @@ describe("composeDaemon with the QA branch", () => {
   });
 
   it("uses the dispatched runId in the request, events and ledger", async () => {
-    const context: QaCompose["context"] = (id, runId) => {
-      const base = contextFor(id, runId)!;
+    const context: QaCompose["context"] = (id, runId, read) => {
+      const base = contextFor(id, runId, read)!;
       return { ...base, friday: { ...base.friday, runId: "outro" } };
     };
     const t = await runQa({ context });

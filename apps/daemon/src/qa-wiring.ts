@@ -4,6 +4,8 @@ import {
   QA_ALLOWED_TOOLS,
   type AgentRunOptions,
   type AgentRuntime,
+  type EventStore,
+  type IssueRepository,
   type WorktreeManager,
 } from "@friday/application";
 import type { BudgetDeps } from "./budget-gate.ts";
@@ -21,7 +23,18 @@ export const BASH_DENIED = /[;&|<>`*\n\r]|\$\(/;
 /** The QA ficha and the per-issue context; the ficha is validated at startup (D75). */
 export type QaCompose = {
   agent: AgentRunOptions;
-  context: (issueId: number, runId: string) => Omit<QaContext, "agent" | "configRoot"> | null;
+  context: (
+    issueId: number,
+    runId: string,
+    read: QaReadPort,
+  ) => Omit<QaContext, "agent" | "configRoot"> | null;
+};
+
+/** Read-only access the QA context needs; reuses the daemon connection (D79). */
+export type QaReadPort = {
+  projectId: string;
+  events: EventStore;
+  issues: Pick<IssueRepository, "get">;
 };
 
 export type QaBranchDeps = {
@@ -66,8 +79,13 @@ function pinnedContext(deps: QaBranchDeps) {
   const mcpTools = agent.allowedTools.map((t) =>
     t.startsWith(MCP_PREFIX) ? t.slice(MCP_PREFIX.length) : t,
   ) as QaContext["friday"]["agent"]["mcp_tools"];
+  const read: QaReadPort = {
+    projectId: deps.projectId,
+    events: deps.recorder.events,
+    issues: deps.recorder.issues,
+  };
   return (issueId: number, runId: string): QaContext | null => {
-    const context = deps.compose.context(issueId, runId);
+    const context = deps.compose.context(issueId, runId, read);
     if (context === null) return null;
     return {
       ...context,

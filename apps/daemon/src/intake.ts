@@ -25,31 +25,39 @@ function messageOf(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
+function admittedPayload(number: number): StateChangedPayload {
+  return {
+    type: "StateChanged",
+    issueId: String(number),
+    from: "Backlog",
+    to: "Todo",
+    trigger: "Admitted",
+    heldReason: null,
+    verifyRound: 0,
+    qaRound: 0,
+    reviewIter: 0,
+  };
+}
+
 export function createIntake(deps: IntakeDeps): Intake {
   const { projectId, github, issues, events, now } = deps;
   const log = deps.log ?? (() => undefined);
 
-  function ingestOne(issue: { number: number; title: string; labels: string[] }): boolean {
+  function ingestOne(issue: {
+    number: number;
+    title: string;
+    body: string;
+    labels: string[];
+  }): boolean {
     if (issues.get(projectId, issue.number) !== null) return false;
     const at = now().toISOString();
     const base = { projectId, issueId: issue.number, runId: null, actor: "daemon", at };
     events.append({
       ...base,
       type: "IssueIngested",
-      payload: { number: issue.number, title: issue.title, labels: issue.labels },
+      payload: { number: issue.number, title: issue.title, body: issue.body, labels: issue.labels },
     });
-    const payload: StateChangedPayload = {
-      type: "StateChanged",
-      issueId: String(issue.number),
-      from: "Backlog",
-      to: "Todo",
-      trigger: "Admitted",
-      heldReason: null,
-      verifyRound: 0,
-      qaRound: 0,
-      reviewIter: 0,
-    };
-    events.append({ ...base, type: "StateChanged", payload });
+    events.append({ ...base, type: "StateChanged", payload: admittedPayload(issue.number) });
     issues.rebuild(projectId);
     return true;
   }
