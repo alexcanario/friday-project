@@ -9,10 +9,13 @@ import type {
 } from "@friday/application";
 import { transition } from "@friday/domain";
 import { snapshotOf } from "./run-recorder.ts";
+import { worktreeKeyOf } from "./worktree-key.ts";
 
 export type ReconcileDeps = {
   projectId: string;
   root: string;
+  /** Root of the worktrees (`<FRIDAY_HOME>/worktrees`); falls back to `root`. */
+  worktreesRoot?: string;
   runs: RunRepository;
   issues: IssueRepository;
   events: EventStore;
@@ -57,15 +60,17 @@ function holdIssue(deps: ReconcileDeps, run: RunRecord): boolean {
 }
 
 async function removeOrphans(deps: ReconcileDeps, report: ReconcileReport): Promise<void> {
-  const { worktrees, root, projectId, runs } = deps;
+  const { worktrees, projectId, runs } = deps;
+  const root = deps.worktreesRoot ?? deps.root;
+  const project = worktreeKeyOf(projectId);
   const activeIssues = runs.listActive(projectId).map((r) => r.issueId);
-  const orphans = await worktrees.listOrphans({ root, project: projectId, activeIssues });
+  const orphans = await worktrees.listOrphans({ root, project, activeIssues });
   if (!orphans.ok) {
     report.worktreeErrors.push(orphans.error);
     return;
   }
   for (const { issue } of orphans.value) {
-    const removed = await worktrees.remove({ root, project: projectId, issue });
+    const removed = await worktrees.remove({ root, project, issue });
     if (removed.ok) report.removedWorktrees.push(issue);
     else report.worktreeErrors.push(removed.error);
   }

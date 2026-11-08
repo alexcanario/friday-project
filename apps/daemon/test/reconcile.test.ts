@@ -277,9 +277,7 @@ describe("reconcile", () => {
         ),
       remove: (r: { project: string }) =>
         Promise.resolve(
-          r.project.includes("/")
-            ? { ok: false, error: invalid }
-            : { ok: true, value: undefined },
+          r.project.includes("/") ? { ok: false, error: invalid } : { ok: true, value: undefined },
         ),
     } as unknown as WorktreeManager;
     const report = await run(manager, "acme/widgets", "/wt");

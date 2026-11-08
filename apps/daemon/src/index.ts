@@ -18,6 +18,7 @@ export {
   type RunRecorder,
   type RunRecorderDeps,
 } from "./run-recorder.ts";
+export { worktreeKeyOf } from "./worktree-key.ts";
 export { reconcile, type ReconcileDeps, type ReconcileReport } from "./reconcile.ts";
 export {
   gitHead,
