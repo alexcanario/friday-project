@@ -7,6 +7,7 @@ import {
   loadTriageAgent,
   type GitWorktreeManagerDeps,
 } from "@friday/infrastructure";
+import { qaComposeOf } from "./daemon-qa.ts";
 import { daemonPaths, judgeInputOf, projectIdOf } from "./daemon-values.ts";
 
 type Result = { stdout: string; stderr: string; code: number };
@@ -105,6 +106,8 @@ export async function startDaemon(deps: DaemonDeps): Promise<Result> {
     return fail("A ficha judge ou judge-strong não está no registro central.\n");
   const triage = loadTriageAgent(root);
   if (!triage.ok) return fail("A ficha triage não está no registro central.\n");
+  const qa = qaComposeOf(loaded);
+  if (qa === null) return fail("A ficha qa não está no registro central.\n");
   const paths = daemonPaths({ env, homeDir, repository });
   try {
     const createWorktrees =
@@ -120,6 +123,7 @@ export async function startDaemon(deps: DaemonDeps): Promise<Result> {
       worktrees,
       clock: deps.clock ?? realClock,
       triage: triage.agent,
+      qa,
       judge: {
         agents: judgeAgents,
         input: (issueId) => judgeInputOf({ root: paths.root, repository, issueId }),
