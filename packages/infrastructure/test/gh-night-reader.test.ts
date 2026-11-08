@@ -66,10 +66,10 @@ describe("createGhNightReader", () => {
 describe("listComments pagination", () => {
   const items = (n: number) =>
     JSON.stringify(Array.from({ length: n }, (_, i) => ({ body: `b${i}`, created_at: `t${i}` })));
-  const page = (args: string[]) => args[1]?.match(/page=(\d+)/)?.[1];
+  const page = (args: string[]) => args[1]?.match(/&page=(\d+)/)?.[1];
 
   it("listComments makes one page=1 call without --paginate for an empty result", async () => {
-    const exec = vi.fn(async (_a: string[]) => "[]");
+    const exec = vi.fn(async () => "[]");
     expect(await createGhNightReader({ exec }).listComments(1)).toEqual([]);
     expect(exec).toHaveBeenCalledTimes(1);
     expect(exec).toHaveBeenCalledWith(["api", `${R}/issues/1/comments?per_page=100&page=1`]);
@@ -87,7 +87,7 @@ describe("listComments pagination", () => {
   });
 
   it("listComments does not request a second page when page 1 has fewer than 100 items", async () => {
-    const exec = vi.fn(async (_a: string[]) => items(99));
+    const exec = vi.fn(async () => items(99));
     expect(await createGhNightReader({ exec }).listComments(1)).toHaveLength(99);
     expect(exec).toHaveBeenCalledTimes(1);
   });

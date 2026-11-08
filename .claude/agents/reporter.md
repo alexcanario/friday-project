@@ -21,7 +21,7 @@ A suggestion out of the scope of its PR found in phaseC results becomes an item 
 
 ## Shape
 ```
-## Noite de <data em que a fase A começou>
+## Noite de <data UTC da fase C>
 **Feito (merge sem você):** #n título (PR #p)
 **Precisa de você (≤ 1 h):** #n — gate:… — o que decidir, em 1 linha, com link
 **Falhou / parou:** #n — diagnóstico em 1 linha

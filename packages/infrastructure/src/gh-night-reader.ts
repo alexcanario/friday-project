@@ -61,7 +61,15 @@ export function createGhNightReader(deps: { exec?: GhExec } = {}): NightReader {
   const get = async (args: string[]): Promise<RawItem[]> => parsePages(await exec(args));
   return {
     async listComments(issue): Promise<NightComment[]> {
-      const raw = await get(["api", "--paginate", `${REPO}/issues/${issue}/comments?per_page=100`]);
+      const raw: RawItem[] = [];
+      for (let page = 1; ; page++) {
+        const items = await get([
+          "api",
+          `${REPO}/issues/${issue}/comments?per_page=100&page=${page}`,
+        ]);
+        raw.push(...items);
+        if (items.length < 100) break;
+      }
       return raw.map((r) => ({ body: r.body ?? "", createdAt: r.created_at }));
     },
     async listOpenIssues(label): Promise<NightIssue[]> {
