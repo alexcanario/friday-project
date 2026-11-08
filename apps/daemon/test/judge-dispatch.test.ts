@@ -140,3 +140,16 @@ describe("runJudgeForIssue", () => {
     await expect(failing(30)).rejects.toBe(failure);
   });
 });
+
+describe("runJudgeForIssue without a runtime", () => {
+  it("fails the run without runtime and runtimeFor", async () => {
+    const t = setup();
+    delete (t.deps.step as { runtime?: unknown }).runtime;
+    await expect(runJudgeForIssue(t.deps, 7)).resolves.toEqual({ applied: false, feedback: null });
+    expect(t.runs.rows.get("r1")?.status).toBe("failed");
+    expect(t.runs.rows.get("r1")?.finishedAt).not.toBeNull();
+    expect(logged(t)).toContain("Falha no Judge da issue 7: Nenhum runtime configurado para a run.");
+    expect(t.posted).toHaveLength(0);
+    expect(t.ofType("RunFinished")).toHaveLength(0);
+  });
+});

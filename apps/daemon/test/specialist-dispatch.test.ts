@@ -265,3 +265,20 @@ describe("runSpecialistForIssue", () => {
     }
   });
 });
+
+describe("runSpecialistForIssue without a runtime", () => {
+  it("fails the run without runtime and runtimeFor", async () => {
+    const t = setup();
+    delete (t.deps.step as { runtime?: unknown }).runtime;
+    await expect(runSpecialistForIssue(t.deps, 7)).resolves.toEqual({
+      applied: false,
+      feedback: null,
+    });
+    expect(t.runs.rows.get("run-1")?.status).toBe("failed");
+    expect(t.runs.rows.get("run-1")?.finishedAt).not.toBeNull();
+    expect(t.log).toHaveBeenCalledWith(
+      "Falha no especialista da issue 7: Nenhum runtime configurado para a run.",
+    );
+    expect(t.recordUnknownCost).toHaveBeenCalledTimes(1);
+  });
+});

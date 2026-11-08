@@ -79,14 +79,12 @@ describe("friday daemon", () => {
     );
   });
 
-  it("passes no prOf and the unwired runtime to compose", async () => {
+  it("passes neither prOf nor runtime to compose", async () => {
     const s = setup({ FRIDAY_HOME: validRoot() });
     await runUntilSignal(s);
-    const opts = (s.compose.mock.calls[0] as unknown[])[0] as {
-      runtime: { run: (r: unknown) => Promise<unknown> };
-    };
+    const opts = (s.compose.mock.calls[0] as unknown[])[0] as object;
     expect("prOf" in opts).toBe(false);
-    await expect(opts.runtime.run({})).rejects.toThrow("O runtime do ticker não está ligado.");
+    expect("runtime" in opts).toBe(false);
   });
 
   it("stops the ticker and releases once on a signal", async () => {

@@ -2,6 +2,7 @@ import type { AgentRuntime, ToolDenialSink } from "@friday/application";
 import { RUN_STATUSES, type RunFinished } from "@friday/contracts";
 import { describe, expect, it, vi } from "vitest";
 import { createRunRecorder, createTicker, type RunRecordingDeps } from "../src/index.ts";
+import { beginRun } from "../src/run-registration.ts";
 import {
   FakeClock,
   FakeEvents,
@@ -326,5 +327,33 @@ describe("run registration", () => {
     normal.runtime.resolveAll(finished("succeeded"));
     await normal.ticker.idle();
     expect(none).not.toHaveBeenCalled();
+  });
+});
+
+describe("beginRun without a runtime", () => {
+  it("beginRun throws without runtime and runtimeFor and saves the run as failed", () => {
+    const order: string[] = [];
+    const events = new FakeEvents(order);
+    const runs = new FakeRunRepository(order);
+    const issueRepo = new FakeIssueRepository(events, order);
+    const recorder = createRunRecorder({
+      projectId: "p",
+      events,
+      issues: issueRepo,
+      now: () => new Date("2026-11-05T03:00:00.000Z"),
+    });
+    const env = {
+      projectId: "p",
+      now: () => "2026-11-05T03:00:00.000Z",
+      events,
+      buildRequest: (id: number) => fakeRequest(id),
+      recording: { runs, recorder, newRunId: () => "r1" },
+      logError: () => undefined,
+    };
+    expect(() => beginRun(env, 7)).toThrow("Nenhum runtime configurado para a run.");
+    expect(events.appended).toHaveLength(0);
+    const row = runs.rows.get("r1");
+    expect(row?.status).toBe("failed");
+    expect(row?.finishedAt).not.toBeNull();
   });
 });
