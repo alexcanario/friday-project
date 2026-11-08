@@ -7,7 +7,10 @@ const NOT = { applied: false, feedback: null };
 
 class MemoryLedger implements LedgerRepository {
   readonly entries: LedgerEntry[] = [];
-  constructor(private readonly recordThrows = false) {}
+  readonly recordThrows: boolean;
+  constructor(recordThrows = false) {
+    this.recordThrows = recordThrows;
+  }
   record(entry: LedgerEntry): void {
     if (this.recordThrows) throw new Error(`falhou ${TOKEN}`);
     this.entries.push(entry);

@@ -8,7 +8,7 @@ import {
 } from "@friday/application";
 import type { RunFinished } from "@friday/contracts";
 import { passesBudget, type BudgetCaps, type BudgetDeps } from "./budget-gate.ts";
-import { applyInput, type RunRecorderDeps } from "./run-recorder.ts";
+import { applyInput, type RunContext, type RunRecorderDeps } from "./run-recorder.ts";
 import { baseRuntimeOf, statusFor, type RunRecordingDeps } from "./run-registration.ts";
 
 export type JudgeApplyResult = { applied: boolean; feedback: string | null };
@@ -96,6 +96,17 @@ function skipPayload(outcome: JudgeStepOutcome, head: string) {
 type Execution = { outcome: JudgeStepOutcome };
 type Tracker = { last: RunFinished | null };
 
+/** Writes the ceiling as unknown cost; a failure here is only logged (redacted). */
+function recordCeiling(deps: JudgeDispatchDeps, ctx: RunContext): void {
+  try {
+    deps.recording.recorder.recordUnknownCost(ctx);
+  } catch (ledgerError) {
+    deps.log?.(
+      redact(deps, `Falha ao registrar o custo da run ${ctx.runId}: ${String(ledgerError)}`),
+    );
+  }
+}
+
 /** The run's runtime (from `runtimeFor` when present) wrapped to record every finished run. */
 function recordingRuntime(
   deps: JudgeDispatchDeps,
@@ -106,10 +117,17 @@ function recordingRuntime(
   const base = baseRuntimeOf(deps.recording, ctx, deps.step.runtime);
   return {
     run: async (request) => {
-      const finished = await base.run(request);
+      const runCtx = { ...ctx, maxBudgetUsd: request.agent.maxBudgetUsd };
+      let finished: RunFinished;
+      try {
+        finished = await base.run(request);
+      } catch (error) {
+        recordCeiling(deps, runCtx);
+        throw error;
+      }
       tracker.last = finished;
       // D64: an invalid verdict becomes JudgeSkipped, not Held, so the ledger is written without RunHeld.
-      recorder.recordFinished({ ...ctx, maxBudgetUsd: request.agent.maxBudgetUsd }, finished, {
+      recorder.recordFinished(runCtx, finished, {
         applyHeld: finished.status !== "invalid_output",
       });
       return finished;

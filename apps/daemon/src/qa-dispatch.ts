@@ -8,7 +8,7 @@ import {
 import type { RunFinished } from "@friday/contracts";
 import { passesBudget, type BudgetCaps, type BudgetDeps } from "./budget-gate.ts";
 import { applyQaOutcome, type QaApplyResult } from "./qa-apply.ts";
-import type { RunRecorderDeps } from "./run-recorder.ts";
+import type { RunContext, RunRecorderDeps } from "./run-recorder.ts";
 import { baseRuntimeOf, statusFor, type RunRecordingDeps } from "./run-registration.ts";
 
 export type QaDispatchDeps = {
@@ -41,6 +41,46 @@ function appendQaFailed(
   });
 }
 
+type Tracker = { last: RunFinished | null };
+
+/** Writes the ceiling as unknown cost; a failure here is only logged. */
+function recordCeiling(deps: QaDispatchDeps, ctx: RunContext): void {
+  try {
+    deps.recording.recorder.recordUnknownCost(ctx);
+  } catch (ledgerError) {
+    deps.log?.(`Falha ao registrar o custo da run ${ctx.runId}: ${String(ledgerError)}`);
+  }
+}
+
+/** The run's runtime wrapped to record every finished run, or its ceiling when it throws. */
+function recordingRuntime(
+  deps: QaDispatchDeps,
+  ctx: { runId: string; issueId: number; maxBudgetUsd: number },
+  tracker: Tracker,
+): AgentRuntime {
+  const { recorder } = deps.recording;
+  // runtimeFor and denialSink receive only the ids, never the ceiling (#259).
+  const base = baseRuntimeOf(
+    deps.recording,
+    { runId: ctx.runId, issueId: ctx.issueId },
+    deps.step.runtime,
+  );
+  return {
+    run: async (request) => {
+      let finished: RunFinished;
+      try {
+        finished = await base.run(request);
+      } catch (error) {
+        recordCeiling(deps, ctx);
+        throw error;
+      }
+      tracker.last = finished;
+      recorder.recordFinished(ctx, finished);
+      return finished;
+    },
+  };
+}
+
 /** Runs the QA step with a registered run row and a recording runtime, then applies the outcome. */
 async function execute(
   deps: QaDispatchDeps,
@@ -48,7 +88,7 @@ async function execute(
   runId: string,
   input: QaStepInput,
 ): Promise<QaApplyResult> {
-  const { runs, recorder } = deps.recording;
+  const { runs } = deps.recording;
   const row = {
     id: runId,
     projectId: deps.projectId,
@@ -58,21 +98,11 @@ async function execute(
     finishedAt: null,
   };
   runs.save({ ...row, status: "running" });
-  let last: RunFinished | null = null;
+  const tracker: Tracker = { last: null };
   let held = false;
   try {
-    const base = baseRuntimeOf(deps.recording, { runId, issueId }, deps.step.runtime);
-    const runtime: AgentRuntime = {
-      run: async (request) => {
-        const finished = await base.run(request);
-        last = finished;
-        recorder.recordFinished(
-          { runId, issueId, maxBudgetUsd: input.request.agent.maxBudgetUsd },
-          finished,
-        );
-        return finished;
-      },
-    };
+    const ctx = { runId, issueId, maxBudgetUsd: input.request.agent.maxBudgetUsd };
+    const runtime = recordingRuntime(deps, ctx, tracker);
     const outcome = await runQaStep({ ...deps.step, runtime }, input);
     held = outcome.input.type === "RunHeld";
     const result = applyQaOutcome(deps.recorder, { issueId, runId }, outcome);
@@ -81,7 +111,7 @@ async function execute(
     }
     return result;
   } finally {
-    const done: RunFinished | null = last;
+    const done = tracker.last;
     const status = done !== null && !held ? statusFor(done) : "failed";
     try {
       runs.save({ ...row, status, finishedAt: deps.now().toISOString() });

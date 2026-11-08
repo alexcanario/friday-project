@@ -32,7 +32,10 @@ const passed: RunFinished = {
 
 class MemoryLedger implements LedgerRepository {
   readonly entries: LedgerEntry[] = [];
-  constructor(private readonly recordThrows = false) {}
+  readonly recordThrows: boolean;
+  constructor(recordThrows = false) {
+    this.recordThrows = recordThrows;
+  }
   record(entry: LedgerEntry): void {
     if (this.recordThrows) throw new Error("ledger down");
     this.entries.push(entry);
