@@ -2,21 +2,21 @@ import { isAbsolute } from "node:path";
 import type { AgentRunRequest, IssueSummary } from "@friday/application";
 import type { AgentConfig } from "@friday/contracts";
 
-export type TriageFicha = { maxTurns: number; timeoutMs: number; promptFile: string };
+export type TriageAgentConfig = { maxTurns: number; timeoutMs: number; promptFile: string };
 
 export type TriageRequestInput = {
   issue: IssueSummary;
   flow: { model: AgentConfig["model"]; maxBudgetUsd: number };
-  ficha: TriageFicha;
+  agentConfig: TriageAgentConfig;
   cwd: string;
   configRoot: string;
 };
 
 const positiveInt = (n: number): boolean => Number.isInteger(n) && n > 0;
 
-/** Throws when the ficha cannot describe a triage run. */
-export function assertTriageFicha(ficha: TriageFicha): void {
-  const { maxTurns, timeoutMs, promptFile } = ficha;
+/** Throws when the agent config cannot describe a triage run. */
+export function assertTriageAgentConfig(agentConfig: TriageAgentConfig): void {
+  const { maxTurns, timeoutMs, promptFile } = agentConfig;
   const valid =
     positiveInt(maxTurns) &&
     positiveInt(timeoutMs) &&
@@ -29,8 +29,8 @@ export function assertTriageFicha(ficha: TriageFicha): void {
 
 /** Builds the triage run: no tools and no `friday` server; the output comes from the structured format. */
 export function buildTriageRequest(input: TriageRequestInput): AgentRunRequest {
-  const { issue, flow, ficha } = input;
-  assertTriageFicha(ficha);
+  const { issue, flow, agentConfig } = input;
+  assertTriageAgentConfig(agentConfig);
   return {
     cwd: input.cwd,
     configRoot: input.configRoot,
@@ -39,12 +39,12 @@ export function buildTriageRequest(input: TriageRequestInput): AgentRunRequest {
       model: flow.model,
       states: [],
       maxBudgetUsd: flow.maxBudgetUsd,
-      maxTurns: ficha.maxTurns,
-      timeoutMs: ficha.timeoutMs,
+      maxTurns: agentConfig.maxTurns,
+      timeoutMs: agentConfig.timeoutMs,
       tools: [],
       allowedTools: [],
       bashAllow: [],
-      promptFile: ficha.promptFile,
+      promptFile: agentConfig.promptFile,
       outputKind: "triage",
     },
   };

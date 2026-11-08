@@ -42,7 +42,7 @@ export const ISSUE: IssueSummary = {
   labels: ["friday"],
 };
 export const FLOW = { model: "haiku", maxBudgetUsd: 0.5 } as const;
-export const FICHA = { maxTurns: 3, timeoutMs: 120000, promptFile: "prompts/triage.md" };
+export const AGENT_CONFIG = { maxTurns: 3, timeoutMs: 120000, promptFile: "prompts/triage.md" };
 
 export const finished = (
   output: unknown,

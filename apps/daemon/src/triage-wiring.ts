@@ -7,12 +7,12 @@ import type { RunRecorderDeps } from "./run-recorder.ts";
 import type { RunRecordingDeps } from "./run-registration.ts";
 import { readTickConfig } from "./tick-config.ts";
 import { runTriageForIssue, type TriageFlow, type TriageResult } from "./triage-dispatch.ts";
-import { buildTriageRequest, type TriageFicha } from "./triage-request.ts";
+import { buildTriageRequest, type TriageAgentConfig } from "./triage-request.ts";
 
 export type TriageBranchDeps = {
   projectId: string;
   root: string;
-  ficha: TriageFicha;
+  agentConfig: TriageAgentConfig;
   github: Pick<GitHubPort, "addLabel" | "postAgentComment">;
   runtime: AgentRuntime;
   recorder: RunRecorderDeps;
@@ -47,7 +47,13 @@ export function createTriageBranch(
         readFlow,
         readCaps,
         request: (i, flow) =>
-          buildTriageRequest({ issue: i, flow, ficha: deps.ficha, cwd, configRoot: deps.root }),
+          buildTriageRequest({
+            issue: i,
+            flow,
+            agentConfig: deps.agentConfig,
+            cwd,
+            configRoot: deps.root,
+          }),
         recorder: deps.recorder,
         recording: deps.recording,
         budget: deps.budget,

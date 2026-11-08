@@ -38,7 +38,7 @@ import { reconcile, type ReconcileReport } from "./reconcile.ts";
 import { createRunRecorder } from "./run-recorder.ts";
 import type { RunRecordingDeps } from "./run-registration.ts";
 import { createStateDispatcher, type StateDispatcherDeps } from "./state-dispatcher.ts";
-import { assertTriageFicha, type TriageFicha } from "./triage-request.ts";
+import { assertTriageAgentConfig, type TriageAgentConfig } from "./triage-request.ts";
 import { createVerifyBranch } from "./verify-wiring.ts";
 import { buildRuntimeFor, mirrorDirOf, targetUrlOf } from "./runtime-wiring.ts";
 import { createTicker, type Clock, type Ticker } from "./tick.ts";
@@ -72,7 +72,7 @@ export interface ComposeOptions {
   /** QA ficha and context; without it QA is not dispatched (D70, D75). */
   qa?: QaCompose;
   /** Triage limits; without it Todo issues are left alone. */
-  triage?: TriageFicha;
+  triage?: TriageAgentConfig;
 }
 
 export interface Daemon {
@@ -249,7 +249,7 @@ export async function composeDaemon(opts: ComposeOptions): Promise<Daemon> {
   const { token, tokenEnv, repo, repository } = readAuthor(opts);
   assertSingleConcurrentRun(opts.root);
   if (opts.qa !== undefined) assertQaAgentConfig(opts.qa.agent);
-  if (opts.triage !== undefined) assertTriageFicha(opts.triage);
+  if (opts.triage !== undefined) assertTriageAgentConfig(opts.triage);
   const gitHost = (opts.createGitHost ?? ((o) => new GitCliHost(o)))({
     tokenEnv,
     mirrorDir: mirrorDirOf({ env: opts.env, homeDir: opts.homeDir ?? homedir(), repository }),

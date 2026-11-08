@@ -1,13 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { buildTriageRequest, type TriageFicha } from "../src/index.ts";
-import { FICHA, FLOW, ISSUE } from "./triage-fakes.ts";
+import { buildTriageRequest, type TriageAgentConfig } from "../src/index.ts";
+import { assertTriageAgentConfig } from "../src/triage-request.ts";
+import { AGENT_CONFIG, FLOW, ISSUE } from "./triage-fakes.ts";
 
-const build = (ficha: TriageFicha) =>
-  buildTriageRequest({ issue: ISSUE, flow: FLOW, ficha, cwd: "/r", configRoot: "/r" });
+const build = (agentConfig: TriageAgentConfig) =>
+  buildTriageRequest({ issue: ISSUE, flow: FLOW, agentConfig, cwd: "/r", configRoot: "/r" });
 
 describe("buildTriageRequest", () => {
   it("builds the triage request without tools or friday", () => {
-    const request = build(FICHA);
+    const request = build(AGENT_CONFIG);
     expect(request).toEqual({
       cwd: "/r",
       configRoot: "/r",
@@ -28,18 +29,25 @@ describe("buildTriageRequest", () => {
     expect("friday" in request).toBe(false);
   });
 
-  it("rejects an invalid triage ficha", () => {
-    const bad: Partial<TriageFicha>[] = [
+  it("accepts a valid triage agent config", () => {
+    expect(() => assertTriageAgentConfig(AGENT_CONFIG)).not.toThrow();
+  });
+
+  it("rejects an invalid triage agent config", () => {
+    const bad: Partial<TriageAgentConfig>[] = [
       { maxTurns: 0 },
       { maxTurns: 1.5 },
       { timeoutMs: -1 },
       { promptFile: "" },
-      { promptFile: "/etc/passwd" },
+      { promptFile: "/abs.md" },
       { promptFile: "../x.md" },
     ];
     for (const patch of bad) {
-      expect(() => build({ ...FICHA, ...patch })).toThrow("A ficha da triagem é inválida.");
+      expect(() => assertTriageAgentConfig({ ...AGENT_CONFIG, ...patch })).toThrow(
+        "A ficha da triagem é inválida.",
+      );
+      expect(() => build({ ...AGENT_CONFIG, ...patch })).toThrow("A ficha da triagem é inválida.");
     }
-    expect(() => build(FICHA)).not.toThrow();
+    expect(() => build(AGENT_CONFIG)).not.toThrow();
   });
 });
