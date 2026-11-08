@@ -1,12 +1,17 @@
 import { isAbsolute, join } from "node:path";
-import type { AgentRuntime, WorktreeManager } from "@friday/application";
+import {
+  toAgentRunOptions,
+  type AgentRunOptions,
+  type AgentRuntime,
+  type WorktreeManager,
+} from "@friday/application";
 import { composeDaemon, type Clock, type Daemon } from "@friday/daemon";
 import {
   GitWorktreeManager,
   loadFactoryConfig,
   type GitWorktreeManagerDeps,
 } from "@friday/infrastructure";
-import { daemonPaths, projectIdOf } from "./daemon-values.ts";
+import { daemonPaths, judgeInputOf, projectIdOf } from "./daemon-values.ts";
 
 type Result = { stdout: string; stderr: string; code: number };
 
@@ -45,6 +50,16 @@ function rootRefusal(env: DaemonDeps["env"]): boolean {
   const home = env.FRIDAY_HOME;
   if (home === undefined || home === "") return false;
   return home !== home.trim() || !isAbsolute(home);
+}
+
+/** Reads the judge and judge-strong cards of the central registry; null when one is missing. */
+function judgeAgentsOf(
+  loaded: Extract<ReturnType<typeof loadFactoryConfig>, { ok: true }>,
+): Record<"judge" | "judge-strong", AgentRunOptions> | null {
+  const judge = loaded.agents["judge"];
+  const strong = loaded.agents["judge-strong"];
+  if (judge === undefined || strong === undefined) return null;
+  return { judge: toAgentRunOptions(judge), "judge-strong": toAgentRunOptions(strong) };
 }
 
 /** Starts the ticker; if it throws, releases the lock and database before rethrowing. */
@@ -94,6 +109,9 @@ export async function startDaemon(deps: DaemonDeps): Promise<Result> {
   const loaded = loadFactoryConfig(root);
   if (!loaded.ok) return fail("O factory.yaml está inválido ou ausente.\n");
   const repository = loaded.config.repository;
+  const judgeAgents = judgeAgentsOf(loaded);
+  if (judgeAgents === null)
+    return fail("A ficha judge ou judge-strong não está no registro central.\n");
   const paths = daemonPaths({ env, homeDir, repository });
   try {
     const createWorktrees =
@@ -109,6 +127,10 @@ export async function startDaemon(deps: DaemonDeps): Promise<Result> {
       worktrees,
       clock: deps.clock ?? realClock,
       runtime: unwiredRuntime,
+      judge: {
+        agents: judgeAgents,
+        input: (issueId) => judgeInputOf({ root: paths.root, repository, issueId }),
+      },
     });
     const stop = startOrRelease(daemon);
     return await untilSignal(daemon, stop, deps.onSignal ?? defaultOnSignal);
