@@ -148,7 +148,9 @@ describe("runJudgeForIssue without a runtime", () => {
     await expect(runJudgeForIssue(t.deps, 7)).resolves.toEqual({ applied: false, feedback: null });
     expect(t.runs.rows.get("r1")?.status).toBe("failed");
     expect(t.runs.rows.get("r1")?.finishedAt).not.toBeNull();
-    expect(logged(t)).toContain("Falha no Judge da issue 7: Nenhum runtime configurado para a run.");
+    expect(logged(t)).toContain(
+      "Falha no Judge da issue 7: Nenhum runtime configurado para a run.",
+    );
     expect(t.posted).toHaveLength(0);
     expect(t.ofType("RunFinished")).toHaveLength(0);
   });

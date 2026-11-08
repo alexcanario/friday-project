@@ -9,13 +9,13 @@ import type { RunFinished } from "@friday/contracts";
 import type { WorkflowSnapshot } from "@friday/domain";
 import { passesBudget, type BudgetCaps, type BudgetDeps } from "./budget-gate.ts";
 import { snapshotOf, type RunRecorderDeps } from "./run-recorder.ts";
-import { statusFor, type RunRecordingDeps } from "./run-registration.ts";
+import { baseRuntimeOf, statusFor, type RunRecordingDeps } from "./run-registration.ts";
 import { applySpecialistOutcome } from "./specialist-apply.ts";
 
 export type SpecialistDispatchDeps = {
   projectId: string;
   targetOf: (issueId: number, runId: string) => AgentRunRequest | null;
-  step: SpecialistStepDeps;
+  step: Omit<SpecialistStepDeps, "runtime"> & { runtime?: AgentRuntime };
   recorder: RunRecorderDeps;
   recording: RunRecordingDeps;
   budget: BudgetDeps;
@@ -79,10 +79,8 @@ function recordingRuntime(
   ctx: RunContext,
   tracker: Tracker,
 ): AgentRuntime {
-  const { recorder, runtimeFor } = deps.recording;
-  const base: AgentRuntime = runtimeFor
-    ? runtimeFor(ctx, recorder.denialSink(ctx))
-    : deps.step.runtime;
+  const { recorder } = deps.recording;
+  const base = baseRuntimeOf(deps.recording, ctx, deps.step.runtime);
   return {
     run: async (req) => {
       const finished = await base.run(req);

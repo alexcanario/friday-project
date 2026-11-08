@@ -14,7 +14,7 @@ export type TriageBranchDeps = {
   root: string;
   agentConfig: TriageAgentConfig;
   github: Pick<GitHubPort, "addLabel" | "postAgentComment">;
-  runtime: AgentRuntime;
+  runtime?: AgentRuntime;
   recorder: RunRecorderDeps;
   recording: RunRecordingDeps;
   budget: BudgetDeps;
@@ -43,7 +43,7 @@ export function createTriageBranch(
       {
         projectId: deps.projectId,
         github: deps.github,
-        runtime: deps.runtime,
+        ...(deps.runtime === undefined ? {} : { runtime: deps.runtime }),
         readFlow,
         readCaps,
         request: (i, flow) =>

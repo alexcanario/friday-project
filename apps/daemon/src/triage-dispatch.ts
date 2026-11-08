@@ -9,7 +9,7 @@ import {
 import type { AgentConfig, RunFinished } from "@friday/contracts";
 import { passesBudget, type BudgetCaps, type BudgetDeps } from "./budget-gate.ts";
 import { applyInput, snapshotOf, type RunContext, type RunRecorderDeps } from "./run-recorder.ts";
-import { statusFor, type RunRecordingDeps } from "./run-registration.ts";
+import { baseRuntimeOf, statusFor, type RunRecordingDeps } from "./run-registration.ts";
 
 export type TriageFlow = { model: AgentConfig["model"]; maxBudgetUsd: number };
 export type TriageResult = { applied: boolean; feedback: null };
@@ -17,7 +17,7 @@ export type TriageResult = { applied: boolean; feedback: null };
 export type TriageDispatchDeps = {
   projectId: string;
   github: Pick<GitHubPort, "addLabel" | "postAgentComment">;
-  runtime: AgentRuntime;
+  runtime?: AgentRuntime;
   readFlow: () => TriageFlow | null;
   readCaps: () => BudgetCaps | null;
   request: (issue: IssueSummary, flow: TriageFlow) => AgentRunRequest;
@@ -49,9 +49,7 @@ function recordingRuntime(deps: TriageDispatchDeps, ctx: RunContext) {
         runs.save({ ...row, status: "running" });
         started = true;
       }
-      const base = deps.recording.runtimeFor
-        ? deps.recording.runtimeFor(ctx, recorder.denialSink(ctx))
-        : deps.runtime;
+      const base = baseRuntimeOf(deps.recording, ctx, deps.runtime);
       let finished: RunFinished;
       try {
         finished = await base.run(request);

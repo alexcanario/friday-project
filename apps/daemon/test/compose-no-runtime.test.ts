@@ -16,7 +16,12 @@ import { setupCompose } from "./compose-runtime-helpers.ts";
 import { FakeClock } from "./fakes.ts";
 import { agents, finished, verdict } from "./judge-dispatch-helpers.ts";
 import { FakeCiGitHub, FakeReviewer } from "./judge-fakes.ts";
-import { AGENT_CONFIG, FakeTriageGitHub, GOOD, finished as triageFinished } from "./triage-fakes.ts";
+import {
+  AGENT_CONFIG,
+  FakeTriageGitHub,
+  GOOD,
+  finished as triageFinished,
+} from "./triage-fakes.ts";
 
 /** The same options minus `runtime`, as the real daemon passes them. */
 function withoutRuntime(opts: ComposeOptions): ComposeOptions {
@@ -103,7 +108,9 @@ describe("composeDaemon without ComposeOptions.runtime", () => {
     await daemon.ticker.idle();
     expect(t.runs).toHaveLength(1);
     expect(t.runs[0]!.run).toHaveBeenCalledTimes(1);
-    expect(t.runs[0]!.run).toHaveBeenCalledWith(expect.objectContaining({ cwd: expect.any(String) }));
+    expect(t.runs[0]!.run).toHaveBeenCalledWith(
+      expect.objectContaining({ cwd: expect.any(String) }),
+    );
     daemon.release();
   });
 
@@ -206,7 +213,9 @@ describe("composeDaemon without ComposeOptions.runtime", () => {
     qaDaemon.release();
 
     const sp = baseSetup((y) =>
-      y.replace("per_issue_usd: 5", "per_issue_usd: 10").replace("per_day_usd: 10", "per_day_usd: 30"),
+      y
+        .replace("per_issue_usd: 5", "per_issue_usd: 10")
+        .replace("per_day_usd: 10", "per_day_usd: 30"),
     );
     sp.github.issues.push({ number: 7, title: "Adiciona", body: "B", labels: ["friday"] });
     const spRuntime = new FakeAgentRuntime([done]);

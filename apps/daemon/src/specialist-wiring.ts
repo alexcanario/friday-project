@@ -31,7 +31,7 @@ export type SpecialistBranchDeps = {
   compose: SpecialistCompose;
   github: Pick<GitHubPort, "listIssuesByLabel">;
   worktrees: Pick<WorktreeManager, "create" | "list">;
-  runtime: AgentRuntime;
+  runtime?: AgentRuntime;
   recorder: RunRecorderDeps;
   recording: RunRecordingDeps;
   budget: BudgetDeps;
@@ -164,7 +164,7 @@ export function createSpecialistBranch(
       {
         projectId: deps.projectId,
         targetOf: (id, runId) => targetOf(deps, target, id, runId),
-        step: { runtime: deps.runtime },
+        step: deps.runtime === undefined ? {} : { runtime: deps.runtime },
         recorder: deps.recorder,
         recording: deps.recording,
         budget: deps.budget,

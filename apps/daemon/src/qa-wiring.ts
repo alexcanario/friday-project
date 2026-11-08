@@ -28,7 +28,7 @@ export type QaBranchDeps = {
   projectId: string;
   root: string;
   compose: QaCompose;
-  runtime: AgentRuntime;
+  runtime?: AgentRuntime;
   worktrees: Pick<WorktreeManager, "isClean">;
   recorder: RunRecorderDeps;
   recording: RunRecordingDeps;
@@ -110,7 +110,10 @@ export function createQaBranch(deps: QaBranchDeps): (issueId: number) => Promise
       {
         projectId: deps.projectId,
         targetOf,
-        step: { runtime: deps.runtime, worktrees: deps.worktrees },
+        step: {
+          ...(deps.runtime === undefined ? {} : { runtime: deps.runtime }),
+          worktrees: deps.worktrees,
+        },
         recorder: deps.recorder,
         recording: deps.recording,
         budget: deps.budget,

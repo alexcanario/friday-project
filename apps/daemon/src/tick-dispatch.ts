@@ -1,7 +1,12 @@
 import type { AgentRunRequest } from "@friday/application";
 import { applyInput } from "./run-recorder.ts";
 import { passesBudget, type BudgetDeps } from "./budget-gate.ts";
-import { beginRun, completeRun, type RunRecordingDeps } from "./run-registration.ts";
+import {
+  NO_RUNTIME_MESSAGE,
+  beginRun,
+  completeRun,
+  type RunRecordingDeps,
+} from "./run-registration.ts";
 import type { TickConfig } from "./tick-config.ts";
 import type { TickerDeps } from "./tick.ts";
 
@@ -57,7 +62,7 @@ function dispatchRecorded(
     projectId: deps.projectId,
     now: () => isoOf(deps),
     events: deps.events,
-    runtime: deps.runtime,
+    ...(deps.runtime === undefined ? {} : { runtime: deps.runtime }),
     buildRequest: deps.buildRequest,
     recording,
     logError: (message: string, error: unknown) => logError(deps, message, error),
@@ -79,8 +84,10 @@ function dispatchRecorded(
 }
 
 function dispatchPlain(deps: TickerDeps, active: ActiveRuns, issueId: number): void {
+  const { runtime } = deps;
   let request: AgentRunRequest;
   try {
+    if (runtime === undefined) throw new Error(NO_RUNTIME_MESSAGE);
     request = deps.buildRequest(issueId);
     deps.events.append({
       projectId: deps.projectId,
@@ -96,7 +103,7 @@ function dispatchPlain(deps: TickerDeps, active: ActiveRuns, issueId: number): v
     return;
   }
   const run = Promise.resolve()
-    .then(() => deps.runtime.run(request))
+    .then(() => runtime.run(request))
     .then(
       () => undefined,
       (error: unknown) => logError(deps, `Run failed for issue ${issueId}`, error),

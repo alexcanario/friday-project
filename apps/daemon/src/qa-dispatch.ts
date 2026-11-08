@@ -9,12 +9,12 @@ import type { RunFinished } from "@friday/contracts";
 import { passesBudget, type BudgetCaps, type BudgetDeps } from "./budget-gate.ts";
 import { applyQaOutcome, type QaApplyResult } from "./qa-apply.ts";
 import type { RunRecorderDeps } from "./run-recorder.ts";
-import { statusFor, type RunRecordingDeps } from "./run-registration.ts";
+import { baseRuntimeOf, statusFor, type RunRecordingDeps } from "./run-registration.ts";
 
 export type QaDispatchDeps = {
   projectId: string;
   targetOf: (issueId: number, runId: string) => QaStepInput | null;
-  step: QaStepDeps;
+  step: Omit<QaStepDeps, "runtime"> & { runtime?: AgentRuntime };
   recorder: RunRecorderDeps;
   recording: RunRecordingDeps;
   budget: BudgetDeps;
@@ -61,9 +61,7 @@ async function execute(
   let last: RunFinished | null = null;
   let held = false;
   try {
-    const base: AgentRuntime = deps.recording.runtimeFor
-      ? deps.recording.runtimeFor({ runId, issueId }, recorder.denialSink({ runId, issueId }))
-      : deps.step.runtime;
+    const base = baseRuntimeOf(deps.recording, { runId, issueId }, deps.step.runtime);
     const runtime: AgentRuntime = {
       run: async (request) => {
         const finished = await base.run(request);

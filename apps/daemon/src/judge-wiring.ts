@@ -18,7 +18,7 @@ export type JudgeBranchDeps = {
   reviewerFor: (token: string) => Pick<GitHubPort, "postReview">;
   compose: JudgeCompose;
   env: Record<string, string | undefined>;
-  runtime: AgentRuntime;
+  runtime?: AgentRuntime;
   prOf: (issueId: number) => number | null;
   recorder: RunRecorderDeps;
   recording: RunRecordingDeps;
@@ -55,7 +55,7 @@ export function createJudgeBranch(
         getIssue,
         judgeInput: deps.compose.input,
         step: {
-          runtime: deps.runtime,
+          ...(deps.runtime === undefined ? {} : { runtime: deps.runtime }),
           stale: new SqliteStaleVerdicts(deps.recorder.events, deps.now),
           env: deps.env,
           reviewTokenEnv: readReviewTokenEnv(deps.root),
