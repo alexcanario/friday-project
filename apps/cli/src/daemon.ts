@@ -1,6 +1,6 @@
-import { isAbsolute } from "node:path";
+import { isAbsolute, join } from "node:path";
 import type { AgentRuntime, WorktreeManager } from "@friday/application";
-import { composeDaemon, type Clock } from "@friday/daemon";
+import { composeDaemon, type Clock, type Daemon } from "@friday/daemon";
 import {
   GitWorktreeManager,
   loadFactoryConfig,
@@ -50,6 +50,42 @@ function rootRefusal(env: DaemonDeps["env"]): boolean {
   return home !== home.trim() || !isAbsolute(home);
 }
 
+/** Starts the ticker; if it throws, releases the lock and database before rethrowing. */
+function startOrRelease(daemon: Daemon): () => void {
+  try {
+    return daemon.ticker.start();
+  } catch (error) {
+    daemon.release();
+    throw error;
+  }
+}
+
+/** Waits for the stop signal, then stops the ticker, drains it and releases the daemon. */
+function untilSignal(
+  daemon: Daemon,
+  stop: () => void,
+  onSignal: (handler: () => void) => void,
+): Promise<Result> {
+  return new Promise<Result>((resolve) => {
+    let done = false;
+    onSignal(() => {
+      if (done) return;
+      done = true;
+      stop();
+      void daemon.ticker
+        .idle()
+        .then(() => {
+          daemon.release();
+          resolve({ stdout: "", stderr: "", code: 0 });
+        })
+        .catch((error: unknown) => {
+          daemon.release();
+          resolve(fail(`${error instanceof Error ? error.message : String(error)}\n`));
+        });
+    });
+  });
+}
+
 export async function startDaemon(deps: DaemonDeps): Promise<Result> {
   if (rootRefusal(deps.env)) return fail("A variável FRIDAY_HOME deve ser um caminho absoluto.\n");
   const { env, homeDir } = deps;
@@ -68,6 +104,7 @@ export async function startDaemon(deps: DaemonDeps): Promise<Result> {
     const worktrees = createWorktrees({ repoDir: paths.repoDir });
     const daemon = await (deps.compose ?? composeDaemon)({
       root: paths.root,
+      worktreesRoot: join(paths.root, "worktrees"),
       dbPath: paths.dbPath,
       projectId: projectIdOf(repository),
       env,
@@ -77,25 +114,8 @@ export async function startDaemon(deps: DaemonDeps): Promise<Result> {
       clock: deps.clock ?? realClock,
       runtime: unwiredRuntime,
     });
-    const stop = daemon.ticker.start();
-    return await new Promise<Result>((resolve) => {
-      let done = false;
-      (deps.onSignal ?? defaultOnSignal)(() => {
-        if (done) return;
-        done = true;
-        stop();
-        void daemon.ticker
-          .idle()
-          .then(() => {
-            daemon.release();
-            resolve({ stdout: "", stderr: "", code: 0 });
-          })
-          .catch((error: unknown) => {
-            daemon.release();
-            resolve(fail(`${error instanceof Error ? error.message : String(error)}\n`));
-          });
-      });
-    });
+    const stop = startOrRelease(daemon);
+    return await untilSignal(daemon, stop, deps.onSignal ?? defaultOnSignal);
   } catch (error) {
     return fail(`${error instanceof Error ? error.message : String(error)}\n`);
   }

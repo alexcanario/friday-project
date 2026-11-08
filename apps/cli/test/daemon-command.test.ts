@@ -180,4 +180,38 @@ describe("friday daemon", () => {
     });
     expect(s.start).not.toHaveBeenCalled();
   });
+
+  it("releases the daemon when ticker.start throws", async () => {
+    const s = setup({ FRIDAY_HOME: validRoot() });
+    s.start.mockImplementation(() => {
+      throw new Error("falhou");
+    });
+    expect(await startDaemon(s.deps)).toEqual({ stdout: "", stderr: "falhou\n", code: 1 });
+    expect(s.release).toHaveBeenCalledTimes(1);
+    expect(s.idle).not.toHaveBeenCalled();
+  });
+
+  it("returns the error when release also throws after start fails", async () => {
+    const s = setup({ FRIDAY_HOME: validRoot() });
+    s.start.mockImplementation(() => {
+      throw new Error("falhou");
+    });
+    s.release.mockImplementation(() => {
+      throw new Error("trava");
+    });
+    await expect(startDaemon(s.deps)).resolves.toEqual({
+      stdout: "",
+      stderr: "trava\n",
+      code: 1,
+    });
+  });
+
+  it("passes worktreesRoot under FRIDAY_HOME to compose", async () => {
+    const root = validRoot();
+    const s = setup({ FRIDAY_HOME: root });
+    await runUntilSignal(s);
+    expect(s.compose).toHaveBeenCalledWith(
+      expect.objectContaining({ worktreesRoot: join(root, "worktrees") }),
+    );
+  });
 });

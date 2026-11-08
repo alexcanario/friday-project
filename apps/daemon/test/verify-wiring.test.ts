@@ -35,7 +35,11 @@ function registry(command: string): string {
 
 async function run(
   command: string,
-  options: { worktree?: (root: string) => string; env?: Record<string, string | undefined> } = {},
+  options: {
+    worktree?: (root: string) => string;
+    env?: Record<string, string | undefined>;
+    worktreesRoot?: (root: string) => string;
+  } = {},
 ) {
   const root = registry(command);
   const worktreePath = options.worktree?.(root) ?? join(root, "worktrees", "7");
@@ -65,6 +69,7 @@ async function run(
     projectId: "p",
     recorder: { projectId: "p", events, issues, now: () => new Date("2026-11-05T03:00:00.000Z") },
     root,
+    ...(options.worktreesRoot === undefined ? {} : { worktreesRoot: options.worktreesRoot(root) }),
     env: options.env ?? BASE_ENV,
     readHead: async () => SHA,
     log: (m) => logs.push(m),
@@ -116,6 +121,27 @@ describe("createVerifyBranch", () => {
       expect(t.row?.state).toBe("Held");
       expect(t.row?.heldReason).toBe("RunMisconfigured");
       expect(t.logs.some((m) => m.includes("fora da raiz"))).toBe(true);
+    }
+  });
+
+  it("confines the worktree path to worktreesRoot (accepts worktrees/7)", async () => {
+    const t = await run(`node -e "process.exit(0)"`, {
+      worktreesRoot: (root) => join(root, "worktrees"),
+    });
+    expect(t.row?.state).toBe("QA");
+  });
+
+  it("confines the worktree path to worktreesRoot", async () => {
+    const command = `node -e "require('fs').writeFileSync('marker','x')"`;
+    for (const sub of [[".friday"], ["repos", "x"], ["worktrees"]]) {
+      const t = await run(command, {
+        worktree: (root) => join(root, ...sub),
+        worktreesRoot: (root) => join(root, "worktrees"),
+      });
+      expect(existsSync(join(t.worktreePath, "marker"))).toBe(false);
+      expect(t.row?.state).toBe("Held");
+      expect(t.row?.heldReason).toBe("RunMisconfigured");
+      expect(t.logs).toContain(`O worktreePath ${t.worktreePath} está fora da raiz do daemon`);
     }
   });
 
