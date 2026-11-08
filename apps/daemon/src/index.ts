@@ -87,3 +87,9 @@ export {
   type TriageResult,
 } from "./triage-dispatch.ts";
 export { createTriageBranch, type TriageBranchDeps } from "./triage-wiring.ts";
+export {
+  assertQaAgentConfig,
+  createQaBranch,
+  type QaBranchDeps,
+  type QaCompose,
+} from "./qa-wiring.ts";

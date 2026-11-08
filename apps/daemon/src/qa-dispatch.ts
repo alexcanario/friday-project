@@ -52,7 +52,10 @@ async function execute(
       run: async (request) => {
         const finished = await base.run(request);
         last = finished;
-        recorder.recordFinished({ runId, issueId }, finished);
+        recorder.recordFinished(
+          { runId, issueId, maxBudgetUsd: input.request.agent.maxBudgetUsd },
+          finished,
+        );
         return finished;
       },
     };

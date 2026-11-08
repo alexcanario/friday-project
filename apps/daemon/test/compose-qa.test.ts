@@ -10,12 +10,7 @@ import {
   createRunRepository,
 } from "@friday/infrastructure";
 import { describe, expect, it, vi } from "vitest";
-import {
-  composeDaemon,
-  type ComposeOptions,
-  type Daemon,
-  type QaCompose,
-} from "../src/index.ts";
+import { composeDaemon, type ComposeOptions, type Daemon, type QaCompose } from "../src/index.ts";
 import { NOW, setup as baseSetup } from "./compose-helpers.ts";
 
 const SHA = "a".repeat(40);
@@ -274,10 +269,11 @@ describe("QA agent config at startup", () => {
     ["states", bad({ states: ["QA", "Verify"] as never })],
     ["maxBudgetUsd", bad({ maxBudgetUsd: 0 })],
     ...[";", "&", "|", "<", ">", "`", "$(", "\n", "*"].map(
-      (c) => [`bashAllow ${JSON.stringify(c)}`, bad({ bashAllow: [`git log ${c} x`] })] as [
-        string,
-        AgentRunOptions,
-      ],
+      (c) =>
+        [`bashAllow ${JSON.stringify(c)}`, bad({ bashAllow: [`git log ${c} x`] })] as [
+          string,
+          AgentRunOptions,
+        ],
     ),
     ["absolute promptFile", bad({ promptFile: "/etc/qa.md" })],
     ["promptFile with ..", bad({ promptFile: "../qa.md" })],
