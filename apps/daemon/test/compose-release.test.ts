@@ -1,7 +1,7 @@
 import { existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { createEventStore, createIssueRepository } from "@friday/infrastructure";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { composeDaemon } from "../src/index.ts";
 import { NOW, setup } from "./compose-helpers.ts";
 
@@ -68,5 +68,22 @@ describe("composeDaemon release", () => {
     daemon.release();
     expect(row?.state).toBe("Held");
     expect(row?.heldReason).toBe("RunMisconfigured");
+  });
+
+  it("reconciles worktrees with the owner__repo key under worktreesRoot", async () => {
+    const t = setup();
+    const worktreesRoot = join(t.root, "worktrees");
+    const daemon = await composeDaemon({
+      ...t.opts,
+      projectId: "acme/widgets",
+      worktreesRoot,
+    });
+    daemon.release();
+    const listOrphans = vi.mocked(t.opts.worktrees.listOrphans);
+    expect(listOrphans).toHaveBeenCalledTimes(1);
+    expect(listOrphans.mock.calls[0]?.[0]).toMatchObject({
+      root: worktreesRoot,
+      project: "acme__widgets",
+    });
   });
 });

@@ -191,7 +191,16 @@ async function assemble(
   const breaker = buildBreaker(db, projectId, now);
   const ledger = createLedgerRepository(db);
   const recorderDeps = { projectId, events, issues, now };
-  const report = await reconcile({ projectId, root, runs, issues, events, worktrees, now });
+  const report = await reconcile({
+    projectId,
+    root,
+    runs,
+    ...(opts.worktreesRoot === undefined ? {} : { worktreesRoot: opts.worktreesRoot }),
+    issues,
+    events,
+    worktrees,
+    now,
+  });
   const recorder = createRunRecorder({ ...recorderDeps, ledger });
   const recording = { runs, recorder, runtimeFor };
   const budget = { ledger, recorderDeps };

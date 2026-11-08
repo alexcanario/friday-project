@@ -102,10 +102,11 @@ function fakeWorktrees(opts: {
 
 const wt = (issue: number): WorktreeInfo => ({ issue, path: `/wt/${issue}`, head: "abc" });
 
-function run(worktrees: WorktreeManager, projectId = "p") {
+function run(worktrees: WorktreeManager, projectId = "p", worktreesRoot?: string) {
   return reconcile({
     projectId,
     root: ROOT,
+    ...(worktreesRoot === undefined ? {} : { worktreesRoot }),
     runs: runs(),
     issues: issues(),
     events: events(),
@@ -247,6 +248,48 @@ describe("reconcile", () => {
     const second = await run(partial.manager);
     expect(second.removedWorktrees).toEqual([16]);
     expect(second.worktreeErrors).toEqual([removeError]);
+  });
+
+  it("lists and removes orphans under the worktree key and worktreesRoot", async () => {
+    const WT = "/home/friday/worktrees";
+    db.sqlite.prepare("INSERT INTO projects (id) VALUES (?)").run("acme/widgets");
+    const fake = fakeWorktrees({ orphans: [wt(15), wt(16)] });
+    await run(fake.manager, "acme/widgets", WT);
+    expect(fake.listCalls).toHaveLength(1);
+    expect(fake.listCalls[0]).toMatchObject({
+      root: WT,
+      project: "acme__widgets",
+      activeIssues: [],
+    });
+    expect(fake.removeCalls).toHaveLength(2);
+    expect(fake.removeCalls[0]).toMatchObject({ root: WT, project: "acme__widgets", issue: 15 });
+    expect(fake.removeCalls[1]).toMatchObject({ root: WT, project: "acme__widgets", issue: 16 });
+  });
+
+  it("does not hit InvalidPath for an owner/repo projectId", async () => {
+    db.sqlite.prepare("INSERT INTO projects (id) VALUES (?)").run("acme/widgets");
+    const invalid = { code: "InvalidPath" } as unknown as WorktreeError;
+    const present = [wt(15), wt(16)];
+    const manager = {
+      listOrphans: (r: { project: string }) =>
+        Promise.resolve(
+          r.project.includes("/") ? { ok: false, error: invalid } : { ok: true, value: present },
+        ),
+      remove: (r: { project: string }) =>
+        Promise.resolve(
+          r.project.includes("/") ? { ok: false, error: invalid } : { ok: true, value: undefined },
+        ),
+    } as unknown as WorktreeManager;
+    const report = await run(manager, "acme/widgets", "/wt");
+    expect(report.worktreeErrors).toEqual([]);
+    expect(report.removedWorktrees).toEqual([15, 16]);
+  });
+
+  it("keeps root and project when worktreesRoot is absent", async () => {
+    const fake = fakeWorktrees({ orphans: [wt(15)] });
+    await run(fake.manager, "p");
+    expect(fake.listCalls[0]).toMatchObject({ root: ROOT, project: "p" });
+    expect(fake.removeCalls[0]).toMatchObject({ root: ROOT, project: "p", issue: 15 });
   });
 
   it("is exported by the package index", () => {
