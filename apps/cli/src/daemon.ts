@@ -19,6 +19,7 @@ export type DaemonDeps = {
   createWorktrees?: (deps: GitWorktreeManagerDeps) => WorktreeManager;
   clock?: Clock;
   onSignal?: (handler: () => void) => void;
+  exit?: (code: number) => void;
 };
 
 const USAGE = "Uso: friday daemon\n";
@@ -64,25 +65,35 @@ function startOrRelease(daemon: Daemon): () => void {
   }
 }
 
-/** Waits for the stop signal, then stops the ticker, drains it and releases the daemon. */
+/** Waits for the stop signal, then stops the ticker, drains it and releases the daemon. A second signal forces exit 130. */
 function untilSignal(
   daemon: Daemon,
   stop: () => void,
   onSignal: (handler: () => void) => void,
+  exit: (code: number) => void,
 ): Promise<Result> {
   return new Promise<Result>((resolve) => {
-    let done = false;
+    let signals = 0;
+    let forced = false;
     onSignal(() => {
-      if (done) return;
-      done = true;
+      signals += 1;
+      if (signals === 2) {
+        forced = true;
+        resolve({ stdout: "", stderr: "", code: 130 });
+        exit(130);
+        return;
+      }
+      if (signals > 2) return;
       stop();
       void daemon.ticker
         .idle()
         .then(() => {
+          if (forced) return;
           daemon.release();
           resolve({ stdout: "", stderr: "", code: 0 });
         })
         .catch((error: unknown) => {
+          if (forced) return;
           daemon.release();
           resolve(fail(`${error instanceof Error ? error.message : String(error)}\n`));
         });
@@ -130,7 +141,8 @@ export async function startDaemon(deps: DaemonDeps): Promise<Result> {
       },
     });
     const stop = startOrRelease(daemon);
-    return await untilSignal(daemon, stop, deps.onSignal ?? defaultOnSignal);
+    const exit = deps.exit ?? ((code: number) => process.exit(code));
+    return await untilSignal(daemon, stop, deps.onSignal ?? defaultOnSignal, exit);
   } catch (error) {
     return fail(`${error instanceof Error ? error.message : String(error)}\n`);
   }

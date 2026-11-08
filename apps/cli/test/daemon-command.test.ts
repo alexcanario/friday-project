@@ -98,7 +98,6 @@ describe("friday daemon", () => {
     await Promise.resolve();
     expect(settled).toBe(false);
     s.fire();
-    s.fire();
     const out = await p;
     expect(out.code).toBe(0);
     expect(s.start).toHaveBeenCalledTimes(1);
