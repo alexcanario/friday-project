@@ -19,6 +19,7 @@ import { createApprovalDeps } from "./approval-compose.ts";
 import { createBreaker, type Breaker } from "./breaker.ts";
 import {
   judgeBranchOf,
+  qaBranchOf,
   triageBranchOf,
   type BranchContext,
   type Repo,
@@ -28,6 +29,7 @@ import {
   readDispatchConfig,
   readGuardedTickConfig,
 } from "./compose-config.ts";
+import { assertQaAgentConfig, type QaCompose } from "./qa-wiring.ts";
 import { createIntake } from "./intake.ts";
 import type { JudgeCompose } from "./judge-wiring.ts";
 import { acquireProcessLock, type ProcessLockDeps } from "./process-lock.ts";
@@ -63,6 +65,8 @@ export interface ComposeOptions {
   newApprovalId?: () => string;
   /** Judge agents and input; without it InReview is not dispatched (D64, D73). */
   judge?: JudgeCompose;
+  /** QA ficha and context; without it QA is not dispatched (D70, D75). */
+  qa?: QaCompose;
   /** Triage limits; without it Todo issues are left alone. */
   triage?: TriageFicha;
 }
@@ -123,6 +127,7 @@ function dispatcherOf(opts: ComposeOptions, ctx: DispatcherContext) {
   const { root, projectId } = opts;
   return createStateDispatcher({
     ...judgeBranchOf(opts, ctx),
+    ...qaBranchOf(opts, ctx),
     ...triageBranchOf(opts, ctx),
     projectId,
     github,
@@ -216,6 +221,7 @@ async function assemble(
 export async function composeDaemon(opts: ComposeOptions): Promise<Daemon> {
   const { token, tokenEnv, repo, repository } = readAuthor(opts);
   assertSingleConcurrentRun(opts.root);
+  if (opts.qa !== undefined) assertQaAgentConfig(opts.qa.agent);
   if (opts.triage !== undefined) assertTriageFicha(opts.triage);
   const gitHost = (opts.createGitHost ?? ((o) => new GitCliHost(o)))({
     tokenEnv,

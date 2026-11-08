@@ -1,6 +1,7 @@
-import type { AgentRuntime, GitHubPort } from "@friday/application";
+import type { AgentRuntime, GitHubPort, WorktreeManager } from "@friday/application";
 import type { BudgetDeps } from "./budget-gate.ts";
 import { createJudgeBranch, type JudgeCompose } from "./judge-wiring.ts";
+import { createQaBranch, type QaCompose } from "./qa-wiring.ts";
 import type { RunRecorderDeps } from "./run-recorder.ts";
 import type { RunRecordingDeps } from "./run-registration.ts";
 import type { TriageFicha } from "./triage-request.ts";
@@ -14,9 +15,11 @@ export type BranchOptions = {
   root: string;
   env: Record<string, string | undefined>;
   runtime: AgentRuntime;
+  worktrees: WorktreeManager;
   prOf: (issueId: number) => number | null;
   log?: (message: string) => void;
   judge?: JudgeCompose;
+  qa?: QaCompose;
   triage?: TriageFicha;
 };
 
@@ -68,6 +71,26 @@ export function triageBranchOf(opts: BranchOptions, ctx: BranchContext) {
       ficha: opts.triage,
       github,
       runtime: opts.runtime,
+      recorder: recorderDeps,
+      recording,
+      budget,
+      now,
+      ...logOf(opts),
+    }),
+  };
+}
+
+/** The QA branch, or nothing when `opts.qa` is absent (D70, D75). */
+export function qaBranchOf(opts: BranchOptions, ctx: BranchContext) {
+  if (opts.qa === undefined) return {};
+  const { recorderDeps, recording, budget, now } = ctx;
+  return {
+    qa: createQaBranch({
+      projectId: opts.projectId,
+      root: opts.root,
+      compose: opts.qa,
+      runtime: opts.runtime,
+      worktrees: opts.worktrees,
       recorder: recorderDeps,
       recording,
       budget,
