@@ -4,7 +4,6 @@ import type { AgentRuntime, AgentRunRequest } from "./agent-runtime.ts";
 import { heldReasonFor } from "./held-reason-for.ts";
 
 export const SPECIALIST_ALLOWED_MCP = [
-  "mcp__friday__criteria_set",
   "mcp__friday__work_report",
   "mcp__friday__git_push",
   "mcp__friday__pr_create",

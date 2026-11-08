@@ -60,7 +60,11 @@ export const finished = (
   violations: [],
 });
 
-export const GOOD = { specialist: "backend", reason: "Endpoint de API" };
+export const CRITERIA = [
+  { index: 1, claim: "a", proof: { kind: "command", command: "pnpm -r test" } },
+  { index: 2, claim: "b", proof: { kind: "browser", step: "abrir a tela" } },
+];
+export const GOOD = { specialist: "backend", reason: "Endpoint de API", criteria: CRITERIA };
 
 type Opts = {
   state?: "Todo" | "Triage";

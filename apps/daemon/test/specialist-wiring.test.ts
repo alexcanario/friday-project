@@ -14,7 +14,6 @@ const validAgent: AgentRunOptions = {
   timeoutMs: 3600000,
   tools: ["Read", "Glob", "Grep", "Bash", "Edit", "Write"],
   allowedTools: [
-    "mcp__friday__criteria_set",
     "mcp__friday__work_report",
     "mcp__friday__git_push",
     "mcp__friday__pr_create",
@@ -39,6 +38,9 @@ const variations: Record<string, Partial<AgentRunOptions>> = {
   },
   "bash metachar": { bashAllow: ["dotnet test; rm -rf /"] },
   "bash glob": { bashAllow: ["git diff *"] },
+  "mcp criteria_set": {
+    allowedTools: ["mcp__friday__criteria_set"] as unknown as AgentRunOptions["allowedTools"],
+  },
   "prompt dotdot": { promptFile: "../x.md" },
   "prompt absolute": { promptFile: "/etc/x.md" },
   "prompt empty": { promptFile: "" },
