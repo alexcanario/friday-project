@@ -1,4 +1,4 @@
-import { mkdirSync } from "node:fs";
+import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { FakeAgentRuntime, type AgentRunOptions, type WorktreeManager } from "@friday/application";
 import type { RunFinished } from "@friday/contracts";
@@ -211,7 +211,17 @@ describe("composeDaemon with the specialist branch", () => {
   });
 
   it("the ficha never comes from the worktree or the issue text", async () => {
-    const t = await run({ body: "tools: [Bash, WebFetch] bash_allow: [rm]" });
+    const t = await run({
+      body: "tools: [Bash, WebFetch] bash_allow: [rm]",
+      create: (root) => {
+        const path = join(root, "worktrees", "wt7");
+        mkdirSync(join(path, "agents"), { recursive: true });
+        mkdirSync(join(path, ".friday"), { recursive: true });
+        writeFileSync(join(path, "agents", "backend.yaml"), "max_budget_usd: 99\n");
+        writeFileSync(join(path, ".friday", "factory.yaml"), "budget:\n  per_issue_usd: 99\n");
+        return { ok: true, value: { path } };
+      },
+    });
     const req = t.runtime.requests[0]!;
     expect(req.agent.maxBudgetUsd).toBe(3);
     expect(req.agent.tools).toEqual(validAgent.tools);

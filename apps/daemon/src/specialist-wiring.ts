@@ -97,6 +97,41 @@ async function worktreeOf(
   return found.path;
 }
 
+type McpTools = Parameters<typeof buildSpecialistRequest>[0]["friday"]["agent"]["mcp_tools"];
+
+type TargetInput = {
+  issue: { number: number; title: string; body: string };
+  path: string;
+  base: string;
+  mcpTools: McpTools;
+};
+
+/** Builds the specialist request for one run of the issue. */
+function targetOf(deps: SpecialistBranchDeps, t: TargetInput, id: number, runId: string) {
+  const { agent } = deps.compose;
+  return buildSpecialistRequest({
+    issue: { number: t.issue.number, title: t.issue.title, body: t.issue.body },
+    criteria: criteriaOf(deps.recorder.events.list(deps.projectId, id)),
+    feedback: feedbackOf(deps.recorder.events.list(deps.projectId, id)),
+    agent,
+    configRoot: deps.root,
+    cwd: t.path,
+    branch: branchName(t.issue.number, t.issue.title),
+    base: t.base,
+    getPullRequest: () => createPrOf(deps.recorder.events, deps.projectId)(id),
+    friday: {
+      runId,
+      agent: { states: agent.states, mcp_tools: t.mcpTools },
+      getIssueState: () => {
+        const state = deps.recorder.issues.get(deps.projectId, id)?.state;
+        return state as ReturnType<
+          Parameters<typeof buildSpecialistRequest>[0]["friday"]["getIssueState"]
+        >;
+      },
+    },
+  });
+}
+
 /** Builds the specialist branch of the dispatcher; config is re-read on every execution. */
 export function createSpecialistBranch(
   deps: SpecialistBranchDeps,
@@ -124,32 +159,11 @@ export function createSpecialistBranch(
     if (!isInsideRoot(deps.worktreesRoot, path)) {
       return fail(`a worktree ${path} está fora da raiz do daemon.`);
     }
-    const targetOf = (id: number, runId: string) =>
-      buildSpecialistRequest({
-        issue: { number: issue.number, title: issue.title, body: issue.body },
-        criteria: criteriaOf(deps.recorder.events.list(deps.projectId, id)),
-        feedback: feedbackOf(deps.recorder.events.list(deps.projectId, id)),
-        agent,
-        configRoot: deps.root,
-        cwd: path,
-        branch: branchName(issue.number, issue.title),
-        base,
-        getPullRequest: () => createPrOf(deps.recorder.events, deps.projectId)(id),
-        friday: {
-          runId,
-          agent: { states: agent.states, mcp_tools: mcpTools },
-          getIssueState: () => {
-            const state = deps.recorder.issues.get(deps.projectId, id)?.state;
-            return state as ReturnType<
-              Parameters<typeof buildSpecialistRequest>[0]["friday"]["getIssueState"]
-            >;
-          },
-        },
-      });
+    const target = { issue, path, base, mcpTools };
     return runSpecialistForIssue(
       {
         projectId: deps.projectId,
-        targetOf,
+        targetOf: (id, runId) => targetOf(deps, target, id, runId),
         step: { runtime: deps.runtime },
         recorder: deps.recorder,
         recording: deps.recording,
