@@ -13,5 +13,8 @@ bash_allow:
   - "pnpm -r test"
   - "git log"
   - "git diff"
+  - "git diff origin/develop...HEAD"
+  - "git diff --stat origin/develop...HEAD"
+  - "git log --oneline origin/develop..HEAD"
 output: qaReport
 prompt_file: prompts/qa.md

@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { QA_ALLOWED_MCP, QA_ALLOWED_TOOLS } from "@friday/application";
-import { loadFactoryConfig } from "../src/index.ts";
+import { isBashAllowed, loadFactoryConfig } from "../src/index.ts";
 import { hasSecretPrefix, scanSecrets } from "../src/factory-config-secrets.ts";
 import { makeRoot, write } from "./config-helpers.ts";
 
@@ -37,7 +37,17 @@ describe("QA agent definition", () => {
     expect(qa.timeout_s).toBe(1800);
     expect(qa.tools).toEqual(["Read", "Glob", "Grep", "Bash"]);
     expect(qa.mcp_tools).toEqual(["qa_report", "issue_comment"]);
-    expect(qa.bash_allow).toEqual(["pnpm test", "pnpm -r test", "git log", "git diff"]);
+    expect(qa.bash_allow).toEqual(
+      expect.arrayContaining([
+        "pnpm test",
+        "pnpm -r test",
+        "git log",
+        "git diff",
+        "git diff origin/develop...HEAD",
+        "git diff --stat origin/develop...HEAD",
+        "git log --oneline origin/develop..HEAD",
+      ]),
+    );
     expect(qa.output).toBe("qaReport");
     expect(qa.prompt_file).toBe("prompts/qa.md");
   });
@@ -74,6 +84,58 @@ describe("QA agent definition", () => {
     expect(promptText).toContain("do not change the code");
     expect(promptText.trim()).not.toBe("");
     expect(promptText.split("\n").length).toBeLessThanOrEqual(300);
+  });
+
+  it("keeps QA bash_allow entries closed", () => {
+    const qa = loadQa(qaRoot());
+    for (const entry of qa.bash_allow ?? []) {
+      expect(entry).not.toContain("*");
+      expect(entry).not.toContain("--output");
+      expect(entry).not.toContain("--ext-diff");
+    }
+  });
+
+  it("accepts the git and pnpm forms the QA prompt uses", () => {
+    const qa = loadQa(qaRoot());
+    for (const cmd of [
+      "pnpm test",
+      "pnpm -r test",
+      "git diff origin/develop...HEAD",
+      "git diff --stat origin/develop...HEAD",
+      "git log --oneline origin/develop..HEAD",
+    ]) {
+      expect(isBashAllowed(cmd, qa.bash_allow ?? []), cmd).toBe(true);
+    }
+  });
+
+  it("rejects output redirection, ext-diff, operators and push in QA commands", () => {
+    const qa = loadQa(qaRoot());
+    for (const cmd of [
+      "git diff --output=out.txt origin/develop...HEAD",
+      "git diff origin/develop...HEAD --output=out.txt",
+      "git diff --ext-diff origin/develop...HEAD",
+      "git diff origin/develop...HEAD; ls",
+      "git diff origin/develop...HEAD && ls",
+      "git diff origin/develop...HEAD | cat",
+      "git diff origin/develop...HEAD > out.txt",
+      "git push origin x",
+      "git log --oneline origin/develop..HEAD --output=x",
+    ]) {
+      expect(isBashAllowed(cmd, qa.bash_allow ?? []), cmd).toBe(false);
+    }
+  });
+
+  it("aligns the QA prompt with the allowed commands and the pnpm test risk", () => {
+    expect(promptText).toContain("git diff origin/develop...HEAD");
+    expect(promptText).toContain("git diff --stat origin/develop...HEAD");
+    expect(promptText).toContain("git log --oneline origin/develop..HEAD");
+    expect(promptText.split("\n")).toContain(
+      "2. Inspect the diff of the branch with `git diff origin/develop...HEAD`.",
+    );
+    expect(promptText).not.toContain("against `develop`");
+    expect(promptText).toContain(
+      "`pnpm test` runs the test script of the PR worktree, so it executes code from the PR itself; isolation comes from the worktree and the `cwd`.",
+    );
   });
 
   it("has no secret in the QA definition", () => {
