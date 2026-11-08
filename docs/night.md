@@ -43,7 +43,7 @@ Três tarefas agendadas do Claude Code na nuvem (limite atual do plano: 3 sessõ
 ## Fase C · Revisar, testar, merge e relatório (05:17)
 1. Primeiro, conferir o interruptor `night:stop`.
 2. Para cada PR aberto ligado a uma issue `status:review`:
-   1. Esperar o CI do `head_sha` terminar (no máximo 15 min). A revisão automática do Copilot está desligada (D84), e não se espera por ela. Vermelho ⇒ 1 correção pelo `implementer`; continua vermelho ⇒ `status:needs-human` + `gate:budget`.
+   1. Esperar o CI do `head_sha` terminar (no máximo 15 min). A revisão automática do Copilot está desligada (D85), e não se espera por ela. Vermelho ⇒ 1 correção pelo `implementer`; continua vermelho ⇒ `status:needs-human` + `gate:budget`.
    2. Subagente `qa`. `fail` ⇒ 1 rodada de correção pelo `implementer` e QA de novo; falhou de novo ⇒ `needs-human` + `gate:budget`.
    3. Judge: ler a linha `- risco:` de `## Risco e gates` da issue. `judge-strong` se houver gate, se o risco for `medium` ou `high`, ou se a linha faltar; `judge` só com `low`. O Judge confere no código cada comentário de revisão do PR, de qualquer revisor (D50). Se o `judge` devolver `risk` maior que o declarado, repetir com `judge-strong` no mesmo `head_sha`, e esse veredito passa a valer; `risk` menor não muda nada (D39). Publicar o veredito no PR com o `head_sha`, o risco declarado, o `risk` devolvido e o agente usado.
    4. Decidir:
