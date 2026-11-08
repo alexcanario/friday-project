@@ -3,6 +3,10 @@ import { z } from "zod";
 const text = z.string().refine((s) => s.trim() !== "");
 const positiveInt = z.number().int().positive();
 const positive = z.number().positive();
+const githubName = z
+  .string()
+  .regex(/^[A-Za-z0-9._-]+$/)
+  .refine((s) => s !== "." && s !== "..");
 const model = z.enum(["haiku", "sonnet", "opus"]);
 
 const RISK_RULES = [
@@ -18,7 +22,7 @@ const RISK_RULES = [
 export const factoryConfigSchema = z.strictObject({
   schemaVersion: z.literal("friday/v1"),
   enabled: z.boolean(),
-  repository: z.strictObject({ owner: text, name: text, base: text }),
+  repository: z.strictObject({ owner: githubName, name: githubName, base: text }),
   verify: z.strictObject({ command: text, timeout_s: positiveInt }),
   flow: z.strictObject({
     screen_paths: z.array(z.string()),
@@ -30,17 +34,22 @@ export const factoryConfigSchema = z.strictObject({
     max_changed_lines: positiveInt,
     max_changed_files: positiveInt,
   }),
-  pull_requests: z.strictObject({
-    merge: z.enum(["manual", "auto"]),
-    author_token_env: z
-      .string()
-      .regex(/^[A-Z][A-Z0-9_]*$/)
-      .optional(),
-    review_token_env: z
-      .string()
-      .regex(/^[A-Z][A-Z0-9_]*$/)
-      .optional(),
-  }),
+  pull_requests: z
+    .strictObject({
+      merge: z.enum(["manual", "auto"]),
+      author_token_env: z
+        .string()
+        .regex(/^[A-Z][A-Z0-9_]*$/)
+        .optional(),
+      review_token_env: z
+        .string()
+        .regex(/^[A-Z][A-Z0-9_]*$/)
+        .optional(),
+    })
+    .refine(
+      (pr) => pr.review_token_env === undefined || pr.review_token_env !== pr.author_token_env,
+      { path: ["review_token_env"] },
+    ),
   limits: z.strictObject({
     per_issue_usd: positive,
     per_day_usd: positive,

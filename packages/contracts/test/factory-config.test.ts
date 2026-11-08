@@ -141,3 +141,49 @@ describe("pull_requests.review_token_env", () => {
     expect(factoryConfigSchema.safeParse(withPr(unknown)).success).toBe(false);
   });
 });
+
+describe("factoryConfigSchema repository and token rules", () => {
+  const withRepo = (field: "owner" | "name", value: string) => {
+    const cfg = valid();
+    cfg["repository"][field] = value;
+    return cfg;
+  };
+  const withPr = (pr: unknown) => ({ ...valid(), pull_requests: pr });
+
+  it("validates the GitHub name format of owner and name", () => {
+    for (const field of ["owner", "name"] as const) {
+      for (const ok of ["alexcanario", "friday-sandbox", "a.b_c-1"]) {
+        expect(factoryConfigSchema.safeParse(withRepo(field, ok)).success, `${field} ${ok}`).toBe(
+          true,
+        );
+      }
+      for (const bad of [".", "..", "a/b", "a b", "a\\b", "x\ny"]) {
+        const result = factoryConfigSchema.safeParse(withRepo(field, bad));
+        expect(result.success, `${field} ${JSON.stringify(bad)}`).toBe(false);
+      }
+    }
+  });
+
+  it("rejects equal author_token_env and review_token_env", () => {
+    const same = {
+      merge: "manual",
+      author_token_env: "FRIDAY_TOKEN",
+      review_token_env: "FRIDAY_TOKEN",
+    };
+    const result = factoryConfigSchema.safeParse(withPr(same));
+    expect(result.success).toBe(false);
+    if (!result.success)
+      expect(result.error.issues[0]?.path).toEqual(["pull_requests", "review_token_env"]);
+    const ok = [
+      {
+        merge: "manual",
+        author_token_env: "FRIDAY_AUTHOR_TOKEN",
+        review_token_env: "FRIDAY_JUDGE_TOKEN",
+      },
+      { merge: "manual", author_token_env: "FRIDAY_TOKEN" },
+      { merge: "manual", review_token_env: "FRIDAY_TOKEN" },
+      { merge: "manual" },
+    ];
+    for (const pr of ok) expect(factoryConfigSchema.safeParse(withPr(pr)).success).toBe(true);
+  });
+});
