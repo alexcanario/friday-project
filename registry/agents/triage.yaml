@@ -1,0 +1,11 @@
+# flow.triage in factory.yaml governs model and budget cap (D36, D78).
+# This card only takes effect on max_turns, timeout_s and the prompt.
+role: triage
+model: sonnet
+max_budget_usd: 0.5
+max_turns: 10
+timeout_s: 600
+tools: []
+mcp_tools: []
+bash_allow: []
+prompt_file: prompts/triage.md

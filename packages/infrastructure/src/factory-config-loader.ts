@@ -71,7 +71,12 @@ function loadFile<T>(
 function agentFiles(root: string): string[] {
   try {
     return readdirSync(join(root, "agents"))
-      .filter((name) => name.endsWith(".yaml") && statSync(join(root, "agents", name)).isFile())
+      .filter(
+        (name) =>
+          name.endsWith(".yaml") &&
+          name !== "triage.yaml" &&
+          statSync(join(root, "agents", name)).isFile(),
+      )
       .sort(lt);
   } catch {
     return [];
