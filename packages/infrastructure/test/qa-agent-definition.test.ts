@@ -88,7 +88,7 @@ describe("QA agent definition", () => {
 
   it("keeps QA bash_allow entries closed", () => {
     const qa = loadQa(qaRoot());
-    for (const entry of qa.bash_allow) {
+    for (const entry of qa.bash_allow ?? []) {
       expect(entry).not.toContain("*");
       expect(entry).not.toContain("--output");
       expect(entry).not.toContain("--ext-diff");
@@ -104,7 +104,7 @@ describe("QA agent definition", () => {
       "git diff --stat origin/develop...HEAD",
       "git log --oneline origin/develop..HEAD",
     ]) {
-      expect(isBashAllowed(cmd, qa.bash_allow), cmd).toBe(true);
+      expect(isBashAllowed(cmd, qa.bash_allow ?? []), cmd).toBe(true);
     }
   });
 
@@ -121,7 +121,7 @@ describe("QA agent definition", () => {
       "git push origin x",
       "git log --oneline origin/develop..HEAD --output=x",
     ]) {
-      expect(isBashAllowed(cmd, qa.bash_allow), cmd).toBe(false);
+      expect(isBashAllowed(cmd, qa.bash_allow ?? []), cmd).toBe(false);
     }
   });
 
