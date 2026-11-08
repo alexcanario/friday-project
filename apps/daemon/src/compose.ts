@@ -23,7 +23,11 @@ import {
   type BranchContext,
   type Repo,
 } from "./compose-branches.ts";
-import { readDispatchConfig } from "./compose-config.ts";
+import {
+  assertSingleConcurrentRun,
+  readDispatchConfig,
+  readGuardedTickConfig,
+} from "./compose-config.ts";
 import { createIntake } from "./intake.ts";
 import type { JudgeCompose } from "./judge-wiring.ts";
 import { acquireProcessLock, type ProcessLockDeps } from "./process-lock.ts";
@@ -33,7 +37,6 @@ import type { RunRecordingDeps } from "./run-registration.ts";
 import { createStateDispatcher, type StateDispatcherDeps } from "./state-dispatcher.ts";
 import { assertTriageFicha, type TriageFicha } from "./triage-request.ts";
 import { createVerifyBranch } from "./verify-wiring.ts";
-import { readTickConfig } from "./tick-config.ts";
 import { buildRuntimeFor, mirrorDirOf, targetUrlOf } from "./runtime-wiring.ts";
 import { createTicker, type Clock, type Ticker } from "./tick.ts";
 
@@ -196,7 +199,7 @@ async function assemble(
   const ticker = createTicker({
     projectId,
     clock: opts.clock,
-    readConfig: () => readTickConfig(root),
+    readConfig: () => readGuardedTickConfig(root, opts.log),
     issues: ingestingIssues(opts, intake, dispatcher),
     buildRequest: (id, runId) => dispatcher.buildRequest(id, runId),
     runtime: opts.runtime,
@@ -212,6 +215,7 @@ async function assemble(
 /** Process composition at startup: lock, database, reconcile, GitHub, intake and ticker. */
 export async function composeDaemon(opts: ComposeOptions): Promise<Daemon> {
   const { token, tokenEnv, repo, repository } = readAuthor(opts);
+  assertSingleConcurrentRun(opts.root);
   if (opts.triage !== undefined) assertTriageFicha(opts.triage);
   const gitHost = (opts.createGitHost ?? ((o) => new GitCliHost(o)))({
     tokenEnv,
