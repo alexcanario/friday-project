@@ -63,6 +63,7 @@ const makeInput = (over: Partial<TriageStepInput> = {}): TriageStepInput => ({
   state: "Triage",
   request: makeRequest(),
   flow,
+  staffed: ["backend"],
   ...over,
 });
 
@@ -107,6 +108,42 @@ function apply(inputs: WorkflowInput[]): WorkflowSnapshot {
   return snap;
 }
 
+describe("runTriageStep staffed specialists", () => {
+  it("holds with SpecialistWithoutAgent when the chosen specialist has no ficha", async () => {
+    const s = setup([finished(good("frontend", "Tela"))]);
+    const out = await runTriageStep(s, makeInput({ state: "Todo" }));
+    expect(out.inputs).toEqual([
+      { type: "NeedsTriage" },
+      { type: "RunHeld", reason: "SpecialistWithoutAgent" },
+    ]);
+    expect(out.specialist).toBeNull();
+    expect(out.criteria).toBeNull();
+    expect(s.labels).toEqual([[10, "specialist:frontend"]]);
+    expect(s.comments).toHaveLength(1);
+    const inTriage = setup([finished(good("frontend", "Tela"))]);
+    const again = await runTriageStep(inTriage, makeInput());
+    expect(again.inputs).toEqual([{ type: "RunHeld", reason: "SpecialistWithoutAgent" }]);
+    expect(apply(out.inputs)).toMatchObject({ state: "Held", heldReason: "SpecialistWithoutAgent" });
+  });
+
+  it("holds when the existing specialist label has no ficha", async () => {
+    const s = setup([finished(good("backend"))]);
+    const out = await runTriageStep(s, makeInput({ issue: issue(["friday", "specialist:database"]) }));
+    expect(out.inputs).toEqual([{ type: "RunHeld", reason: "SpecialistWithoutAgent" }]);
+    expect(out.specialist).toBeNull();
+    expect(out.criteria).toBeNull();
+    expect(s.labels).toHaveLength(0);
+  });
+
+  it("assigns a staffed specialist as before", async () => {
+    const s = setup([finished(good("backend"))]);
+    const out = await runTriageStep(s, makeInput());
+    expect(out.inputs.at(-1)).toEqual({ type: "SpecialistAssigned" });
+    expect(out.specialist).toBe("backend");
+    expect(out.criteria).toEqual(CRITERIA);
+  });
+});
+
 describe("runTriageStep", () => {
   it("assigns the backend specialist, labels the issue and comments the reason", async () => {
     const s = setup([finished(good("backend", "Endpoint de API"))]);
@@ -122,7 +159,7 @@ describe("runTriageStep", () => {
 
   it("starts from Todo with NeedsTriage and reaches InProgress", async () => {
     const s = setup([finished(good("frontend", "Tela de listagem"))]);
-    const out = await runTriageStep(s, makeInput({ state: "Todo" }));
+    const out = await runTriageStep(s, makeInput({ state: "Todo", staffed: ["frontend"] }));
     expect(out.inputs).toEqual([{ type: "NeedsTriage" }, { type: "SpecialistAssigned" }]);
     expect(out.specialist).toBe("frontend");
     expect(s.labels).toEqual([[10, "specialist:frontend"]]);
@@ -146,7 +183,11 @@ describe("runTriageStep", () => {
       const s = setup([finished(good("backend"))]);
       const out = await runTriageStep(
         s,
-        makeInput({ state, issue: issue(["friday", "specialist:database"]) }),
+        makeInput({
+          state,
+          issue: issue(["friday", "specialist:database"]),
+          staffed: ["database"],
+        }),
       );
       expect(s.runtime.requests).toHaveLength(1);
       expect(s.labels).toHaveLength(0);
@@ -157,7 +198,10 @@ describe("runTriageStep", () => {
     const first = setup([finished(good("backend"))]);
     const firstOut = await runTriageStep(
       first,
-      makeInput({ issue: issue(["specialist:security", "specialist:backend"]) }),
+      makeInput({
+        issue: issue(["specialist:security", "specialist:backend"]),
+        staffed: ["security"],
+      }),
     );
     expect(firstOut.specialist).toBe("security");
     const s = setup([finished(good("backend"))]);

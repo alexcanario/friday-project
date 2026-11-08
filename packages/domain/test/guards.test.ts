@@ -104,10 +104,25 @@ describe("guards", () => {
     ];
     expect(outside).toHaveLength(13);
     for (const from of RUN_HELD_FROM) {
-      for (const reason of outside) {
+      for (const reason of [...outside, "Nope"]) {
         const r = transition(snap(from), { type: "RunHeld", reason } as unknown as WorkflowInput);
         expect(r, `${from} ${reason}`).toEqual({ ok: false, error: "InvalidTransition" });
       }
     }
+  });
+
+  it("RunHeld accepts SpecialistWithoutAgent from Triage and InProgress and rejects an unknown reason", () => {
+    for (const from of ["Triage", "InProgress"] as const) {
+      const r = transition(snap(from), { type: "RunHeld", reason: "SpecialistWithoutAgent" });
+      expect(r.ok && r.value.snapshot).toMatchObject({
+        state: "Held",
+        heldReason: "SpecialistWithoutAgent",
+      });
+    }
+    const bad = transition(snap("Triage"), {
+      type: "RunHeld",
+      reason: "Nope",
+    } as unknown as WorkflowInput);
+    expect(bad).toEqual({ ok: false, error: "InvalidTransition" });
   });
 });

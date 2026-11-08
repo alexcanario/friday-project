@@ -28,10 +28,10 @@ describe("runTriageForIssue", () => {
 
   it("moves a Todo issue through Triage to InProgress", async () => {
     const t = triageSetup({
-      results: [finished({ ...GOOD, specialist: "frontend", reason: "Tela de listagem" })],
+      results: [finished({ ...GOOD, specialist: "backend", reason: "Endpoint de listagem" })],
     });
     await runTriageForIssue(t.deps, t.issue);
-    expect(t.github.labelCalls).toEqual([{ issue: 10, label: "specialist:frontend" }]);
+    expect(t.github.labelCalls).toEqual([{ issue: 10, label: "specialist:backend" }]);
     expect(t.stateEvents().map((e) => `${e.from}>${e.to}`)).toEqual([
       "Todo>Triage",
       "Triage>InProgress",
@@ -107,7 +107,7 @@ describe("runTriageForIssue", () => {
   });
 
   it("records CriteriaSet for an issue with a specialist label", async () => {
-    const t = triageSetup({ labels: ["friday", "specialist:database"] });
+    const t = triageSetup({ labels: ["friday", "specialist:backend"] });
     await runTriageForIssue(t.deps, t.issue);
     expect(t.runtime.run).toHaveBeenCalledTimes(1);
     expect(t.events.list("p", 10).filter((e) => e.type === "CriteriaSet")).toHaveLength(1);

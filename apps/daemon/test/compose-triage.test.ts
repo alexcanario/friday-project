@@ -8,6 +8,7 @@ import {
   isInside,
 } from "@friday/infrastructure";
 import { describe, expect, it } from "vitest";
+import { STAFFED_SPECIALISTS } from "../src/staffed-specialists.ts";
 import * as daemon from "../src/index.ts";
 import { composeDaemon } from "../src/index.ts";
 import { setup } from "./compose-helpers.ts";
@@ -71,6 +72,44 @@ describe("composeDaemon triage wiring", () => {
     ).rejects.toThrow("A ficha da triagem é inválida.");
     expect(existsSync(join(u.root, ".friday", "daemon.lock"))).toBe(false);
     expect(existsSync(u.opts.dbPath)).toBe(false);
+  });
+
+  it("holds the issue for an unstaffed specialist and assigns a staffed one", async () => {
+    const output = (specialist: string) => finished({ ...GOOD, specialist }, "succeeded", 0.3);
+    const unstaffed = triageScenario();
+    unstaffed.runtime = undefined as never;
+    const rt = new FakeAgentRuntime([output("security")]);
+    unstaffed.opts.runtime = rt;
+    unstaffed.opts.createRuntime = () => rt;
+    const held = await composeDaemon({ ...unstaffed.opts, triage: AGENT_CONFIG });
+    await held.ticker.tick();
+    await held.ticker.idle();
+    const row = createIssueRepository(held.db).get("p", 7);
+    expect(row?.state).toBe("Held");
+    expect(row?.heldReason).toBe("SpecialistWithoutAgent");
+    expect(
+      createEventStore(held.db)
+        .list("p", 7)
+        .filter((e) => e.type === "CriteriaSet"),
+    ).toHaveLength(0);
+    held.release();
+
+    const staffed = triageScenario();
+    const ok = await composeDaemon({ ...staffed.opts, triage: AGENT_CONFIG });
+    await ok.ticker.tick();
+    await ok.ticker.idle();
+    expect(createIssueRepository(ok.db).get("p", 7)?.state).toBe("InProgress");
+    expect(
+      createEventStore(ok.db)
+        .list("p", 7)
+        .filter((e) => e.type === "CriteriaSet"),
+    ).toHaveLength(1);
+    ok.release();
+  });
+
+  it("passes STAFFED_SPECIALISTS to the triage step (contains backend, not security)", () => {
+    expect(STAFFED_SPECIALISTS).toContain("backend");
+    expect(STAFFED_SPECIALISTS).not.toContain("security");
   });
 
   it("exports the triage pieces from the package index", () => {

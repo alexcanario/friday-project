@@ -96,7 +96,7 @@ describe("rounds", () => {
   it("keeps the counters on the other held reasons", () => {
     const exhausted = ["VerifyRoundsExhausted", "QaRoundsExhausted", "ReviewItersExhausted"];
     const others = HELD_REASONS.filter((r) => !exhausted.includes(r));
-    expect(others).toHaveLength(20);
+    expect(others).toHaveLength(HELD_REASONS.length - exhausted.length);
     for (const heldReason of others) {
       const s = snap("Held", { heldReason, verifyRound: 1, qaRound: 1, reviewIter: 1 });
       const r = transition(s, INPUTS.Resumed);
