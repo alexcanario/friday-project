@@ -70,14 +70,12 @@ function setup() {
 const last = () => captured.deps.at(-1) as TickerDeps;
 const breakerOf = () => last().breaker!;
 
-function seed(dbPath: string, failuresJson: string): void {
+function seed(dbPath: string, failuresJson: string, openedAt: string | null = null): void {
   const db = openDatabase(dbPath);
   db.sqlite.prepare("INSERT INTO projects (id) VALUES ('p')").run();
   db.sqlite
-    .prepare(
-      "INSERT INTO breaker_state (project_id, opened_at, failures_json) VALUES ('p', NULL, ?)",
-    )
-    .run(failuresJson);
+    .prepare("INSERT INTO breaker_state (project_id, opened_at, failures_json) VALUES ('p', ?, ?)")
+    .run(openedAt, failuresJson);
   db.close();
 }
 
@@ -161,6 +159,30 @@ describe("composeDaemon breaker", () => {
     seed(t.opts.dbPath, "[]");
     const daemon = await composeDaemon(t.opts);
     expect(breakerOf().breaker.isOpen()).toBe(false);
+    daemon.release();
+  });
+
+  it("fails closed when a persisted timestamp is not ISO", async () => {
+    const cases: [string | null, string][] = [
+      ["not-a-date", "[]"],
+      [null, '["garbage"]'],
+      [null, "[1]"],
+    ];
+    for (const [openedAt, failuresJson] of cases) {
+      const t = setup();
+      seed(t.opts.dbPath, failuresJson, openedAt);
+      await expect(composeDaemon(t.opts)).rejects.toThrow(new Error(CORRUPT));
+      expect(captured.deps).toHaveLength(0);
+      expect(existsSync(join(t.root, ".friday", "daemon.lock"))).toBe(false);
+      expect(() => openDatabase(t.opts.dbPath).close()).not.toThrow();
+    }
+  });
+
+  it("accepts a valid persisted open state", async () => {
+    const t = setup();
+    seed(t.opts.dbPath, '["2026-11-05T02:55:00.000Z"]', "2026-11-05T03:00:00.000Z");
+    const daemon = await composeDaemon(t.opts);
+    expect(breakerOf().breaker.isOpen()).toBe(true);
     daemon.release();
   });
 });

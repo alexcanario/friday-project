@@ -173,3 +173,37 @@ describe("breaker persistence", () => {
     db.close();
   });
 });
+
+describe("breaker persisted state validation", () => {
+  const OPENED = "2026-11-05T03:00:00.000Z";
+  const build = (initial: unknown, nowIso = OPENED) => {
+    const store = new SpyStore();
+    store.initial = initial as BreakerState;
+    return createBreaker({
+      now: () => new Date(nowIso),
+      threshold: 3,
+      windowMs: 900000,
+      openMs: 1800000,
+      persist: { store, projectId: "p" },
+    });
+  };
+
+  it("rejects persisted state with a non ISO timestamp", () => {
+    const bad: unknown[] = [
+      { openedAt: "not-a-date", failures: [] },
+      { openedAt: null, failures: ["2026-11-05T03:00:00.000Z", "garbage"] },
+      { openedAt: "2026-11-05", failures: [] },
+      { openedAt: null, failures: [1] },
+      { openedAt: null, failures: [null] },
+      { openedAt: "2026-13-45T99:99:99.000Z", failures: [] },
+    ];
+    for (const initial of bad) expect(() => build(initial)).toThrow(Error);
+  });
+
+  it("accepts valid persisted state and reopens until 30 minutes", () => {
+    const state = { openedAt: OPENED, failures: ["2026-11-05T02:55:00.000Z"] };
+    expect(build(state, "2026-11-05T03:29:59.999Z").isOpen()).toBe(true);
+    expect(build(state, "2026-11-05T03:30:00.000Z").isOpen()).toBe(false);
+    expect(() => build({ openedAt: null, failures: [] })).not.toThrow();
+  });
+});
