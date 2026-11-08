@@ -1,10 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import type {
-  AgentRunRequest,
-  DaySum,
-  IssueRow,
-  LedgerRepository,
-} from "@friday/application";
+import type { AgentRunRequest, DaySum, IssueRow, LedgerRepository } from "@friday/application";
 import type { RunFinished } from "@friday/contracts";
 import {
   buildSpecialistRequest,

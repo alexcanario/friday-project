@@ -13,7 +13,7 @@ const VALID: EffectsRun = {
 
 describe("buildEffectsRun", () => {
   it("accepts the optional onPrCreated and still works without it", () => {
-    const onPrCreated = (_pr: number): void => {};
+    const onPrCreated = (): void => {};
     expect(() => buildEffectsRun({ ...VALID, onPrCreated })).not.toThrow();
     expect(() => buildEffectsRun(VALID)).not.toThrow();
   });

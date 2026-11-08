@@ -39,6 +39,32 @@ type RunRow = {
 };
 type Tracker = { last: RunFinished | null };
 
+type PrBox = { number: number | null };
+
+/** Copies the request with an `onPrCreated` hook that keeps the last PR number; never mutates the original. */
+function withPrHook(request: AgentRunRequest, box: PrBox): AgentRunRequest {
+  const effects = request.friday?.effects;
+  if (request.friday === undefined || effects === undefined) return request;
+  const run = { ...effects.run, onPrCreated: (pr: number) => void (box.number = pr) };
+  return { ...request, friday: { ...request.friday, effects: { ...effects, run } } };
+}
+
+function appendPrOpened(deps: SpecialistDispatchDeps, ctx: RunContext, number: number): void {
+  try {
+    deps.recorder.events.append({
+      projectId: deps.projectId,
+      issueId: ctx.issueId,
+      runId: ctx.runId,
+      type: "PrOpened",
+      payload: { number },
+      actor: "daemon",
+      at: deps.recorder.now().toISOString(),
+    });
+  } catch (error) {
+    deps.log?.(`Falha ao gravar PrOpened da issue ${ctx.issueId}: ${String(error)}`);
+  }
+}
+
 /** Writes the ceiling as unknown cost; a failure here is only logged. */
 function recordCeiling(deps: SpecialistDispatchDeps, ctx: RunContext): void {
   try {
@@ -128,12 +154,18 @@ async function execute(
   const ctx = { runId, issueId, maxBudgetUsd: request.agent.maxBudgetUsd };
   const tracker: Tracker = { last: null };
   let held = false;
+  const box: PrBox = { number: null };
   try {
     const runtime = recordingRuntime(deps, ctx, tracker);
-    const outcome = await runSpecialistStep({ ...deps.step, runtime }, { request, snapshot });
+    const hooked = withPrHook(request, box);
+    const outcome = await runSpecialistStep(
+      { ...deps.step, runtime },
+      { request: hooked, snapshot },
+    );
     held = outcome.inputs.some((i) => i.type === "RunHeld");
     const result = applySpecialistOutcome(deps.recorder, { issueId, runId }, outcome);
     if (result.applied) appendWorkReported(deps, ctx, request, outcome);
+    if (tracker.last !== null && box.number !== null) appendPrOpened(deps, ctx, box.number);
     return { applied: result.applied, feedback: null };
   } catch (error) {
     // Só registra o teto quando o runtime lançou; se a run terminou, recordFinished já gravou o custo.
