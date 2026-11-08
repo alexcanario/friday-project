@@ -7,7 +7,7 @@ import {
 } from "@friday/application";
 import type { AgentConfig } from "@friday/contracts";
 import type { IssueState } from "@friday/domain";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { createFridayMcpServer } from "../src/index.ts";
 
 const ALL: EffectTool[] = ["git_push", "pr_create", "pr_diff", "issue_comment"];
@@ -35,6 +35,7 @@ function setup(
     github?: FakeGitHubPort;
     gitHost?: FakeGitHost;
     pr?: number | null;
+    onPrCreated?: (pr: number) => void;
   } = {},
 ) {
   const github = opts.github ?? new FakeGitHubPort();
@@ -45,7 +46,14 @@ function setup(
     getIssueState: opts.state ?? (() => "QA"),
     runs: new FakeRunLookup(opts.active ?? ["r1"]),
     results: new FakeResultStore(),
-    effects: { github, gitHost, run: RUN(opts.pr === undefined ? 7 : opts.pr) },
+    effects: {
+      github,
+      gitHost,
+      run: {
+        ...RUN(opts.pr === undefined ? 7 : opts.pr),
+        ...(opts.onPrCreated ? { onPrCreated: opts.onPrCreated } : {}),
+      },
+    },
   });
   return { ...made, github, gitHost };
 }
@@ -230,5 +238,52 @@ describe("effect tools through the MCP server", () => {
     const push = await callViaMcp(made, "git_push", { branch: "friday/70-x", commit: SHA });
     expect(push.content[0]!.text).toBe("200: push feito.");
     expect(made.gitHost.pushes).toHaveLength(1);
+  });
+});
+
+describe("pr_create onPrCreated hook", () => {
+  const created = (created: boolean) =>
+    new FakeGitHubPort({ createdPr: { number: 42, headSha: SHA, created } });
+  const args = { title: "t", body: "b" };
+
+  it("pr_create calls onPrCreated with the number for a new and an existing PR and ignores a throwing hook", async () => {
+    const spy = vi.fn();
+    const fresh = setup({ github: created(true), onPrCreated: spy });
+    expect(await fresh.handlers.pr_create!(args)).toEqual(text("200: PR #42 aberto."));
+    expect(spy).toHaveBeenCalledTimes(1);
+    expect(spy).toHaveBeenCalledWith(42);
+    const spy2 = vi.fn();
+    const old = setup({ github: created(false), onPrCreated: spy2 });
+    expect(await old.handlers.pr_create!(args)).toEqual(text("200: PR #42 já existia."));
+    expect(spy2).toHaveBeenCalledTimes(1);
+    expect(spy2).toHaveBeenCalledWith(42);
+    const throwing = setup({
+      github: created(true),
+      onPrCreated: () => {
+        throw new Error("gancho");
+      },
+    });
+    const res = await throwing.handlers.pr_create!(args);
+    expect(res).toEqual(text("200: PR #42 aberto."));
+    expect(res.isError).toBeUndefined();
+  });
+
+  it("pr_create does not call onPrCreated on failure, invalid input or a denied gate", async () => {
+    const spy = vi.fn();
+    const failing = setup({
+      github: new FakeGitHubPort({ fail: new Error("falha simulada") }),
+      onPrCreated: spy,
+    });
+    expect(await failing.handlers.pr_create!(args)).toEqual(
+      text("500: Falha ao executar pr_create: falha simulada", true),
+    );
+    const invalid = setup({ github: created(true), onPrCreated: spy });
+    expect(await invalid.handlers.pr_create!({ title: "t" })).toEqual(
+      text("422: Entrada inválida para pr_create.", true),
+    );
+    const denied = setup({ github: created(true), onPrCreated: spy, state: () => "InReview" });
+    const res = await denied.handlers.pr_create!(args);
+    expect(res.isError).toBe(true);
+    expect(spy).not.toHaveBeenCalled();
   });
 });
