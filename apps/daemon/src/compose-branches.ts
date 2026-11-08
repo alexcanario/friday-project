@@ -4,7 +4,7 @@ import { createJudgeBranch, type JudgeCompose } from "./judge-wiring.ts";
 import { createQaBranch, type QaCompose } from "./qa-wiring.ts";
 import type { RunRecorderDeps } from "./run-recorder.ts";
 import type { RunRecordingDeps } from "./run-registration.ts";
-import type { TriageFicha } from "./triage-request.ts";
+import type { TriageAgentConfig } from "./triage-request.ts";
 import { createTriageBranch } from "./triage-wiring.ts";
 
 export type Repo = { owner: string; repo: string };
@@ -19,7 +19,7 @@ export type BranchOptions = {
   log?: (message: string) => void;
   judge?: JudgeCompose;
   qa?: QaCompose;
-  triage?: TriageFicha;
+  triage?: TriageAgentConfig;
 };
 
 /** What the composition already built and the branches share. */
@@ -68,7 +68,7 @@ export function triageBranchOf(opts: BranchOptions, ctx: BranchContext) {
     triage: createTriageBranch({
       projectId: opts.projectId,
       root: opts.root,
-      ficha: opts.triage,
+      agentConfig: opts.triage,
       github,
       runtime: opts.runtime,
       recorder: recorderDeps,

@@ -57,9 +57,9 @@ describe("composeDaemon triage wiring", () => {
     plain.release();
 
     const u = triageScenario();
-    await expect(composeDaemon({ ...u.opts, triage: { ...AGENT_CONFIG, maxTurns: 0 } })).rejects.toThrow(
-      "A ficha da triagem é inválida.",
-    );
+    await expect(
+      composeDaemon({ ...u.opts, triage: { ...AGENT_CONFIG, maxTurns: 0 } }),
+    ).rejects.toThrow("A ficha da triagem é inválida.");
     expect(existsSync(join(u.root, ".friday", "daemon.lock"))).toBe(false);
     expect(existsSync(u.opts.dbPath)).toBe(false);
   });
