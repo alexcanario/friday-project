@@ -72,6 +72,19 @@ describe("checkRoster", () => {
     }
   });
 
+  it("reports InProgress without agent plus the missing backend specialist", () => {
+    const roster = [agent("qa", ["QA"]), agent("judge", ["InReview"])];
+    expect(checkRoster(roster)).toEqual([
+      {
+        file: "agents",
+        line: 1,
+        code: "state_without_agent",
+        message: "Estado sem agente: InProgress.",
+      },
+      ...noBackendProblem,
+    ]);
+  });
+
   it("accepts extra specialist fichas", () => {
     const extras = ["database", "frontend", "infra", "security"].map((r) =>
       agent(r, ["InProgress"]),
