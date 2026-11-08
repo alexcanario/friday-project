@@ -154,6 +154,15 @@ describe("runSpecialistForIssue PrOpened", () => {
     expect(held.ofType("PrOpened")[0]?.payload).toEqual({ number: 42 });
   });
 
+  it("keeps PrOpened when applySpecialistOutcome throws", async () => {
+    const t = setup({ calls: [42] });
+    t.events.failWhen = (e) => (e.type === "StateChanged" ? new Error("disco") : null);
+    await expect(runSpecialistForIssue(t.deps, 7)).resolves.toBeDefined();
+    expect(t.ofType("PrOpened")).toHaveLength(1);
+    expect(t.ofType("PrOpened")[0]?.payload).toEqual({ number: 42 });
+    expect(t.ofType("StateChanged")).toHaveLength(0);
+  });
+
   it("logs and does not reject when appending PrOpened fails", async () => {
     const t = setup({ calls: [42] });
     t.events.failWhen = (e) => (e.type === "PrOpened" ? new Error("disco") : null);
