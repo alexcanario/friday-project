@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
@@ -49,7 +49,10 @@ describe("friday daemon qa card", () => {
 
   it("fails closed without a qa card", async () => {
     const root = validRoot();
-    rmSync(join(root, "agents", "qa.yaml"));
+    // Removing the file would fail the roster check first (state QA without agent), so the QA
+    // state stays covered by a card whose role is not "qa".
+    const path = join(root, "agents", "qa.yaml");
+    writeFileSync(path, readFileSync(path, "utf8").replace("role: qa", "role: qa-other"));
     const s = setup({ FRIDAY_HOME: root });
     expect(await runDaemonCommand(["daemon"], s.deps)).toEqual({
       stdout: "",
@@ -92,7 +95,7 @@ describe("friday daemon qa card", () => {
 
   it("qaComposeOf returns null without the qa card", () => {
     const loaded = loadedOf(validRoot());
-    const { qa: _qa, ...rest } = loaded.agents;
+    const rest = Object.fromEntries(Object.entries(loaded.agents).filter(([k]) => k !== "qa"));
     expect(qaComposeOf({ ...loaded, agents: rest })).toBeNull();
     expect(qaComposeOf(loaded)?.agent.model).toBe("sonnet");
   });
