@@ -138,13 +138,18 @@ describe("spike package and CI", () => {
   });
 
   it("ci.yml job check runs the spike without matrix", () => {
-    const text = readFileSync(join(rootDir, ".github/workflows/ci.yml"), "utf8").replace(/\r\n/g, "\n");
+    const text = readFileSync(join(rootDir, ".github/workflows/ci.yml"), "utf8").replace(
+      /\r\n/g,
+      "\n",
+    );
     const start = text.search(/^ {2}check:/m);
     expect(start).toBeGreaterThan(-1);
     const rest = text.slice(start + 1);
     const next = rest.search(/^ {2}[a-z]/m);
     const check = next === -1 ? rest : rest.slice(0, next);
-    expect(check).toContain("pnpm --dir spikes/docs-mcp --ignore-workspace install --frozen-lockfile");
+    expect(check).toContain(
+      "pnpm --dir spikes/docs-mcp --ignore-workspace install --frozen-lockfile",
+    );
     expect(check).toContain("pnpm --dir spikes/docs-mcp test");
     expect(check).not.toContain("strategy:");
     expect(check).not.toContain("matrix");
