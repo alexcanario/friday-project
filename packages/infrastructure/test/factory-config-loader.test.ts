@@ -25,6 +25,23 @@ describe("loadFactoryConfig", () => {
     expect(result.agents["qa"]?.max_turns).toBe(40);
   });
 
+  it("reports equal token envs on review_token_env", () => {
+    const root = makeRoot();
+    edit(root, F, (l) => [
+      ...l.slice(0, 22),
+      "  author_token_env: FRIDAY_TOKEN",
+      "  review_token_env: FRIDAY_TOKEN",
+      ...l.slice(22),
+    ]);
+    expect(problemsOf(root)).toEqual([
+      {
+        file: F,
+        line: 24,
+        code: "invalid_value",
+        message: "Valor inválido em pull_requests.review_token_env.",
+      },
+    ]);
+  });
   it("reports the exact line of each problem", () => {
     let root = makeRoot();
     edit(root, F, (l) => [...l.slice(0, 28), "extra: 1", ""].filter((x, i) => i < 29 || x !== ""));
