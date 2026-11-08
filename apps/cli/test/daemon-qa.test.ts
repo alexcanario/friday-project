@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
@@ -49,14 +49,13 @@ describe("friday daemon qa card", () => {
 
   it("fails closed without a qa card", async () => {
     const root = validRoot();
-    // Removing the file would fail the roster check first (state QA without agent), so the QA
-    // state stays covered by a card whose role is not "qa".
-    const path = join(root, "agents", "qa.yaml");
-    writeFileSync(path, readFileSync(path, "utf8").replace("role: qa", "role: qa-other"));
+    // Without agents/qa.yaml the roster check (state QA without agent) rejects the factory first;
+    // the daemon still fails closed before compose. The null branch of qaComposeOf is covered by C5.
+    rmSync(join(root, "agents", "qa.yaml"));
     const s = setup({ FRIDAY_HOME: root });
     expect(await runDaemonCommand(["daemon"], s.deps)).toEqual({
       stdout: "",
-      stderr: "A ficha qa não está no registro central.\n",
+      stderr: "O factory.yaml está inválido ou ausente.\n",
       code: 1,
     });
     expect(s.compose).not.toHaveBeenCalled();
