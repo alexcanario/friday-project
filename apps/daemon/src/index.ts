@@ -98,6 +98,7 @@ export {
   createQaBranch,
   type QaBranchDeps,
   type QaCompose,
+  type QaReadPort,
 } from "./qa-wiring.ts";
 export {
   assertSpecialistAgentConfig,
