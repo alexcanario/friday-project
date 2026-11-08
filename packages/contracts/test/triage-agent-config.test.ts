@@ -35,7 +35,9 @@ describe("triageAgentConfigSchema", () => {
   });
 
   it("rejects states, tools, wrong role, bad limits and missing prompt_file", () => {
-    const { prompt_file: _omit, ...withoutPrompt } = card;
+    const withoutPrompt = Object.fromEntries(
+      Object.entries(card).filter(([key]) => key !== "prompt_file"),
+    );
     const variants: Record<string, unknown>[] = [
       { ...card, states: ["Todo"] },
       { ...card, tools: ["Read"] },

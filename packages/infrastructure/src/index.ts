@@ -1,4 +1,5 @@
 export { loadFactoryConfig, type LoadFactoryConfigResult } from "./factory-config-loader.ts";
+export { loadTriageAgent, type LoadTriageAgentResult } from "./triage-agent-loader.ts";
 export { buildRunEnv } from "./run-env.ts";
 export { buildQueryOptions, type QueryOptionsInput } from "./query-options.ts";
 export {
