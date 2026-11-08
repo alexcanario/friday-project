@@ -16,21 +16,25 @@ import {
   type GitCliHostOptions,
 } from "@friday/infrastructure";
 import { createBreaker, type Breaker } from "./breaker.ts";
+import {
+  judgeBranchOf,
+  triageBranchOf,
+  type BranchContext,
+  type Repo,
+} from "./compose-branches.ts";
 import { readDispatchConfig } from "./compose-config.ts";
 import { createIntake } from "./intake.ts";
+import type { JudgeCompose } from "./judge-wiring.ts";
 import { acquireProcessLock, type ProcessLockDeps } from "./process-lock.ts";
 import { reconcile, type ReconcileReport } from "./reconcile.ts";
 import { createRunRecorder } from "./run-recorder.ts";
 import type { RunRecordingDeps } from "./run-registration.ts";
 import { createStateDispatcher, type StateDispatcherDeps } from "./state-dispatcher.ts";
-import { createTriageBranch } from "./triage-wiring.ts";
 import { assertTriageFicha, type TriageFicha } from "./triage-request.ts";
 import { createVerifyBranch } from "./verify-wiring.ts";
 import { readTickConfig } from "./tick-config.ts";
 import { buildRuntimeFor, mirrorDirOf, targetUrlOf } from "./runtime-wiring.ts";
 import { createTicker, type Clock, type Ticker } from "./tick.ts";
-
-type Repo = { owner: string; repo: string };
 
 export interface ComposeOptions {
   root: string;
@@ -51,6 +55,8 @@ export interface ComposeOptions {
   createGitHost?: (options: GitCliHostOptions) => GitHost;
   /** Role request builders; empty in production until the roles are wired. */
   roles?: StateDispatcherDeps["roles"];
+  /** Judge agents and input; without it InReview is not dispatched (D64, D73). */
+  judge?: JudgeCompose;
   /** Triage limits; without it Todo issues are left alone. */
   triage?: TriageFicha;
 }
@@ -100,11 +106,59 @@ function buildBreaker(db: FridayDatabase, projectId: string, now: () => Date): B
   }
 }
 
+type DispatcherContext = BranchContext & {
+  issues: ReturnType<typeof createIssueRepository>;
+  events: ReturnType<typeof createEventStore>;
+};
+
+function dispatcherOf(opts: ComposeOptions, ctx: DispatcherContext) {
+  const { github, issues, events, recorderDeps, now } = ctx;
+  const { root, projectId } = opts;
+  return createStateDispatcher({
+    ...judgeBranchOf(opts, ctx),
+    ...triageBranchOf(opts, ctx),
+    projectId,
+    github,
+    issues,
+    events,
+    roles: opts.roles ?? {},
+    readConfig: () => readDispatchConfig(root),
+    prOf: opts.prOf,
+    now,
+    ...(opts.log === undefined ? {} : { log: opts.log }),
+    verify: createVerifyBranch({
+      projectId,
+      recorder: recorderDeps,
+      root,
+      env: opts.env,
+      ...(opts.log === undefined ? {} : { log: opts.log }),
+    }),
+  });
+}
+
+function ingestingIssues(
+  opts: ComposeOptions,
+  intake: ReturnType<typeof createIntake>,
+  dispatcher: ReturnType<typeof dispatcherOf>,
+) {
+  return {
+    listReady: async (capacity?: { active: number; max: number }) => {
+      await intake.ingest().catch((error: unknown) => {
+        const detail = error instanceof Error ? error.message : String(error);
+        opts.log?.(`Failed to ingest issues: ${detail}`);
+      });
+      return dispatcher.listReady(capacity);
+    },
+    busy: () => dispatcher.busy(),
+  };
+}
+
 async function assemble(
   opts: ComposeOptions,
   db: FridayDatabase,
   github: GitHubPort,
   runtimeFor: NonNullable<RunRecordingDeps["runtimeFor"]>,
+  repo: Repo,
 ) {
   const { root, projectId, worktrees } = opts;
   const now = opts.now ?? (() => new Date());
@@ -115,47 +169,13 @@ async function assemble(
   const breaker = buildBreaker(db, projectId, now);
   const ledger = createLedgerRepository(db);
   const recorderDeps = { projectId, events, issues, now };
-  const recording = {
-    runs,
-    recorder: createRunRecorder({ ...recorderDeps, ledger }),
-    runtimeFor,
-  };
-  const budget = { ledger, recorderDeps };
   const report = await reconcile({ projectId, root, runs, issues, events, worktrees, now });
-  const dispatcher = createStateDispatcher({
-    projectId,
-    github,
-    issues,
-    events,
-    roles: opts.roles ?? {},
-    readConfig: () => readDispatchConfig(root),
-    prOf: opts.prOf,
-    now,
-    ...(opts.log === undefined ? {} : { log: opts.log }),
-    ...(opts.triage === undefined
-      ? {}
-      : {
-          triage: createTriageBranch({
-            projectId,
-            root,
-            ficha: opts.triage,
-            github,
-            runtime: opts.runtime,
-            recorder: recorderDeps,
-            recording,
-            budget,
-            now,
-            ...(opts.log === undefined ? {} : { log: opts.log }),
-          }),
-        }),
-    verify: createVerifyBranch({
-      projectId,
-      recorder: recorderDeps,
-      root,
-      env: opts.env,
-      ...(opts.log === undefined ? {} : { log: opts.log }),
-    }),
-  });
+  const recorder = createRunRecorder({ ...recorderDeps, ledger });
+  const recording = { runs, recorder, runtimeFor };
+  const budget = { ledger, recorderDeps };
+  const clientFor = opts.createGitHub ?? defaultGitHub;
+  const ctx = { github, repo, clientFor, recorderDeps, recording, budget, now, issues, events };
+  const dispatcher = dispatcherOf(opts, ctx);
   const intake = createIntake({
     projectId,
     github,
@@ -168,16 +188,7 @@ async function assemble(
     projectId,
     clock: opts.clock,
     readConfig: () => readTickConfig(root),
-    issues: {
-      listReady: async (capacity) => {
-        await intake.ingest().catch((error: unknown) => {
-          const detail = error instanceof Error ? error.message : String(error);
-          opts.log?.(`Failed to ingest issues: ${detail}`);
-        });
-        return dispatcher.listReady(capacity);
-      },
-      busy: () => dispatcher.busy(),
-    },
+    issues: ingestingIssues(opts, intake, dispatcher),
     buildRequest: (id, runId) => dispatcher.buildRequest(id, runId),
     runtime: opts.runtime,
     events,
@@ -211,7 +222,7 @@ export async function composeDaemon(opts: ComposeOptions): Promise<Daemon> {
       env: opts.env,
       ...(opts.createRuntime === undefined ? {} : { createRuntime: opts.createRuntime }),
     });
-    const { ticker, report } = await assemble(opts, db, github, runtimeFor);
+    const { ticker, report } = await assemble(opts, db, github, runtimeFor, repo);
     const opened = db;
     return {
       ticker,

@@ -94,6 +94,30 @@ function skipPayload(outcome: JudgeStepOutcome, head: string) {
 }
 
 type Execution = { outcome: JudgeStepOutcome };
+type Tracker = { last: RunFinished | null };
+
+/** The run's runtime (from `runtimeFor` when present) wrapped to record every finished run. */
+function recordingRuntime(
+  deps: JudgeDispatchDeps,
+  ctx: { runId: string; issueId: number },
+  tracker: Tracker,
+): AgentRuntime {
+  const { recorder, runtimeFor } = deps.recording;
+  const base: AgentRuntime = runtimeFor
+    ? runtimeFor(ctx, recorder.denialSink(ctx))
+    : deps.step.runtime;
+  return {
+    run: async (request) => {
+      const finished = await base.run(request);
+      tracker.last = finished;
+      // D64: an invalid verdict becomes JudgeSkipped, not Held, so the ledger is written without RunHeld.
+      recorder.recordFinished({ ...ctx, maxBudgetUsd: request.agent.maxBudgetUsd }, finished, {
+        applyHeld: finished.status !== "invalid_output",
+      });
+      return finished;
+    },
+  };
+}
 
 /** Runs the judge step with a registered run row and a recording runtime. */
 async function execute(
@@ -102,7 +126,7 @@ async function execute(
   pr: number,
   runId: string,
 ): Promise<Execution> {
-  const { runs, recorder } = deps.recording;
+  const { runs } = deps.recording;
   const row = {
     id: runId,
     projectId: deps.projectId,
@@ -112,21 +136,9 @@ async function execute(
     finishedAt: null,
   };
   runs.save({ ...row, status: "running" });
-  let last: RunFinished | null = null;
+  const tracker: Tracker = { last: null };
   let completed = false;
-  const runtime: AgentRuntime = {
-    run: async (request) => {
-      const finished = await deps.step.runtime.run(request);
-      last = finished;
-      // D64: an invalid verdict becomes JudgeSkipped, not Held, so the ledger is written without RunHeld.
-      recorder.recordFinished(
-        { runId, issueId, maxBudgetUsd: request.agent.maxBudgetUsd },
-        finished,
-        { applyHeld: finished.status !== "invalid_output" },
-      );
-      return finished;
-    },
-  };
+  const runtime = recordingRuntime(deps, { runId, issueId }, tracker);
   try {
     const issue = await deps.getIssue(issueId);
     const outcome = await runJudgeStep(
@@ -141,7 +153,7 @@ async function execute(
     completed = outcome.kind !== "held";
     return { outcome };
   } finally {
-    const finished: RunFinished | null = last;
+    const finished = tracker.last;
     const status = completed && finished !== null ? statusFor(finished) : "failed";
     try {
       runs.save({ ...row, status, finishedAt: deps.now().toISOString() });
