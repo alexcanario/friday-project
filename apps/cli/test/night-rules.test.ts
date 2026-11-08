@@ -64,11 +64,27 @@ describe("night phase C step 3", () => {
     const step = phaseCStep3();
     for (const part of [
       "Com digest e `since` não nulo",
-      'gh api "repos/alexcanario/friday-project/issues/<n>/comments?per_page=100&since=<since>"',
+      "repos/alexcanario/friday-project/issues/<n>/comments?per_page=100&since=<since>&page=<p>",
+      "Nunca usar --paginate: o proxy recusa o link da página seguinte (repositories/<id>)",
       `--jq '[.[] | select(.created_at > "<since>") | {createdAt: .created_at, body: .body}]'`,
       "Caso contrário `notes` = `[]` (",
     ]) {
       expect(step, part).toContain(part);
+    }
+    expect(step).not.toContain('issues/<n>/comments?per_page=100&since=<since>"');
+  });
+
+  it("phase C step 3 uses the UTC date of phase C as nightOf", () => {
+    const step = phaseCStep3();
+    for (const part of [
+      "date -u +%F",
+      "data UTC da fase C",
+      "1ª linha `## Noite de <data UTC da fase C>`",
+    ]) {
+      expect(step, part).toContain(part);
+    }
+    for (const part of ["data em que a fase A começou", "véspera da fase C"]) {
+      expect(step, part).not.toContain(part);
     }
   });
 

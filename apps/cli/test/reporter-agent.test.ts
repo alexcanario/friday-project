@@ -57,6 +57,13 @@ describe("reporter agent", () => {
     for (const re of forbidden) expect(body, String(re)).not.toMatch(re);
   });
 
+  it("reporter title uses the UTC date of phase C", () => {
+    const text = reporter();
+    expect(text).toContain("## Noite de <data UTC da fase C>");
+    expect(text).toContain("The first line of the report is `## Noite de <nightOf>`");
+    expect(text).not.toContain("data em que a fase A começou");
+  });
+
   it("reporter body states the JSON contract", () => {
     const body = bodyOf(reporter());
     for (const part of [

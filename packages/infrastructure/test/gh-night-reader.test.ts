@@ -39,7 +39,7 @@ describe("createGhNightReader", () => {
     ]);
     await reader.listOpenPulls();
     expect(calls).toEqual([
-      ["api", "--paginate", `${R}/issues/1/comments?per_page=100`],
+      ["api", `${R}/issues/1/comments?per_page=100&page=1`],
       ["api", "--paginate", `${R}/issues?state=open&per_page=100&labels=status:ready`],
       ["api", `${R}/pulls?state=closed&sort=updated&direction=desc&per_page=100`],
       ["api", "--paginate", `${R}/pulls?state=open&per_page=100`],
@@ -60,5 +60,40 @@ describe("createGhNightReader", () => {
     expect(file).toBe("gh");
     expect(args).toEqual(["api", "--paginate", `${R}/pulls?state=open&per_page=100`]);
     expect(opts.maxBuffer).toBeGreaterThanOrEqual(67108864);
+  });
+});
+
+describe("listComments pagination", () => {
+  const items = (n: number) =>
+    JSON.stringify(Array.from({ length: n }, (_, i) => ({ body: `b${i}`, created_at: `t${i}` })));
+  const page = (args: string[]) => args[1]?.match(/page=(\d+)/)?.[1];
+
+  it("listComments makes one page=1 call without --paginate for an empty result", async () => {
+    const exec = vi.fn(async (_a: string[]) => "[]");
+    expect(await createGhNightReader({ exec }).listComments(1)).toEqual([]);
+    expect(exec).toHaveBeenCalledTimes(1);
+    expect(exec).toHaveBeenCalledWith(["api", `${R}/issues/1/comments?per_page=100&page=1`]);
+    expect(exec.mock.calls.flat().flat()).not.toContain("--paginate");
+  });
+
+  it("listComments reads page 2 when page 1 has 100 items and stops after a short page", async () => {
+    const exec = vi.fn(async (a: string[]) => (page(a) === "1" ? items(100) : items(1)));
+    const out = await createGhNightReader({ exec }).listComments(1);
+    expect(exec.mock.calls.map((c) => page(c[0]))).toEqual(["1", "2"]);
+    expect(out).toHaveLength(101);
+    expect(out[0]).toEqual({ body: "b0", createdAt: "t0" });
+    expect(out[100]).toEqual({ body: "b0", createdAt: "t0" });
+    expect(out[99]).toEqual({ body: "b99", createdAt: "t99" });
+  });
+
+  it("listComments does not request a second page when page 1 has fewer than 100 items", async () => {
+    const exec = vi.fn(async (_a: string[]) => items(99));
+    expect(await createGhNightReader({ exec }).listComments(1)).toHaveLength(99);
+    expect(exec).toHaveBeenCalledTimes(1);
+  });
+
+  it("listComments propagates an exec failure", async () => {
+    const exec = async () => Promise.reject(new Error("boom"));
+    await expect(createGhNightReader({ exec }).listComments(1)).rejects.toThrow("boom");
   });
 });
