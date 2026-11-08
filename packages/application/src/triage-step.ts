@@ -1,4 +1,10 @@
-import { triageSchema, validateContract, type Triage } from "@friday/contracts";
+import {
+  criteriaSchema,
+  triageSchema,
+  validateContract,
+  type Criteria,
+  type Triage,
+} from "@friday/contracts";
 import type { RunHeldReason, WorkflowInput } from "@friday/domain";
 import type { AgentRuntime, AgentRunRequest } from "./agent-runtime.ts";
 import type { GitHubPort, IssueSummary } from "./github-port.ts";
@@ -21,6 +27,7 @@ export type TriageStepInput = {
 export type TriageStepOutcome = {
   inputs: WorkflowInput[];
   specialist: Triage["specialist"] | null;
+  criteria: Criteria["criteria"] | null;
 };
 
 function existingSpecialist(labels: string[]): Triage["specialist"] | null {
@@ -48,9 +55,11 @@ const outcome = (
   state: TriageStepInput["state"],
   rest: WorkflowInput[],
   specialist: Triage["specialist"] | null = null,
+  criteria: Criteria["criteria"] | null = null,
 ): TriageStepOutcome => ({
   inputs: state === "Todo" ? [{ type: "NeedsTriage" }, ...rest] : rest,
   specialist,
+  criteria,
 });
 
 const held = (state: TriageStepInput["state"], reason: RunHeldReason): TriageStepOutcome =>
@@ -63,7 +72,6 @@ export async function runTriageStep(
   const { issue, state, request, flow } = input;
   if (state !== "Todo" && state !== "Triage") throw new Error(`Estado sem triagem: ${state}`);
   const existing = existingSpecialist(issue.labels);
-  if (existing !== null) return { inputs: [{ type: "SpecialistAssigned" }], specialist: existing };
   if (misconfigured(request, flow)) return held(state, "RunMisconfigured");
   const finished = await deps.runtime.run(request);
   const reason = heldReasonFor(finished);
@@ -71,12 +79,17 @@ export async function runTriageStep(
   const parsed =
     finished.status === "invalid_output" ? null : validateContract("triage", finished.output);
   if (parsed === null || !parsed.ok) return outcome(state, [{ type: "TriageFailed" }]);
-  const { specialist, reason: why } = parsed.value;
-  await deps.github.addLabel(issue.number, `${SPECIALIST_LABEL_PREFIX}${specialist}`);
+  const checked = criteriaSchema.safeParse({ criteria: parsed.value.criteria });
+  if (!checked.success) return held(state, "SchemaInvalid");
+  const { specialist: chosen, reason: why } = parsed.value;
+  const specialist = existing ?? chosen;
+  if (existing === null) {
+    await deps.github.addLabel(issue.number, `${SPECIALIST_LABEL_PREFIX}${specialist}`);
+  }
   await deps.github.postAgentComment(
     issue.number,
     "triage",
     `Triagem: ${specialist}. Motivo: "${why}"`,
   );
-  return outcome(state, [{ type: "SpecialistAssigned" }], specialist);
+  return outcome(state, [{ type: "SpecialistAssigned" }], specialist, checked.data.criteria);
 }

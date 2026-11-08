@@ -90,6 +90,17 @@ async function execute(
       { runtime: wrapped.runtime, github: deps.github },
       { issue, state, request: deps.request(issue, flow), flow },
     );
+    if (outcome.criteria !== null) {
+      deps.recorder.events.append({
+        projectId: deps.projectId,
+        issueId: issue.number,
+        runId,
+        type: "CriteriaSet",
+        payload: { criteria: outcome.criteria },
+        actor: "daemon",
+        at: deps.now().toISOString(),
+      });
+    }
     for (const input of outcome.inputs) {
       if (!applyInput(deps.recorder, { issueId: issue.number, runId }, input)) {
         deps.log?.(`Entrada ${input.type} recusada para a issue ${issue.number}`);

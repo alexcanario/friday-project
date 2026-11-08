@@ -14,7 +14,8 @@
     },
     "reason": {
       "type": "string"
-    }
+    },
+    "criteria": {}
   },
   "required": [
     "specialist",

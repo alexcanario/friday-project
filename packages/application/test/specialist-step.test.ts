@@ -33,11 +33,7 @@ const makeRequest = (agentOver: Record<string, unknown> = {}): AgentRunRequest =
     maxTurns: 10,
     timeoutMs: 1000,
     tools: ["Read", "Glob", "Grep", "Bash", "Edit", "Write"],
-    allowedTools: [
-      "mcp__friday__work_report",
-      "mcp__friday__git_push",
-      "mcp__friday__pr_create",
-    ],
+    allowedTools: ["mcp__friday__work_report", "mcp__friday__git_push", "mcp__friday__pr_create"],
     bashAllow: [],
     promptFile: "prompts/backend.md",
     outputKind: "workReport",
