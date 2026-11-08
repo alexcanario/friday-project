@@ -8,7 +8,7 @@ const root = resolve(import.meta.dirname, "../../..");
 function workspaceNames(base: string): string[] {
   const names: string[] = [];
   for (const group of ["packages", "apps"]) {
-    let dirs: string[] = [];
+    let dirs: string[];
     try {
       dirs = readdirSync(join(base, group), { withFileTypes: true })
         .filter((d) => d.isDirectory())
