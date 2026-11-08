@@ -16,7 +16,10 @@ function scenario() {
   const t = setup();
   const github = new ApprovalFakeGitHub();
   github.issues.push({ number: 13, title: "T", body: "", labels: ["friday"] });
-  github.diffs.set(5, { files: [{ path: "src/a.ts", changedLines: 1, hasPatch: true }], diffBytes: 100 });
+  github.diffs.set(5, {
+    files: [{ path: "src/a.ts", changedLines: 1, hasPatch: true }],
+    diffBytes: 100,
+  });
   const opts: ComposeOptions = {
     ...t.opts,
     createGitHub: () => github as unknown as GitHubPort,
@@ -52,7 +55,7 @@ function seed(daemon: Daemon, issueId: number, from: string, to: string) {
 const stateOf = (d: Daemon, n = 13) => createIssueRepository(d.db).get("p", n);
 const rows = (d: Daemon, sql: string) => d.db.sqlite.prepare(sql).all();
 const requested = (d: Daemon) =>
-  rows(d, "SELECT id FROM events WHERE type = 'ApprovalRequested' AND issue_id = 13");
+  rows(d, "SELECT seq FROM events WHERE type = 'ApprovalRequested' AND issue_id = 13");
 
 async function tick(d: Daemon) {
   await d.ticker.tick();
@@ -66,7 +69,7 @@ function approved() {
     issueId: 13,
     pr: 5,
     headSha: A,
-    tier: "medium" as const,
+    tier: "high" as const,
     requestedAt: NOW.getTime() - 1000,
     expiresAt: NOW.getTime() + 3600000,
     decision: "approved" as const,

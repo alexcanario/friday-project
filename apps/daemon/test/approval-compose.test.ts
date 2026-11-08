@@ -43,7 +43,7 @@ describe("createApprovalDeps", () => {
       issueId: 13,
       pr: 5,
       headSha: A,
-      tier: "medium",
+      tier: "high",
       requestedAt: 1,
       expiresAt: 2,
       decision: null,

@@ -46,6 +46,7 @@ export { runVerifyForIssue, verifyTargetOf, type VerifyDispatchDeps } from "./ve
 export { applyQaOutcome, type QaApplyResult } from "./qa-apply.ts";
 export { runQaForIssue, type QaDispatchDeps } from "./qa-dispatch.ts";
 export { createIntake, type Intake, type IntakeDeps } from "./intake.ts";
+export { createApprovalDeps } from "./approval-compose.ts";
 export { type ApprovalDeps } from "./approval-wiring.ts";
 export { applySpecialistOutcome } from "./specialist-apply.ts";
 export { runSpecialistForIssue, type SpecialistDispatchDeps } from "./specialist-dispatch.ts";
