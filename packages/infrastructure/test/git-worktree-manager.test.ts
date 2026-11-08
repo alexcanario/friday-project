@@ -27,7 +27,8 @@ beforeEach(() => {
   mgr = new GitWorktreeManager({ repoDir: fx.repoDir });
 });
 
-describe("GitWorktreeManager", () => {
+// Each test runs dozens of git commands; on the Windows runner one took 7 s.
+describe("GitWorktreeManager", { timeout: 30_000 }, () => {
   it("create makes the worktree directory and rejects a duplicate", async () => {
     const r = await mgr.create(req(15));
     const path = join(fx.root, fx.project, "15");
