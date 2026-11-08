@@ -145,6 +145,22 @@ describe("createVerifyBranch", () => {
     }
   });
 
+  it("accepts a worktree under worktreesRoot/owner__repo/issue and refuses one outside", async () => {
+    const command = `node -e "process.exit(0)"`;
+    const worktreesRoot = (root: string) => join(root, "worktrees");
+    const inside = await run(command, {
+      worktree: (root) => join(root, "worktrees", "acme__widgets", "7"),
+      worktreesRoot,
+    });
+    expect(inside.row?.state).toBe("QA");
+    const outside = await run(command, {
+      worktree: (root) => join(root, "repos", "acme__widgets", "7"),
+      worktreesRoot,
+    });
+    expect(outside.row?.state).toBe("Held");
+    expect(outside.row?.heldReason).toBe("RunMisconfigured");
+  });
+
   it("strips ANTHROPIC_API_KEY from the command environment in any case", async () => {
     const command = `node -e "process.exit(process.env.ANTHROPIC_API_KEY || process.env.anthropic_api_key ? 1 : 0)"`;
     const t = await run(command, {
