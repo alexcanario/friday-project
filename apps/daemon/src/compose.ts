@@ -15,6 +15,7 @@ import {
   type FridayDatabase,
   type GitCliHostOptions,
 } from "@friday/infrastructure";
+import { createApprovalDeps } from "./approval-compose.ts";
 import { createBreaker, type Breaker } from "./breaker.ts";
 import {
   judgeBranchOf,
@@ -55,6 +56,8 @@ export interface ComposeOptions {
   createGitHost?: (options: GitCliHostOptions) => GitHost;
   /** Role request builders; empty in production until the roles are wired. */
   roles?: StateDispatcherDeps["roles"];
+  /** Approval id generator; defaults to 8 lowercase hexadecimals (D65). */
+  newApprovalId?: () => string;
   /** Judge agents and input; without it InReview is not dispatched (D64, D73). */
   judge?: JudgeCompose;
   /** Triage limits; without it Todo issues are left alone. */
@@ -107,12 +110,13 @@ function buildBreaker(db: FridayDatabase, projectId: string, now: () => Date): B
 }
 
 type DispatcherContext = BranchContext & {
+  db: FridayDatabase;
   issues: ReturnType<typeof createIssueRepository>;
   events: ReturnType<typeof createEventStore>;
 };
 
 function dispatcherOf(opts: ComposeOptions, ctx: DispatcherContext) {
-  const { github, issues, events, recorderDeps, now } = ctx;
+  const { db, github, issues, events, recorderDeps, now } = ctx;
   const { root, projectId } = opts;
   return createStateDispatcher({
     ...judgeBranchOf(opts, ctx),
@@ -125,6 +129,11 @@ function dispatcherOf(opts: ComposeOptions, ctx: DispatcherContext) {
     readConfig: () => readDispatchConfig(root),
     prOf: opts.prOf,
     now,
+    approval: createApprovalDeps({
+      db,
+      github,
+      ...(opts.newApprovalId === undefined ? {} : { newId: opts.newApprovalId }),
+    }),
     ...(opts.log === undefined ? {} : { log: opts.log }),
     verify: createVerifyBranch({
       projectId,
@@ -174,7 +183,7 @@ async function assemble(
   const recording = { runs, recorder, runtimeFor };
   const budget = { ledger, recorderDeps };
   const clientFor = opts.createGitHub ?? defaultGitHub;
-  const ctx = { github, repo, clientFor, recorderDeps, recording, budget, now, issues, events };
+  const ctx = { db, github, repo, clientFor, recorderDeps, recording, budget, now, issues, events };
   const dispatcher = dispatcherOf(opts, ctx);
   const intake = createIntake({
     projectId,
