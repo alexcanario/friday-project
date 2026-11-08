@@ -5,7 +5,7 @@ import {
   type GitHubPort,
   type IssueRepository,
 } from "@friday/application";
-import type { AgentRunRequest } from "@friday/application";
+import type { AgentRunRequest, IssueSummary } from "@friday/application";
 import type { IssueState, Risk } from "@friday/domain";
 import {
   handleAwaitingApproval,
@@ -14,6 +14,7 @@ import {
   type ApprovalContext,
   type ApprovalDeps,
 } from "./approval-wiring.ts";
+import { runGuardedTriage } from "./dispatch-guard.ts";
 import { applyInput, snapshotOf } from "./run-recorder.ts";
 import { runGuardedVerify } from "./verify-dispatch.ts";
 import type { RunRequestBuilder } from "./tick.ts";
@@ -57,6 +58,8 @@ export type StateDispatcherDeps = {
   specialist?: (issueId: number) => Promise<{ applied: boolean; feedback: string | null }>;
   /** Runs Verify for an issue in Verify; replaces the role-based dispatch of Verify. */
   verify?: (issueId: number) => Promise<{ applied: boolean; feedback: string | null }>;
+  /** Runs triage for an issue in Todo or Triage; replaces the role-based dispatch of both. */
+  triage?: (issue: IssueSummary) => Promise<{ applied: boolean; feedback: null }>;
 };
 
 type Capacity = { active: number; max: number };
@@ -79,8 +82,13 @@ export function createStateDispatcher(deps: StateDispatcherDeps): StateDispatche
   const qaRunning = new Set<number>();
   const specialistRunning = new Set<number>();
   const verifyRunning = new Set<number>();
+  const triageRunning = new Set<number>();
   const inFlight = (): number =>
-    judging.size + qaRunning.size + specialistRunning.size + verifyRunning.size;
+    judging.size +
+    qaRunning.size +
+    specialistRunning.size +
+    verifyRunning.size +
+    triageRunning.size;
 
   const logError = (message: string, error: unknown): void => {
     deps.log?.(`${message}: ${error instanceof Error ? error.message : String(error)}`);
@@ -208,11 +216,12 @@ export function createStateDispatcher(deps: StateDispatcherDeps): StateDispatche
   }
 
   async function inspect(
-    number: number,
+    issue: IssueSummary,
     labels: string[],
     next: Map<number, DispatchRole>,
     capacity: Capacity | undefined,
   ): Promise<void> {
+    const number = issue.number;
     const row = deps.issues.get(deps.projectId, number);
     if (row === null) return;
     const snapshot = snapshotOf(row);
@@ -245,6 +254,11 @@ export function createStateDispatcher(deps: StateDispatcherDeps): StateDispatche
       await runGuardedVerify(deps.verify, verifyRunning, inFlight(), capacity, number, log);
       return;
     }
+    if ((snapshot.state === "Todo" || snapshot.state === "Triage") && deps.triage !== undefined) {
+      const log = (message: string): void => deps.log?.(message);
+      await runGuardedTriage(deps.triage, triageRunning, inFlight(), capacity, issue, log);
+      return;
+    }
     const role = STATE_ROLES[snapshot.state];
     if (role !== undefined && deps.roles[role] !== undefined) next.set(number, role);
   }
@@ -257,7 +271,7 @@ export function createStateDispatcher(deps: StateDispatcherDeps): StateDispatche
         for (const issue of found) {
           if (next.has(issue.number)) continue;
           try {
-            await inspect(issue.number, issue.labels, next, capacity);
+            await inspect(issue, issue.labels, next, capacity);
           } catch (error) {
             logError(`Falha ao despachar a issue ${issue.number}`, error);
           }

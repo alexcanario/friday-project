@@ -16,20 +16,25 @@ import {
   type GitCliHostOptions,
 } from "@friday/infrastructure";
 import { createBreaker, type Breaker } from "./breaker.ts";
+import {
+  judgeBranchOf,
+  triageBranchOf,
+  type BranchContext,
+  type Repo,
+} from "./compose-branches.ts";
 import { readDispatchConfig } from "./compose-config.ts";
 import { createIntake } from "./intake.ts";
+import type { JudgeCompose } from "./judge-wiring.ts";
 import { acquireProcessLock, type ProcessLockDeps } from "./process-lock.ts";
 import { reconcile, type ReconcileReport } from "./reconcile.ts";
 import { createRunRecorder } from "./run-recorder.ts";
 import type { RunRecordingDeps } from "./run-registration.ts";
 import { createStateDispatcher, type StateDispatcherDeps } from "./state-dispatcher.ts";
-import { createJudgeBranch, type JudgeBranchDeps, type JudgeCompose } from "./judge-wiring.ts";
+import { assertTriageFicha, type TriageFicha } from "./triage-request.ts";
 import { createVerifyBranch } from "./verify-wiring.ts";
 import { readTickConfig } from "./tick-config.ts";
 import { buildRuntimeFor, mirrorDirOf, targetUrlOf } from "./runtime-wiring.ts";
 import { createTicker, type Clock, type Ticker } from "./tick.ts";
-
-type Repo = { owner: string; repo: string };
 
 export interface ComposeOptions {
   root: string;
@@ -52,6 +57,8 @@ export interface ComposeOptions {
   roles?: StateDispatcherDeps["roles"];
   /** Judge agents and input; without it InReview is not dispatched (D64, D73). */
   judge?: JudgeCompose;
+  /** Triage limits; without it Todo issues are left alone. */
+  triage?: TriageFicha;
 }
 
 export interface Daemon {
@@ -99,51 +106,17 @@ function buildBreaker(db: FridayDatabase, projectId: string, now: () => Date): B
   }
 }
 
-type JudgeWiringContext = {
-  github: GitHubPort;
-  repo: Repo;
-  recorderDeps: JudgeBranchDeps["recorder"];
-  recording: JudgeBranchDeps["recording"];
-  budget: JudgeBranchDeps["budget"];
-  now: () => Date;
-};
-
-function judgeBranchOf(opts: ComposeOptions, ctx: JudgeWiringContext) {
-  if (opts.judge === undefined) return {};
-  const { github, repo, recorderDeps, recording, budget, now } = ctx;
-  return {
-    judge: createJudgeBranch({
-      projectId: opts.projectId,
-      root: opts.root,
-      github,
-      reviewerFor: (token) => (opts.createGitHub ?? defaultGitHub)(token, repo),
-      compose: opts.judge,
-      env: opts.env,
-      runtime: opts.runtime,
-      prOf: opts.prOf,
-      recorder: recorderDeps,
-      recording,
-      budget,
-      now,
-      ...(opts.log === undefined ? {} : { log: opts.log }),
-    }),
-  };
-}
-
-type DispatcherContext = {
-  github: GitHubPort;
+type DispatcherContext = BranchContext & {
   issues: ReturnType<typeof createIssueRepository>;
   events: ReturnType<typeof createEventStore>;
-  recorderDeps: JudgeBranchDeps["recorder"];
-  judge: ReturnType<typeof judgeBranchOf>;
-  now: () => Date;
 };
 
 function dispatcherOf(opts: ComposeOptions, ctx: DispatcherContext) {
-  const { github, issues, events, recorderDeps, judge, now } = ctx;
+  const { github, issues, events, recorderDeps, now } = ctx;
   const { root, projectId } = opts;
   return createStateDispatcher({
-    ...judge,
+    ...judgeBranchOf(opts, ctx),
+    ...triageBranchOf(opts, ctx),
     projectId,
     github,
     issues,
@@ -200,8 +173,9 @@ async function assemble(
   const recorder = createRunRecorder({ ...recorderDeps, ledger });
   const recording = { runs, recorder, runtimeFor };
   const budget = { ledger, recorderDeps };
-  const judge = judgeBranchOf(opts, { github, repo, recorderDeps, recording, budget, now });
-  const dispatcher = dispatcherOf(opts, { github, issues, events, recorderDeps, judge, now });
+  const clientFor = opts.createGitHub ?? defaultGitHub;
+  const ctx = { github, repo, clientFor, recorderDeps, recording, budget, now, issues, events };
+  const dispatcher = dispatcherOf(opts, ctx);
   const intake = createIntake({
     projectId,
     github,
@@ -229,6 +203,7 @@ async function assemble(
 /** Process composition at startup: lock, database, reconcile, GitHub, intake and ticker. */
 export async function composeDaemon(opts: ComposeOptions): Promise<Daemon> {
   const { token, tokenEnv, repo, repository } = readAuthor(opts);
+  if (opts.triage !== undefined) assertTriageFicha(opts.triage);
   const gitHost = (opts.createGitHost ?? ((o) => new GitCliHost(o)))({
     tokenEnv,
     mirrorDir: mirrorDirOf({ env: opts.env, homeDir: opts.homeDir ?? homedir(), repository }),

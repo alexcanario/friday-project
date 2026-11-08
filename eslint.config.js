@@ -134,6 +134,10 @@ export default tseslint.config(
     rules: { "max-lines": ["error", 300] },
   },
   {
+    files: ["apps/daemon/src/state-dispatcher.ts"],
+    rules: { "max-lines": ["error", 300] },
+  },
+  {
     files: ["apps/daemon/test/breaker-dispatch-helpers.ts"],
     rules: { "max-lines-per-function": ["error", 50] },
   },
