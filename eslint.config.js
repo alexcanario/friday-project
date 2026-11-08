@@ -114,8 +114,8 @@ export default tseslint.config(
   {
     files: ["apps/cli/**/*.ts"],
     rules: restrict(
-      ["@friday/daemon", "@friday/api"],
-      ["@friday/daemon/*", "@friday/api/*", "**/apps/daemon/**", "**/apps/api/**"],
+      ["@friday/api"],
+      ["@friday/api/*", "**/apps/api/**"],
     ),
   },
   {

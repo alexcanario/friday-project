@@ -220,6 +220,9 @@ importers:
       '@friday/application':
         specifier: workspace:*
         version: link:../../packages/application
+      '@friday/daemon':
+        specifier: workspace:*
+        version: link:../daemon
       '@friday/domain':
         specifier: workspace:*
         version: link:../../packages/domain
