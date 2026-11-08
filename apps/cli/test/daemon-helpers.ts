@@ -17,6 +17,9 @@ export function validRoot(): string {
     join(dir, "agents", "judge-strong.yaml"),
     "role: judge-strong\nstates: [InReview]\nmodel: opus\nmax_budget_usd: 3\nmax_turns: 40\ntimeout_s: 3600\ntools: [Read, Glob, Grep, Bash]\nmcp_tools:\n  - review_verdict\n  - issue_comment\nprompt_file: prompts/judge.md\n",
   );
+  const registry = resolve(import.meta.dirname, "../../../registry");
+  cpSync(join(registry, "agents", "triage.yaml"), join(dir, "agents", "triage.yaml"));
+  cpSync(join(registry, "prompts", "triage.md"), join(dir, "prompts", "triage.md"));
   return dir;
 }
 

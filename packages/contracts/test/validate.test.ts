@@ -130,6 +130,7 @@ describe("validateContract", () => {
         "qaReportSchema",
         "reviewVerdictSchema",
         "runFinishedSchema",
+        "triageAgentConfigSchema",
         "triageSchema",
         "validateContract",
         "workReportSchema",
