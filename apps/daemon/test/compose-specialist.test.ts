@@ -48,7 +48,9 @@ type Over = {
 
 function setup(o: Over = {}) {
   const t = baseSetup((y) =>
-    y.replace("per_issue_usd: 5", "per_issue_usd: 10").replace("per_day_usd: 10", "per_day_usd: 30"),
+    y
+      .replace("per_issue_usd: 5", "per_issue_usd: 10")
+      .replace("per_day_usd: 10", "per_day_usd: 30"),
   );
   t.github.issues.push({
     number: 7,
@@ -159,12 +161,13 @@ describe("composeDaemon with the specialist branch", () => {
 
   it("reuses the existing worktree on a feedback round", async () => {
     const existing = () => ({ ok: false, error: { code: "WorktreeExists", message: "x" } });
-    const t0 = setup({ create: existing });
-    const P2 = join(t0.worktreesRoot, "existing");
-    mkdirSync(P2, { recursive: true });
     const t = await run({
       create: existing,
-      list: () => ({ ok: true, value: [{ issue: 7, path: P2, head: "h" }] }),
+      list: (root) => {
+        const path = join(root, "worktrees", "existing");
+        mkdirSync(path, { recursive: true });
+        return { ok: true, value: [{ issue: 7, path, head: "h" }] };
+      },
     });
     expect(t.runtime.requests).toHaveLength(1);
     expect(t.runtime.requests[0]!.cwd).toBe(join(t.worktreesRoot, "existing"));

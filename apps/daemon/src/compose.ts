@@ -20,6 +20,7 @@ import { createBreaker, type Breaker } from "./breaker.ts";
 import {
   judgeBranchOf,
   qaBranchOf,
+  specialistBranchOf,
   triageBranchOf,
   type BranchContext,
   type Repo,
@@ -30,6 +31,7 @@ import {
   readGuardedTickConfig,
 } from "./compose-config.ts";
 import { assertQaAgentConfig, type QaCompose } from "./qa-wiring.ts";
+import { assertSpecialistAgentConfig, type SpecialistCompose } from "./specialist-wiring.ts";
 import { createPrOf } from "./pr-of.ts";
 import { createIntake } from "./intake.ts";
 import type { JudgeCompose } from "./judge-wiring.ts";
@@ -71,6 +73,7 @@ export interface ComposeOptions {
   judge?: JudgeCompose;
   /** QA ficha and context; without it QA is not dispatched (D70, D75). */
   qa?: QaCompose;
+  specialist?: SpecialistCompose;
   /** Triage limits; without it Todo issues are left alone. */
   triage?: TriageAgentConfig;
 }
@@ -132,6 +135,7 @@ function dispatcherOf(opts: ComposeOptions, ctx: DispatcherContext) {
   return createStateDispatcher({
     ...judgeBranchOf(opts, ctx),
     ...qaBranchOf(opts, ctx),
+    ...specialistBranchOf(opts, ctx),
     ...triageBranchOf(opts, ctx),
     projectId,
     github,
@@ -249,6 +253,7 @@ export async function composeDaemon(opts: ComposeOptions): Promise<Daemon> {
   const { token, tokenEnv, repo, repository } = readAuthor(opts);
   assertSingleConcurrentRun(opts.root);
   if (opts.qa !== undefined) assertQaAgentConfig(opts.qa.agent);
+  if (opts.specialist !== undefined) assertSpecialistAgentConfig(opts.specialist.agent);
   if (opts.triage !== undefined) assertTriageAgentConfig(opts.triage);
   const gitHost = (opts.createGitHost ?? ((o) => new GitCliHost(o)))({
     tokenEnv,

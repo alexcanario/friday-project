@@ -16,7 +16,7 @@ import { readTickConfig } from "./tick-config.ts";
 import { isInsideRoot } from "./verify-wiring.ts";
 
 const MCP_PREFIX = "mcp__friday__";
-const BASH_DENIED = /[;&|<>`*\n\r]|\$\(/;
+export const BASH_DENIED = /[;&|<>`*\n\r]|\$\(/;
 
 /** The QA ficha and the per-issue context; the ficha is validated at startup (D75). */
 export type QaCompose = {
