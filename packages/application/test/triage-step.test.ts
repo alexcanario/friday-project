@@ -123,12 +123,18 @@ describe("runTriageStep staffed specialists", () => {
     const inTriage = setup([finished(good("frontend", "Tela"))]);
     const again = await runTriageStep(inTriage, makeInput());
     expect(again.inputs).toEqual([{ type: "RunHeld", reason: "SpecialistWithoutAgent" }]);
-    expect(apply(out.inputs)).toMatchObject({ state: "Held", heldReason: "SpecialistWithoutAgent" });
+    expect(apply(out.inputs)).toMatchObject({
+      state: "Held",
+      heldReason: "SpecialistWithoutAgent",
+    });
   });
 
   it("holds when the existing specialist label has no ficha", async () => {
     const s = setup([finished(good("backend"))]);
-    const out = await runTriageStep(s, makeInput({ issue: issue(["friday", "specialist:database"]) }));
+    const out = await runTriageStep(
+      s,
+      makeInput({ issue: issue(["friday", "specialist:database"]) }),
+    );
     expect(out.inputs).toEqual([{ type: "RunHeld", reason: "SpecialistWithoutAgent" }]);
     expect(out.specialist).toBeNull();
     expect(out.criteria).toBeNull();
