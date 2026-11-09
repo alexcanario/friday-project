@@ -53,6 +53,14 @@ function misconfigured(request: AgentRunRequest, flow: TriageStepInput["flow"]):
   );
 }
 
+/** Models sometimes answer `criteria: { criteria: [...] }`; unwrap only that exact shape. */
+function unwrapCriteria(value: unknown): unknown {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) return value;
+  const keys = Object.keys(value);
+  const inner = (value as { criteria?: unknown }).criteria;
+  return keys.length === 1 && keys[0] === "criteria" && Array.isArray(inner) ? inner : value;
+}
+
 const outcome = (
   state: TriageStepInput["state"],
   rest: WorkflowInput[],
@@ -81,7 +89,7 @@ export async function runTriageStep(
   const parsed =
     finished.status === "invalid_output" ? null : validateContract("triage", finished.output);
   if (parsed === null || !parsed.ok) return outcome(state, [{ type: "TriageFailed" }]);
-  const checked = criteriaSchema.safeParse({ criteria: parsed.value.criteria });
+  const checked = criteriaSchema.safeParse({ criteria: unwrapCriteria(parsed.value.criteria) });
   if (!checked.success) return held(state, "SchemaInvalid");
   const { specialist: chosen, reason: why } = parsed.value;
   const specialist = existing ?? chosen;

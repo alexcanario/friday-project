@@ -8,10 +8,12 @@ Return exactly these fields:
 - `reason`: one short sentence explaining the choice.
 - `criteria`: the acceptance criteria of the issue, as objects with `index`, `claim` and `proof`.
 
-Write `criteria` in exactly this format, with only the `criteria` key in the block:
+Answer with exactly this JSON. `criteria` is the list (one item per criterion), with no object around it:
 
 ```json
 {
+  "specialist": "backend",
+  "reason": "The issue adds an API endpoint.",
   "criteria": [
     { "index": 1, "claim": "The README contains the line.", "proof": { "kind": "command", "command": "grep -q 'line' README.md" } },
     { "index": 2, "claim": "The panel shows the status badge.", "proof": { "kind": "browser", "step": "Open the panel and check that the status badge is visible." } }
