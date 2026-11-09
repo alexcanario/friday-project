@@ -25,7 +25,7 @@ interface RawItem {
   pull_request?: unknown;
 }
 
-// `gh api --paginate` prints one JSON array per page, back to back.
+// Tolerates several JSON arrays printed back to back; a single page is one array.
 function parsePages(out: string): RawItem[] {
   const items: RawItem[] = [];
   let depth = 0;
@@ -59,6 +59,16 @@ const toPull = (r: RawItem): NightPull => ({
 export function createGhNightReader(deps: { exec?: GhExec } = {}): NightReader {
   const exec = deps.exec ?? defaultExec;
   const get = async (args: string[]): Promise<RawItem[]> => parsePages(await exec(args));
+  // Manual paging: `gh --paginate` breaks behind the cloud proxy past 100 items.
+  // Stops at the first page with fewer than 100 raw items (before any filtering).
+  const getAllPages = async (path: string): Promise<RawItem[]> => {
+    const raw: RawItem[] = [];
+    for (let page = 1; ; page++) {
+      const items = await get(["api", `${path}&page=${page}`]);
+      raw.push(...items);
+      if (items.length < 100) return raw;
+    }
+  };
   return {
     async listComments(issue): Promise<NightComment[]> {
       const raw: RawItem[] = [];
@@ -73,8 +83,7 @@ export function createGhNightReader(deps: { exec?: GhExec } = {}): NightReader {
       return raw.map((r) => ({ body: r.body ?? "", createdAt: r.created_at }));
     },
     async listOpenIssues(label): Promise<NightIssue[]> {
-      const path = `${REPO}/issues?state=open&per_page=100&labels=${label}`;
-      const raw = await get(["api", "--paginate", path]);
+      const raw = await getAllPages(`${REPO}/issues?state=open&per_page=100&labels=${label}`);
       return raw
         .filter((r) => r.pull_request === undefined)
         .map((r) => ({ number: r.number, title: r.title, labels: r.labels.map((l) => l.name) }));
@@ -84,8 +93,7 @@ export function createGhNightReader(deps: { exec?: GhExec } = {}): NightReader {
       return (await get(["api", path])).map(toPull);
     },
     async listOpenPulls() {
-      const raw = await get(["api", "--paginate", `${REPO}/pulls?state=open&per_page=100`]);
-      return raw.map(toPull);
+      return (await getAllPages(`${REPO}/pulls?state=open&per_page=100`)).map(toPull);
     },
   };
 }
