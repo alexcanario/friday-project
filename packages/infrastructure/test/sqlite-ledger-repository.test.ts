@@ -64,4 +64,21 @@ describe("sqlite ledger repository", () => {
       { issue_id: 7, num_turns: 4 },
     ]);
   });
+
+  it("listIssueSums sums per issue, ordered, per project", () => {
+    db = openWithProjects("p", "q");
+    const repo = createLedgerRepository(db);
+    repo.record({ ...entry("p", "r1", "2026-01-01", 0.8), issueId: 9, costUnknown: true });
+    repo.record({ ...entry("p", "r2", "2026-01-01", 0.25), issueId: 8 });
+    repo.record(entry("p", "r3", "2026-01-01", 0.25));
+    repo.record(entry("p", "r4", "2026-01-02", 0.5));
+    repo.record(entry("q", "r5", "2026-01-01", 5));
+    expect(repo.listIssueSums("p")).toEqual([
+      { issueId: 7, costUsd: 0.75, anyCostUnknown: false },
+      { issueId: 8, costUsd: 0.25, anyCostUnknown: false },
+      { issueId: 9, costUsd: 0.8, anyCostUnknown: true },
+    ]);
+    db.sqlite.prepare("INSERT INTO projects (id) VALUES (?)").run("empty");
+    expect(repo.listIssueSums("empty")).toEqual([]);
+  });
 });
