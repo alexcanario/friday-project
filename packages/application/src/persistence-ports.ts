@@ -91,6 +91,18 @@ export interface LedgerRepository {
   sumByIssue(projectId: string, issueId: number): DaySum;
 }
 
+export interface IssueCostSum {
+  issueId: number;
+  costUsd: number;
+  anyCostUnknown: boolean;
+}
+
+/** Read-only view of the ledger used by reports. */
+export interface LedgerReportReader {
+  /** One row per issue of the project, ordered by `issueId` ascending. */
+  listIssueSums(projectId: string): IssueCostSum[];
+}
+
 /** Runs `work` in one transaction: if it throws, everything it wrote is undone and the error is rethrown. */
 export interface UnitOfWork {
   run<T>(work: () => T): T;
