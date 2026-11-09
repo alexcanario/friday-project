@@ -84,6 +84,8 @@ describe("GitCliHost commit security", () => {
 
   it("rejects a .git that is a directory or points outside a linked worktree", async () => {
     const gitFile = join(fx.wt, ".git");
+    // On Windows git marks .git as hidden, and opening a hidden file for writing fails with EPERM.
+    rmSync(gitFile, { force: true });
     writeFileSync(gitFile, `gitdir: ${join(fx.dir, "elsewhere")}\n`);
     await expect(host().push(request())).rejects.toThrow(/^Falha ao validar o worktree: /);
     rmSync(gitFile);
