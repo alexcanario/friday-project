@@ -37,6 +37,7 @@ import { createIntake } from "./intake.ts";
 import type { JudgeCompose } from "./judge-wiring.ts";
 import { acquireProcessLock, type ProcessLockDeps } from "./process-lock.ts";
 import { reconcile, type ReconcileReport } from "./reconcile.ts";
+import { withRedactedLog } from "./redact.ts";
 import { createRunRecorder } from "./run-recorder.ts";
 import type { RunRecordingDeps } from "./run-registration.ts";
 import { createStateDispatcher, type StateDispatcherDeps } from "./state-dispatcher.ts";
@@ -250,6 +251,7 @@ async function assemble(
 
 /** Process composition at startup: lock, database, reconcile, GitHub, intake and ticker. */
 export async function composeDaemon(opts: ComposeOptions): Promise<Daemon> {
+  opts = withRedactedLog(opts);
   const { token, tokenEnv, repo, repository } = readAuthor(opts);
   assertSingleConcurrentRun(opts.root);
   if (opts.qa !== undefined) assertQaAgentConfig(opts.qa.agent);
