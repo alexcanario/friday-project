@@ -6,6 +6,21 @@ Return exactly these fields:
 
 - `specialist`: the role that must implement the issue.
 - `reason`: one short sentence explaining the choice.
-- `criteria`: the acceptance criteria of the issue, copied as written, one item per criterion.
+- `criteria`: the acceptance criteria of the issue, as objects with `index`, `claim` and `proof`.
+
+Write `criteria` in exactly this format, with only the `criteria` key in the block:
+
+```json
+{
+  "criteria": [
+    { "index": 1, "claim": "The README contains the line.", "proof": { "kind": "command", "command": "grep -q 'line' README.md" } },
+    { "index": 2, "claim": "The panel shows the status badge.", "proof": { "kind": "browser", "step": "Open the panel and check that the status badge is visible." } }
+  ]
+}
+```
+
+- `index` starts at 1 and grows by 1 for each criterion.
+- `claim` is the criterion copied as written in the issue.
+- Use `"kind": "browser"` only when the criterion can be verified only on the panel screen; otherwise use `"kind": "command"`.
 
 Do not invent criteria. Do not read or write files. Do not include secrets.
