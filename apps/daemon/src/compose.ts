@@ -9,7 +9,6 @@ import {
   createIssueRepository,
   createLedgerRepository,
   createRunRepository,
-  loadFactoryConfig,
   openDatabase,
   type ClaudeAgentSdkRuntimeDeps,
   type FridayDatabase,
@@ -29,6 +28,7 @@ import {
   assertSingleConcurrentRun,
   readDispatchConfig,
   readGuardedTickConfig,
+  readAuthor,
 } from "./compose-config.ts";
 import { assertQaAgentConfig, type QaCompose } from "./qa-wiring.ts";
 import { assertSpecialistAgentConfig, type SpecialistCompose } from "./specialist-wiring.ts";
@@ -85,25 +85,6 @@ export interface Daemon {
   report: ReconcileReport;
   /** Releases the process lock and closes the database. */
   release(): void;
-}
-
-/** Reads the author token by variable name only (D56); fails closed. */
-function readAuthor(opts: ComposeOptions): {
-  token: string;
-  tokenEnv: string;
-  repo: Repo;
-  repository: { owner: string; name: string };
-} {
-  const loaded = loadFactoryConfig(opts.root);
-  if (!loaded.ok) throw new Error("O factory.yaml está inválido ou ausente.");
-  const name = loaded.config.pull_requests.author_token_env;
-  if (name === undefined)
-    throw new Error("A configuração não define pull_requests.author_token_env.");
-  const token = opts.env[name];
-  if (token === undefined || token.trim() === "")
-    throw new Error(`A variável ${name} está vazia ou ausente.`);
-  const { owner, name: repo } = loaded.config.repository;
-  return { token, tokenEnv: name, repo: { owner, repo }, repository: { owner, name: repo } };
 }
 
 const defaultGitHub = (token: string, repo: Repo): GitHubPort =>
@@ -251,8 +232,8 @@ async function assemble(
 
 /** Process composition at startup: lock, database, reconcile, GitHub, intake and ticker. */
 export async function composeDaemon(opts: ComposeOptions): Promise<Daemon> {
-  opts = withRedactedLog(opts);
-  const { token, tokenEnv, repo, repository } = readAuthor(opts);
+  const { token, tokenEnv, tokenEnvNames, repo, repository } = readAuthor(opts);
+  opts = withRedactedLog(opts, tokenEnvNames);
   assertSingleConcurrentRun(opts.root);
   if (opts.qa !== undefined) assertQaAgentConfig(opts.qa.agent);
   if (opts.specialist !== undefined) assertSpecialistAgentConfig(opts.specialist.agent);

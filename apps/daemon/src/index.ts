@@ -107,3 +107,4 @@ export {
   type SpecialistBranchDeps,
   type SpecialistCompose,
 } from "./specialist-wiring.ts";
+export { createRedactor } from "./redact.ts";
