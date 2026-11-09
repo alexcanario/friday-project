@@ -1,4 +1,4 @@
-import { chmodSync, existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { GitCliHost } from "../src/index.ts";
@@ -91,6 +91,38 @@ describe("GitCliHost commit security", () => {
     rmSync(gitFile);
     mkdirSync(gitFile);
     await expect(host().push(request())).rejects.toThrow(/^Falha ao validar o worktree: /);
+  });
+
+  it("rejects a .git pointing at a fake worktrees/<n> inside the worktree with a foreign commondir", async () => {
+    const other = join(fx.dir, "other");
+    git(fx.dir, "init", "-q", other);
+    writeFileSync(join(other, "o.txt"), "o\n");
+    git(other, "add", "-A");
+    git(other, "commit", "-q", "-m", "other");
+    const before = git(other, "for-each-ref");
+    const fake = join(fx.wt, "x", "worktrees", "y");
+    mkdirSync(fake, { recursive: true });
+    writeFileSync(join(fake, "HEAD"), "ref: refs/heads/friday/345-x\n");
+    writeFileSync(join(fake, "commondir"), `${join(other, ".git")}\n`);
+    writeFileSync(join(fake, "gitdir"), `${join(fx.wt, ".git")}\n`);
+    rmSync(join(fx.wt, ".git"), { force: true });
+    writeFileSync(join(fx.wt, ".git"), `gitdir: ${fake}\n`);
+    await expect(host().push(request())).rejects.toThrow(/^Falha ao validar o worktree: /);
+    expect(git(other, "for-each-ref")).toBe(before);
+  });
+
+  it("rejects a .git pointing at the worktrees/<n> of another worktree", async () => {
+    const base = join(fx.dir, "base");
+    const wt2 = join(fx.dir, "wt2");
+    git(base, "worktree", "add", "-q", "-b", "friday/346-y", wt2);
+    const before = git(base, "for-each-ref");
+    const gitDir2 = readFileSync(join(wt2, ".git"), "utf8")
+      .replace(/^gitdir: /, "")
+      .trim();
+    rmSync(join(fx.wt, ".git"), { force: true });
+    writeFileSync(join(fx.wt, ".git"), `gitdir: ${gitDir2}\n`);
+    await expect(host().push(request())).rejects.toThrow(/^Falha ao validar o worktree: /);
+    expect(git(base, "for-each-ref")).toBe(before);
   });
 
   it("commits with the fixed identity when author and committer config are planted", async () => {

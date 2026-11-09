@@ -1,7 +1,6 @@
-import { lstat, mkdtemp, readFile, rm } from "node:fs/promises";
-import { existsSync } from "node:fs";
+import { lstat, mkdtemp, readFile, realpath, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { basename, dirname, join, resolve } from "node:path";
+import { basename, dirname, join, resolve, sep } from "node:path";
 import { execa } from "execa";
 
 export const FRIDAY_AUTHOR = {
@@ -41,9 +40,23 @@ async function assertLinkedWorktree(worktree: string): Promise<void> {
   if (info === undefined || !info.isFile()) fail("o .git do worktree não é um arquivo regular.");
   const match = /^gitdir: (.+?)\r?\n?$/.exec(await readFile(gitFile, "utf8"));
   if (match?.[1] === undefined) return fail("o .git do worktree não aponta para um diretório git.");
-  const gitDir = resolve(worktree, match[1]);
-  if (basename(dirname(gitDir)) !== "worktrees" || !existsSync(gitDir)) {
+  const real = async (path: string): Promise<string> =>
+    realpath(path).catch(() => fail("caminho do worktree não resolvido."));
+  const gitDir = await real(resolve(worktree, match[1]));
+  const root = await real(worktree);
+  if (basename(dirname(gitDir)) !== "worktrees")
     fail("o .git do worktree não aponta para worktrees/<n>.");
+  if (gitDir === root || gitDir.startsWith(root + sep)) fail("o gitdir está dentro do worktree.");
+  const back = await readFile(join(gitDir, "gitdir"), "utf8").catch(() => "");
+  if ((await real(resolve(gitDir, back.trim()))) !== join(root, ".git")) {
+    fail("o gitdir não aponta de volta para este worktree.");
+  }
+  const common = await readFile(join(gitDir, "commondir"), "utf8").catch(() => "");
+  if (
+    common.trim() === "" ||
+    (await real(resolve(gitDir, common.trim()))) !== dirname(dirname(gitDir))
+  ) {
+    fail("o commondir não pertence ao repositório do worktree.");
   }
 }
 
