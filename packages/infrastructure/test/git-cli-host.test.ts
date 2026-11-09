@@ -145,6 +145,8 @@ describe("GitCliHost", () => {
     const { sha } = await h.push({ ...REQ, worktree: wt });
     git(wt, "checkout", "-q", "--orphan", "o");
     edit("c2");
+    git(wt, "add", "-A");
+    git(wt, "commit", "-q", "-m", "orphan");
     await expect(h.push({ ...REQ, worktree: wt })).rejects.toThrow(/^Falha no git push: /);
     expect(git(remote, "rev-parse", "refs/heads/friday/345-x")).toBe(sha);
   });

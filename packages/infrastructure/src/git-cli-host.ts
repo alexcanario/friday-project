@@ -3,6 +3,9 @@ import { isAbsolute, join, resolve } from "node:path";
 import { execa } from "execa";
 import type { GitHost } from "@friday/application";
 import { isInside } from "./config-root-guard.ts";
+import { commitWorktree, configEnv, FRIDAY_AUTHOR, HOOKS_OFF } from "./git-cli-commit.ts";
+
+export { FRIDAY_AUTHOR };
 
 export interface GitCliHostOptions {
   tokenEnv: string;
@@ -14,10 +17,8 @@ export interface GitCliHostOptions {
 
 type PushRequest = Parameters<GitHost["push"]>[0];
 
-const COMMIT_RE = /^[0-9a-f]{40}$/;
 const BRANCH_RE = /^friday\/[0-9]+(-[a-z0-9-]+)?$/;
 const ALLOWED_KEYS = new Set(["PATH", "HOME", "USERPROFILE", "SYSTEMROOT", "TEMP", "TMP", "LANG"]);
-const HOOKS_OFF = "/dev/null";
 
 function validateTargetUrl(targetUrl: string): void {
   let url: URL;
@@ -66,13 +67,19 @@ export class GitCliHost implements GitHost {
     this.git = gitBinary;
   }
 
-  async push(request: PushRequest): Promise<void> {
+  async push(request: PushRequest): Promise<{ sha: string }> {
     this.validate(request);
     const token = this.env[this.tokenEnv];
     if (token === undefined || token.trim() === "") {
       throw new Error(`A variável de ambiente ${this.tokenEnv} não está definida.`);
     }
-    const { worktree, branch, commit } = request;
+    const { worktree, branch, message } = request;
+    const commit = await commitWorktree({
+      git: this.git,
+      worktree,
+      message,
+      baseEnv: this.baseEnv(),
+    });
     const mirror = this.mirrorDir;
     if (!existsSync(join(mirror, "HEAD"))) {
       await this.run(["init", "--bare", "--quiet", mirror], this.baseEnv(), undefined, "init");
@@ -103,10 +110,15 @@ export class GitCliHost implements GitHost {
       [token, b64, header],
       "Falha no git push: ",
     );
+    return { sha: commit };
   }
 
-  private validate({ worktree, branch, commit }: PushRequest): void {
-    if (!COMMIT_RE.test(commit)) throw new Error("O commit deve ter 40 caracteres hexadecimais.");
+  private validate(request: PushRequest): void {
+    const { worktree, branch, message } = request;
+    if ("commit" in request) throw new Error("O pedido não aceita o campo commit.");
+    if (typeof message !== "string" || message.trim() === "") {
+      throw new Error("A mensagem do commit não pode ser vazia.");
+    }
     if (!BRANCH_RE.test(branch)) throw new Error(`Nome de branch inválido: ${branch}`);
     if (!isAbsolute(worktree)) throw new Error("O worktree deve ser um caminho absoluto.");
     if (resolve(worktree) === resolve(this.mirrorDir) || isInside(worktree, this.mirrorDir)) {
@@ -141,11 +153,5 @@ export class GitCliHost implements GitHost {
 }
 
 function hooksConfig(extra: [string, string][]): Record<string, string> {
-  const pairs: [string, string][] = [...extra, ["core.hooksPath", HOOKS_OFF]];
-  const out: Record<string, string> = { GIT_CONFIG_COUNT: String(pairs.length) };
-  pairs.forEach(([key, value], i) => {
-    out[`GIT_CONFIG_KEY_${i}`] = key;
-    out[`GIT_CONFIG_VALUE_${i}`] = value;
-  });
-  return out;
+  return configEnv([...extra, ["core.hooksPath", HOOKS_OFF]]);
 }

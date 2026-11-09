@@ -19,13 +19,13 @@ export interface EffectsInput {
 }
 
 export const EFFECT_KEYS: Record<EffectTool, string[]> = {
-  git_push: ["branch", "commit"],
+  git_push: ["branch", "message"],
   pr_create: ["title", "body"],
   pr_diff: [],
   issue_comment: ["body"],
 };
 export const EFFECT_DESCRIPTIONS: Record<EffectTool, string> = {
-  git_push: "Envia o commit da branch da run para o remoto.",
+  git_push: "Faz o commit das alterações do worktree e envia a branch da run ao remoto.",
   pr_create: "Abre o PR da run (ou devolve o existente).",
   pr_diff: "Devolve o resumo do diff do PR da run.",
   issue_comment: "Publica um comentário na issue da run.",
@@ -39,7 +39,7 @@ const reply = (text: string, isError?: true): ToolResponse => ({
 const schemas = (run: EffectsInput["run"]): Record<EffectTool, z.ZodType> => ({
   git_push: z.strictObject({
     branch: z.literal(run.branch),
-    commit: z.string().regex(/^[0-9a-f]{40}$/),
+    message: z.string().min(1),
   }),
   pr_create: z.strictObject({ title: z.string(), body: z.string() }),
   pr_diff: z.strictObject({}),
@@ -56,13 +56,18 @@ type Deps = {
 
 async function execute(
   name: EffectTool,
-  args: { branch: string; commit: string; title: string; body: string },
+  args: { branch: string; message: string; title: string; body: string },
   { github, gitHost, run }: EffectsInput,
 ) {
   switch (name) {
-    case "git_push":
-      await gitHost.push({ worktree: run.worktree, branch: args.branch, commit: args.commit });
-      return reply("200: push feito.");
+    case "git_push": {
+      const { sha } = await gitHost.push({
+        worktree: run.worktree,
+        branch: args.branch,
+        message: args.message,
+      });
+      return reply(`200: push feito: ${sha}.`);
+    }
     case "pr_create": {
       const pr = await github.createPullRequest({
         head: run.branch,
