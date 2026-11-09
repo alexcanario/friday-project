@@ -1,7 +1,7 @@
 import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { Options } from "@anthropic-ai/claude-agent-sdk";
+import type { Options, PreToolUseHookInput } from "@anthropic-ai/claude-agent-sdk";
 import { contractJsonSchema } from "@friday/contracts";
 import type { AgentRunOptions, AgentRunRequest, ToolDenied } from "@friday/application";
 import { describe, expect, it } from "vitest";
@@ -80,23 +80,50 @@ describe("buildQueryOptions", () => {
     });
   });
 
-  it("canUseTool denies and records", async () => {
+  it("hook from buildQueryOptions denies Bash outside bashAllow and allows inside", async () => {
     const denied: ToolDenied[] = [];
-    const { options } = buildFor(request(null), denied);
-    const out = await options.canUseTool!(
-      "Read",
-      {},
-      {
-        toolUseID: "t2",
-        requestId: "r",
-        signal: new AbortController().signal,
-      },
+    const { options } = buildFor(
+      requestFor(specialist({ tools: ["Read", "Bash"], bashAllow: ["pnpm test*"] })),
+      denied,
     );
-    expect(out).toEqual({
-      behavior: "deny",
-      message: "Ferramenta Read negada pela política de permissões.",
+    const hook = options.hooks!.PreToolUse![0]!.hooks[0]!;
+    const call = (command: string) =>
+      hook(
+        {
+          hook_event_name: "PreToolUse",
+          tool_name: "Bash",
+          tool_input: { command },
+          tool_use_id: "t1",
+        } as unknown as PreToolUseHookInput,
+        "t1",
+        { signal: new AbortController().signal },
+      );
+    expect(await call("rm -rf x")).toEqual({
+      hookSpecificOutput: {
+        hookEventName: "PreToolUse",
+        permissionDecision: "deny",
+        permissionDecisionReason: "Ferramenta Bash negada pela política de permissões.",
+      },
     });
-    expect(denied).toEqual([{ toolName: "Read", toolUseId: "t2" }]);
+    expect(denied).toEqual([{ toolName: "Bash", toolUseId: "t1" }]);
+    expect(await call("pnpm test")).toEqual({});
+    expect(denied).toHaveLength(1);
+  });
+
+  it("dontAsk mode without canUseTool", () => {
+    const { options } = build(null);
+    expect(options.permissionMode).toBe("dontAsk");
+    expect(options.canUseTool).toBeUndefined();
+    expect("canUseTool" in options).toBe(false);
+  });
+
+  it("allowedTools keeps mcp entries and never Write or Edit for QA", () => {
+    const agent = qa({ allowedTools: ["mcp__friday__qa_report", "mcp__friday__x"], bashAllow: [] });
+    const { options } = buildFor(requestFor(agent));
+    for (const entry of agent.allowedTools) expect(options.allowedTools).toContain(entry);
+    expect(options.allowedTools).not.toContain("Write");
+    expect(options.allowedTools).not.toContain("Edit");
+    expect(options.allowedTools).not.toContain("Bash");
   });
 
   it("builds allowedTools, hook and settings without reading the worktree", () => {
@@ -114,7 +141,7 @@ describe("buildQueryOptions", () => {
     expect(entry.hooks).toHaveLength(1);
     expect(HOOK_TIMEOUT_SECONDS).toBe(5);
     expect(HOOK_TIMEOUT_MS).toBe(4500);
-    expect(typeof options.canUseTool).toBe("function");
+    expect(options.canUseTool).toBeUndefined();
     expect(options).toMatchObject({ permissionMode: "dontAsk", settingSources: [] });
     expect("mcpServers" in options || "plugins" in options).toBe(false);
 

@@ -1,12 +1,7 @@
 import type { Options } from "@anthropic-ai/claude-agent-sdk";
 import type { AgentRunRequest, ToolDenialSink } from "@friday/application";
 import { contractJsonSchema } from "@friday/contracts";
-import {
-  buildPreToolUseHook,
-  denialMessage,
-  HOOK_TIMEOUT_MS,
-  HOOK_TIMEOUT_SECONDS,
-} from "./pre-tool-use-hook.ts";
+import { buildPreToolUseHook, HOOK_TIMEOUT_MS, HOOK_TIMEOUT_SECONDS } from "./pre-tool-use-hook.ts";
 import type { ToolPolicy } from "./tool-policy.ts";
 
 export interface QueryOptionsInput {
@@ -50,11 +45,6 @@ export function buildQueryOptions(input: QueryOptionsInput): Options {
           timeout: HOOK_TIMEOUT_SECONDS,
         },
       ],
-    },
-    // Defense in depth: only runs outside dontAsk.
-    canUseTool: async (toolName, _input, opts) => {
-      sink.record({ toolName, toolUseId: opts.toolUseID });
-      return { behavior: "deny", message: denialMessage(toolName) };
     },
   };
   if (input.mcpServers !== undefined) options.mcpServers = input.mcpServers;
