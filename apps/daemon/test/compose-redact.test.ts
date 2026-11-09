@@ -59,6 +59,34 @@ describe("composeDaemon log redaction", () => {
     expect(t.logs.some((l) => l.includes("t0k3n"))).toBe(false);
   });
 
+  it("redacts the value of the configured author_token_env", async () => {
+    const t = setup((y) => y.replace("FRIDAY_AUTHOR_TOKEN", "MEU_TOKEN"));
+    vi.spyOn(t.github, "listIssuesByLabel").mockRejectedValue(new Error("Bearer valor-secreto"));
+    const daemon = await composeDaemon({ ...t.opts, env: { MEU_TOKEN: "valor-secreto" } });
+    await daemon.ticker.tick();
+    daemon.release();
+    expect(t.logs).toContain("Failed to list issues: Bearer ***");
+    expect(t.logs.some((l) => l.includes("valor-secreto"))).toBe(false);
+  });
+
+  it("redacts the value of the configured review_token_env", async () => {
+    const t = setup((y) =>
+      y.replace(
+        "  author_token_env: FRIDAY_AUTHOR_TOKEN\n",
+        "  author_token_env: FRIDAY_AUTHOR_TOKEN\n  review_token_env: MEU_REVIEW\n",
+      ),
+    );
+    vi.spyOn(t.github, "listIssuesByLabel").mockRejectedValue(new Error("Bearer revisao-secreta"));
+    const daemon = await composeDaemon({
+      ...t.opts,
+      env: { FRIDAY_AUTHOR_TOKEN: "t0k3n", MEU_REVIEW: "revisao-secreta" },
+    });
+    await daemon.ticker.tick();
+    daemon.release();
+    expect(t.logs).toContain("Failed to list issues: Bearer ***");
+    expect(t.logs.some((l) => l.includes("revisao-secreta"))).toBe(false);
+  });
+
   it("applies the redactor at a single point in src", () => {
     const dir = join(import.meta.dirname, "../src");
     const files = readdirSync(dir).filter(

@@ -33,7 +33,43 @@ describe("createRedactor", () => {
   });
 });
 
+describe("createRedactor with tokenEnvNames", () => {
+  it("masks the value of a variable named in tokenEnvNames", () => {
+    expect(createRedactor({ MEU_TOKEN: "valor-secreto" }, ["MEU_TOKEN"])("x valor-secreto y")).toBe(
+      "x *** y",
+    );
+  });
+
+  it("ignores unlisted, absent and empty named variables", () => {
+    expect(createRedactor({ MEU_TOKEN: "valor-secreto" })("x valor-secreto y")).toBe(
+      "x valor-secreto y",
+    );
+    expect(createRedactor({}, ["MEU_TOKEN"])("abc")).toBe("abc");
+    expect(createRedactor({ MEU_TOKEN: "" }, ["MEU_TOKEN"])("abc")).toBe("abc");
+  });
+
+  it("redacts gh[pousr]_ prefixes", () => {
+    const redact = createRedactor({});
+    for (const p of ["ghp", "gho", "ghu", "ghr", "ghs"]) expect(redact(`a ${p}_x`)).toBe("a ***");
+  });
+
+  it("keeps non-token words with gh prefixes unchanged", () => {
+    const redact = createRedactor({});
+    for (const t of ["nonghp_abc", "ghx_abc", "ghp_"]) expect(redact(t)).toBe(t);
+  });
+});
+
 describe("withRedactedLog", () => {
+  it("withRedactedLog masks the names passed in tokenEnvNames", () => {
+    const log = vi.fn();
+    withRedactedLog({ env: { MEU_TOKEN: "valor-secreto" }, log }, ["MEU_TOKEN"]).log?.(
+      "Bearer valor-secreto",
+    );
+    expect(log).toHaveBeenLastCalledWith("Bearer ***");
+    withRedactedLog({ env: { MEU_TOKEN: "valor-secreto" }, log }).log?.("Bearer valor-secreto");
+    expect(log).toHaveBeenLastCalledWith("Bearer valor-secreto");
+  });
+
   it("wraps log and keeps log undefined when absent", () => {
     const log = vi.fn();
     const wrapped = withRedactedLog({ env: { FRIDAY_AUTHOR_TOKEN: "t0k3n" }, log });
