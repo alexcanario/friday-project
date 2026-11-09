@@ -1,0 +1,47 @@
+import { describe, expect, it, vi } from "vitest";
+import { createRedactor, withRedactedLog } from "../src/redact.ts";
+
+describe("createRedactor", () => {
+  it("replaces the values of the three token variables with *** ", () => {
+    const redact = createRedactor({
+      FRIDAY_AUTHOR_TOKEN: "t0k3n",
+      FRIDAY_JUDGE_TOKEN: "j7dg3",
+      ANTHROPIC_API_KEY: "k3y-xyz",
+    });
+    expect(redact("a t0k3n b j7dg3 c k3y-xyz t0k3n")).toBe("a *** b *** c *** ***");
+  });
+
+  it("leaves messages without secrets unchanged and ignores empty values", () => {
+    const redact = createRedactor({ FRIDAY_AUTHOR_TOKEN: "t0k3n" });
+    expect(redact("Failed to list issues: falha")).toBe("Failed to list issues: falha");
+    expect(redact("")).toBe("");
+    expect(createRedactor({})("abc")).toBe("abc");
+    expect(createRedactor({ FRIDAY_AUTHOR_TOKEN: "" })("abc")).toBe("abc");
+  });
+
+  it("redacts github_pat_, ghs_ and sk-ant- patterns only on word boundary", () => {
+    const redact = createRedactor({});
+    expect(redact("x github_pat_AbC123_def y")).toBe("x *** y");
+    expect(redact("tok ghs_AbC123 fim")).toBe("tok *** fim");
+    expect(redact("k sk-ant-api03-AbC_d-e fim")).toBe("k *** fim");
+    expect(redact("nonghs_abc")).toBe("nonghs_abc");
+  });
+
+  it("replaces tokens with regex metacharacters literally", () => {
+    const redact = createRedactor({ FRIDAY_AUTHOR_TOKEN: "a.b*c(" });
+    expect(redact("x a.b*c( y aXb")).toBe("x *** y aXb");
+  });
+});
+
+describe("withRedactedLog", () => {
+  it("wraps log and keeps log undefined when absent", () => {
+    const log = vi.fn();
+    const wrapped = withRedactedLog({ env: { FRIDAY_AUTHOR_TOKEN: "t0k3n" }, log });
+    wrapped.log?.("Bearer t0k3n");
+    expect(log).toHaveBeenCalledWith("Bearer ***");
+
+    const bare = withRedactedLog({ env: { FRIDAY_AUTHOR_TOKEN: "t0k3n" } });
+    expect("log" in bare).toBe(false);
+    expect(log).toHaveBeenCalledTimes(1);
+  });
+});
