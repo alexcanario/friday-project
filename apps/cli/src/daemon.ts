@@ -1,6 +1,6 @@
 import { isAbsolute, join } from "node:path";
 import { toAgentRunOptions, type AgentRunOptions, type WorktreeManager } from "@friday/application";
-import { composeDaemon, type Clock, type Daemon } from "@friday/daemon";
+import { composeDaemon, type Clock, type Daemon, type SpecialistCompose } from "@friday/daemon";
 import {
   GitWorktreeManager,
   loadFactoryConfig,
@@ -20,6 +20,7 @@ export type DaemonDeps = {
   clock?: Clock;
   onSignal?: (handler: () => void) => void;
   exit?: (code: number) => void;
+  log?: (message: string) => void;
 };
 
 const USAGE = "Uso: friday daemon\n";
@@ -53,6 +54,19 @@ function judgeAgentsOf(
   const strong = loaded.agents["judge-strong"];
   if (judge === undefined || strong === undefined) return null;
   return { judge: toAgentRunOptions(judge), "judge-strong": toAgentRunOptions(strong) };
+}
+
+/** Reads the backend card of the central registry as the specialist option; null when missing. */
+export function specialistComposeOf(
+  loaded: Extract<ReturnType<typeof loadFactoryConfig>, { ok: true }>,
+): SpecialistCompose | null {
+  const card = loaded.agents["backend"];
+  return card === undefined ? null : { agent: toAgentRunOptions(card) };
+}
+
+/** The injected log writer, or stderr by default. */
+function logOf(deps: DaemonDeps): (message: string) => void {
+  return deps.log ?? ((message: string) => void process.stderr.write(`${message}\n`));
 }
 
 /** Starts the ticker; if it throws, releases the lock and database before rethrowing. */
@@ -119,6 +133,8 @@ export async function startDaemon(deps: DaemonDeps): Promise<Result> {
   if (!triage.ok) return fail("A ficha triage não está no registro central.\n");
   const qa = qaComposeOf(loaded);
   if (qa === null) return fail("A ficha qa não está no registro central.\n");
+  const specialist = specialistComposeOf(loaded);
+  if (specialist === null) return fail("A ficha backend não está no registro central.\n");
   const paths = daemonPaths({ env, homeDir, repository });
   try {
     const createWorktrees =
@@ -135,6 +151,8 @@ export async function startDaemon(deps: DaemonDeps): Promise<Result> {
       clock: deps.clock ?? realClock,
       triage: triage.agent,
       qa,
+      specialist,
+      log: logOf(deps),
       judge: {
         agents: judgeAgents,
         input: (issueId) => judgeInputOf({ root: paths.root, repository, issueId }),
