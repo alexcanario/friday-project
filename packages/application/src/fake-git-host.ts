@@ -1,15 +1,19 @@
 import type { GitHost } from "./git-host.ts";
 
-export class FakeGitHost implements GitHost {
-  readonly pushes: Array<{ worktree: string; branch: string; commit: string }> = [];
-  readonly #fail: Error | undefined;
+type PushRequest = Parameters<GitHost["push"]>[0];
 
-  constructor(options?: { fail?: Error }) {
+export class FakeGitHost implements GitHost {
+  readonly pushes: PushRequest[] = [];
+  readonly #fail: Error | undefined;
+  readonly #sha: string;
+
+  constructor(options?: { fail?: Error; sha?: string }) {
     this.#fail = options?.fail;
+    this.#sha = options?.sha ?? "0".repeat(40);
   }
 
-  push(request: { worktree: string; branch: string; commit: string }): Promise<void> {
+  push(request: PushRequest): Promise<{ sha: string }> {
     this.pushes.push(request);
-    return this.#fail ? Promise.reject(this.#fail) : Promise.resolve();
+    return this.#fail ? Promise.reject(this.#fail) : Promise.resolve({ sha: this.#sha });
   }
 }

@@ -1,34 +1,19 @@
-import { execFileSync } from "node:child_process";
-import {
-  chmodSync,
-  existsSync,
-  mkdirSync,
-  mkdtempSync,
-  readFileSync,
-  rmSync,
-  writeFileSync,
-} from "node:fs";
-import { tmpdir } from "node:os";
+import { chmodSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { GitCliHost } from "../src/index.ts";
+import { git, makeRepoFixture } from "./git-cli-host-fixture.ts";
 
 const TOKEN = "ghs_marker_token";
 const B64 = Buffer.from(`x-access-token:${TOKEN}`).toString("base64");
 const SHA = "a".repeat(40);
-const IDENT = {
-  GIT_AUTHOR_NAME: "t",
-  GIT_AUTHOR_EMAIL: "t@example.com",
-  GIT_COMMITTER_NAME: "t",
-  GIT_COMMITTER_EMAIL: "t@example.com",
-};
 // On win32, libuv (Node's process spawner) re-adds these from the parent environment to every child.
 const WIN_INJECTED =
   process.platform === "win32"
     ? "|HOMEDRIVE|HOMEPATH|LOGONSERVER|SYSTEMDRIVE|USERDOMAIN|USERNAME|WINDIR"
     : "";
 const ALLOWED = new RegExp(
-  `^(PATH|HOME|USERPROFILE|SYSTEMROOT|TEMP|TMP|LANG|GIT_TERMINAL_PROMPT|GIT_CONFIG_COUNT|GIT_CONFIG_KEY_[0-9]+|GIT_CONFIG_VALUE_[0-9]+${WIN_INJECTED})$`,
+  `^(PATH|HOME|USERPROFILE|SYSTEMROOT|TEMP|TMP|LANG|GIT_TERMINAL_PROMPT|GIT_CONFIG_NOSYSTEM|GIT_ATTR_NOSYSTEM|GIT_WORK_TREE|GIT_CONFIG_COUNT|GIT_CONFIG_KEY_[0-9]+|GIT_CONFIG_VALUE_[0-9]+${WIN_INJECTED})$`,
 );
 
 interface Call {
@@ -42,19 +27,8 @@ let wt: string;
 let mirror: string;
 let targetUrl: string;
 
-function git(cwd: string, ...args: string[]): string {
-  return execFileSync("git", args, {
-    cwd,
-    env: { ...process.env, ...IDENT },
-    encoding: "utf8",
-  }).trim();
-}
-
-function commitFile(name: string): string {
+function editFile(name: string): void {
   writeFileSync(join(wt, `${name}.txt`), name);
-  git(wt, "add", "-A");
-  git(wt, "commit", "-q", "-m", name);
-  return git(wt, "rev-parse", "HEAD");
 }
 
 function fakeGit(): { bin: string; log: string } {
@@ -67,6 +41,9 @@ import { appendFileSync, mkdirSync } from "node:fs";
 const argv = process.argv.slice(2);
 appendFileSync(${JSON.stringify(log)}, JSON.stringify({ argv, env: process.env }) + "\\n");
 if (argv[0] === "init") mkdirSync(argv[3], { recursive: true });
+if (argv[0] === "config") process.exit(1);
+if (argv[0] === "diff-index") process.exit(1);
+if (argv[0] === "rev-parse") process.stdout.write(${JSON.stringify(SHA)} + "\\n");
 `,
   );
   chmodSync(bin, 0o755);
@@ -91,23 +68,22 @@ function host(env: Record<string, string | undefined>, gitBinary?: string): GitC
 }
 
 async function runFake(env: Record<string, string>): Promise<[Call, Call]> {
-  mkdirSync(mirror);
-  writeFileSync(join(mirror, "HEAD"), "ref: refs/heads/main\n");
-  const { bin, log } = fakeGit();
-  await host(env, bin).push({ worktree: wt, branch: "friday/182-x", commit: SHA });
-  const [fetchCall, pushCall] = calls(log);
+  const all = await runFakeAll(env);
+  const [fetchCall, pushCall] = all.slice(-2);
   if (fetchCall === undefined || pushCall === undefined) throw new Error("expected two calls");
   return [fetchCall, pushCall];
 }
 
+async function runFakeAll(env: Record<string, string>): Promise<Call[]> {
+  mkdirSync(mirror);
+  writeFileSync(join(mirror, "HEAD"), "ref: refs/heads/main\n");
+  const { bin, log } = fakeGit();
+  await host(env, bin).push({ worktree: wt, branch: "friday/182-x", message: "feat: x" });
+  return calls(log);
+}
+
 beforeEach(() => {
-  dir = mkdtempSync(join(tmpdir(), "git-cli-host-env-"));
-  remote = join(dir, "remote.git");
-  wt = join(dir, "wt");
-  mirror = join(dir, "mirror");
-  targetUrl = `file://${remote}`;
-  git(dir, "init", "--bare", "-q", remote);
-  git(dir, "init", "-q", wt);
+  ({ dir, remote, wt, mirror, targetUrl } = makeRepoFixture("git-cli-host-env-"));
 });
 
 afterEach(() => {
@@ -172,6 +148,16 @@ describe("GitCliHost environment allowlist", () => {
     }
   });
 
+  it("keeps the token out of the commit steps and of the errors", async () => {
+    const all = await runFakeAll({ PATH: "/usr/bin", FRIDAY_AUTHOR_TOKEN: TOKEN });
+    for (const c of all.slice(0, 5)) {
+      const text = JSON.stringify(c);
+      expect(text).not.toContain(TOKEN);
+      expect(text).not.toContain(B64);
+      expect(text).not.toContain("Authorization");
+    }
+  });
+
   it("keeps the token out of the fetch step", async () => {
     const [fetchCall, pushCall] = await runFake({
       PATH: "/usr/bin",
@@ -190,21 +176,28 @@ describe("GitCliHost environment allowlist", () => {
 
 describe("GitCliHost with a malicious worktree", () => {
   it("ignores inherited GIT_COMMON_DIR and object directory variables", async () => {
-    const c1 = commitFile("C1");
+    editFile("C1");
     const evil = join(dir, "evil-remote.git");
     git(dir, "init", "--bare", "-q", evil);
     git(wt, "config", `url.${evil}.insteadOf`, targetUrl);
     const env = {
       ...process.env,
       FRIDAY_AUTHOR_TOKEN: TOKEN,
-      GIT_COMMON_DIR: join(wt, ".git"),
-      GIT_OBJECT_DIRECTORY: join(wt, ".git", "objects"),
+      GIT_COMMON_DIR: git(wt, "rev-parse", "--path-format=absolute", "--git-common-dir"),
+      GIT_OBJECT_DIRECTORY: join(
+        git(wt, "rev-parse", "--path-format=absolute", "--git-common-dir"),
+        "objects",
+      ),
       GIT_ALTERNATE_OBJECT_DIRECTORIES: join(dir, "alt"),
       GIT_NAMESPACE: "evil",
-      GIT_INDEX_FILE: join(wt, ".git", "index"),
+      GIT_INDEX_FILE: join(wt, "..", "idx"),
     };
-    await host(env).push({ worktree: wt, branch: "friday/182-x", commit: c1 });
-    expect(git(remote, "rev-parse", "refs/heads/friday/182-x")).toBe(c1);
+    const { sha } = await host(env).push({
+      worktree: wt,
+      branch: "friday/182-x",
+      message: "feat: x",
+    });
+    expect(git(remote, "rev-parse", "refs/heads/friday/182-x")).toBe(sha);
     const list = git(dir, "--git-dir", mirror, "config", "--local", "--list");
     expect(list).not.toContain(TOKEN);
     expect(list).not.toContain(B64);
@@ -214,7 +207,7 @@ describe("GitCliHost with a malicious worktree", () => {
   });
 
   it("runs no agent command when fetching from a malicious worktree", async () => {
-    const c1 = commitFile("C1");
+    editFile("C1");
     const marker = join(dir, "marker");
     const script = join(dir, "evil.sh");
     writeFileSync(script, `#!/bin/sh\necho ran >> ${marker}\n`);
@@ -222,7 +215,10 @@ describe("GitCliHost with a malicious worktree", () => {
     const hooksDir = join(dir, "evil-hooks");
     mkdirSync(hooksDir);
     for (const name of ["pre-push", "reference-transaction", "post-checkout", "pre-commit"]) {
-      for (const base of [hooksDir, join(wt, ".git", "hooks")]) {
+      for (const base of [
+        hooksDir,
+        join(git(wt, "rev-parse", "--path-format=absolute", "--git-common-dir"), "hooks"),
+      ]) {
         writeFileSync(join(base, name), `#!/bin/sh\necho ${name} >> ${marker}\n`);
         chmodSync(join(base, name), 0o755);
       }
@@ -233,8 +229,12 @@ describe("GitCliHost with a malicious worktree", () => {
     git(wt, "config", "core.hooksPath", hooksDir);
     git(wt, "config", `url.${join(dir, "evil-remote.git")}.insteadOf`, wt);
     const env = { ...process.env, FRIDAY_AUTHOR_TOKEN: TOKEN };
-    await host(env).push({ worktree: wt, branch: "friday/182-x", commit: c1 });
-    expect(git(remote, "rev-parse", "refs/heads/friday/182-x")).toBe(c1);
+    const { sha } = await host(env).push({
+      worktree: wt,
+      branch: "friday/182-x",
+      message: "feat: x",
+    });
+    expect(git(remote, "rev-parse", "refs/heads/friday/182-x")).toBe(sha);
     expect(existsSync(marker)).toBe(false);
   });
 

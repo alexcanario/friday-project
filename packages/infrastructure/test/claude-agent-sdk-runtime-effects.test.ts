@@ -23,7 +23,6 @@ const RUN: EffectsRun = {
   worktree: "/w",
   getPullRequest: () => 7,
 };
-const SHA = "a".repeat(40);
 const MESSAGES = [init(["Read", "StructuredOutput"]), result()] as SDKMessage[];
 
 type Input = Parameters<typeof createFridayMcpServer>[0];
@@ -101,7 +100,7 @@ describe("ClaudeAgentSdkRuntime effect tools", () => {
     const s = setup(async (c) => {
       const h = c.handlers;
       return [
-        await h.git_push!({ branch: "friday/96-x", commit: SHA }),
+        await h.git_push!({ branch: "friday/96-x", message: "m" }),
         await h.pr_create!({ title: "t", body: "b" }),
         await h.pr_diff!({}),
         await h.issue_comment!({ body: "c" }),
@@ -114,7 +113,7 @@ describe("ClaudeAgentSdkRuntime effect tools", () => {
     const outs = s.calls[0]!.value as Array<{ isError?: boolean }>;
     expect(outs).toHaveLength(4);
     for (const o of outs) expect(o.isError).toBeUndefined();
-    expect(s.gitHost.pushes).toEqual([{ worktree: "/w", branch: "friday/96-x", commit: SHA }]);
+    expect(s.gitHost.pushes).toEqual([{ worktree: "/w", branch: "friday/96-x", message: "m" }]);
     expect(s.github.calls).toEqual([
       {
         method: "createPullRequest",
@@ -167,7 +166,7 @@ describe("ClaudeAgentSdkRuntime effect tools", () => {
 
   it("reads the issue state and the pull request on every call", async () => {
     const s = setup(async (c) => {
-      return c.handlers.git_push!({ branch: "friday/96-x", commit: SHA });
+      return c.handlers.git_push!({ branch: "friday/96-x", message: "m" });
     });
     const runtime = new ClaudeAgentSdkRuntime({ ...s.deps, github: s.github, gitHost: s.gitHost });
     await runtime.run(request({ state: "InReview" }));

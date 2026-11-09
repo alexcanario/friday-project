@@ -3,29 +3,21 @@ import {
   chmodSync,
   existsSync,
   mkdirSync,
-  mkdtempSync,
   readFileSync,
   rmSync,
   symlinkSync,
   writeFileSync,
 } from "node:fs";
-import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { GitCliHost } from "../src/index.ts";
+import { git, makeRepoFixture } from "./git-cli-host-fixture.ts";
 
 const TOKEN = "ghs_marker_token";
 const B64 = Buffer.from("x-access-token:ghs_marker_token").toString("base64");
 const HEADER = "Authorization: basic " + B64;
 const SHA = "a".repeat(40);
 const BASE_ENV = { ...process.env, FRIDAY_AUTHOR_TOKEN: TOKEN };
-const IDENT = {
-  GIT_AUTHOR_NAME: "t",
-  GIT_AUTHOR_EMAIL: "t@example.com",
-  GIT_COMMITTER_NAME: "t",
-  GIT_COMMITTER_EMAIL: "t@example.com",
-};
-
 interface Call {
   argv: string[];
   cwd: string;
@@ -38,23 +30,13 @@ let wt: string;
 let mirror: string;
 let targetUrl: string;
 
-function git(cwd: string, ...args: string[]): string {
-  return execFileSync("git", args, {
-    cwd,
-    env: { ...process.env, ...IDENT },
-    encoding: "utf8",
-  }).trim();
+function edit(name: string, content = name): void {
+  writeFileSync(join(wt, `${name}.txt`), content);
 }
 
-function commit(msg: string, orphan = false): string {
-  if (orphan) git(wt, "checkout", "--orphan", `o-${msg}`);
-  writeFileSync(join(wt, `${msg}.txt`), msg);
-  git(wt, "add", "-A");
-  git(wt, "commit", "-q", "-m", msg);
-  return git(wt, "rev-parse", "HEAD");
-}
+type FakeMode = "ok" | "push-fails" | "fetch-fails" | "commit-fails" | "filters" | "no-changes";
 
-function fakeGit(mode: "ok" | "push-fails" | "fetch-fails" = "ok"): { bin: string; log: string } {
+function fakeGit(mode: FakeMode = "ok"): { bin: string; log: string } {
   const log = join(dir, "calls.jsonl");
   const bin = join(dir, "fake-git.mjs");
   writeFileSync(
@@ -65,11 +47,22 @@ const argv = process.argv.slice(2);
 appendFileSync(${JSON.stringify(log)}, JSON.stringify({ argv, cwd: process.cwd(), env: process.env }) + "\\n");
 if (argv[0] === "init") mkdirSync(argv[3], { recursive: true });
 const mode = ${JSON.stringify(mode)};
-if (mode === "push-fails" && argv.includes("push")) {
+const sub = argv.find((a) => ["config", "add", "diff-index", "commit", "rev-parse", "fetch", "push"].includes(a));
+if (sub === "config") {
+  if (mode === "filters") process.stdout.write("filter.evil.clean x\\nfilter.evil.process y\\n");
+  else process.exit(1);
+}
+if (sub === "diff-index") process.exit(mode === "no-changes" ? 0 : 1);
+if (sub === "commit" && mode === "commit-fails") {
+  process.stderr.write("boom ${TOKEN}\\n");
+  process.exit(1);
+}
+if (sub === "rev-parse") process.stdout.write(${JSON.stringify(SHA)} + "\\n");
+if (mode === "push-fails" && sub === "push") {
   process.stderr.write("denied ${TOKEN} ${HEADER}\\n");
   process.exit(1);
 }
-if (mode === "fetch-fails" && argv.includes("fetch")) {
+if (mode === "fetch-fails" && sub === "fetch") {
   process.stderr.write("denied ${TOKEN}\\n");
   process.exit(1);
 }
@@ -97,124 +90,183 @@ function host(extra: Record<string, unknown> = {}): GitCliHost {
 }
 
 beforeEach(() => {
-  dir = mkdtempSync(join(tmpdir(), "git-cli-host-"));
-  remote = join(dir, "remote.git");
-  wt = join(dir, "wt");
-  mirror = join(dir, "mirror");
-  targetUrl = `file://${remote}`;
-  git(dir, "init", "--bare", "-q", remote);
-  git(dir, "init", "-q", wt);
+  ({ dir, remote, wt, mirror, targetUrl } = makeRepoFixture("git-cli-host-"));
 });
 
 afterEach(() => {
   rmSync(dir, { recursive: true, force: true });
 });
 
+const REQ = { worktree: "", branch: "friday/345-x", message: "feat: x" };
+const IDENTITY = "friday-author|friday-author@users.noreply.github.com";
+
+function configPairs(env: Record<string, string>): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (let i = 0; i < Number(env.GIT_CONFIG_COUNT ?? 0); i++) {
+    out[env[`GIT_CONFIG_KEY_${i}`] ?? ""] = env[`GIT_CONFIG_VALUE_${i}`] ?? "";
+  }
+  return out;
+}
+
 describe("GitCliHost", () => {
-  it("pushes the commit through the mirror to a local remote and can repeat", async () => {
-    const c1 = commit("C1");
+  it("commits the changed worktree and pushes that commit", async () => {
+    edit("c1");
+    const { sha } = await host().push({ ...REQ, worktree: wt });
+    expect(sha).toMatch(/^[0-9a-f]{40}$/);
+    expect(git(wt, "rev-parse", "HEAD")).toBe(sha);
+    expect(git(remote, "rev-parse", "refs/heads/friday/345-x")).toBe(sha);
+    expect(git(wt, "log", "-1", "--format=%s")).toBe("feat: x");
+    expect(git(wt, "show", `${sha}:c1.txt`)).toBe("c1");
+  });
+
+  it("commits with the fixed friday-author identity", async () => {
+    git(wt, "config", "user.name", "other");
+    git(wt, "config", "user.email", "other@example.com");
+    edit("c1");
+    const { sha } = await host().push({ ...REQ, worktree: wt });
+    const who = git(wt, "show", "-s", "--format=%an|%ae|%cn|%ce", sha);
+    expect(who).toBe(`${IDENTITY}|${IDENTITY}`);
+  });
+
+  it("pushes HEAD again without creating a commit when nothing changed", async () => {
+    edit("c1");
     const h = host();
-    await h.push({ worktree: wt, branch: "friday/152-x", commit: c1 });
-    expect(git(remote, "rev-parse", "refs/heads/friday/152-x")).toBe(c1);
-    await h.push({ worktree: wt, branch: "friday/152-x", commit: c1 });
-    expect(git(remote, "rev-parse", "refs/heads/friday/152-x")).toBe(c1);
+    const first = await h.push({ ...REQ, worktree: wt });
+    const count = git(wt, "rev-list", "--count", "HEAD");
+    const second = await h.push({ ...REQ, worktree: wt });
+    expect(second.sha).toBe(first.sha);
+    expect(git(wt, "rev-list", "--count", "HEAD")).toBe(count);
+    expect(git(remote, "rev-parse", "refs/heads/friday/345-x")).toBe(first.sha);
   });
 
   it("rejects a push that is not a fast-forward", async () => {
-    const c1 = commit("C1");
+    edit("c1");
     const h = host();
-    await h.push({ worktree: wt, branch: "friday/152-x", commit: c1 });
-    const c2 = commit("C2", true);
-    await expect(h.push({ worktree: wt, branch: "friday/152-x", commit: c2 })).rejects.toThrow(
-      /^Falha no git push: /,
-    );
-    expect(git(remote, "rev-parse", "refs/heads/friday/152-x")).toBe(c1);
+    const { sha } = await h.push({ ...REQ, worktree: wt });
+    git(wt, "checkout", "-q", "--orphan", "o");
+    edit("c2");
+    git(wt, "add", "-A");
+    git(wt, "commit", "-q", "-m", "orphan");
+    await expect(h.push({ ...REQ, worktree: wt })).rejects.toThrow(/^Falha no git push: /);
+    expect(git(remote, "rev-parse", "refs/heads/friday/345-x")).toBe(sha);
   });
 
-  it("fetches without token and pushes from the mirror with the expected argv, cwd and env", async () => {
+  it("runs config, add, diff-index, commit, rev-parse, fetch, push in order with the expected cwd and env", async () => {
     mkdirSync(mirror);
     writeFileSync(join(mirror, "HEAD"), "ref: refs/heads/main\n");
     const { bin, log } = fakeGit();
-    await host({ gitBinary: bin }).push({ worktree: wt, branch: "friday/152-x", commit: SHA });
-    const [c1, c2, ...rest] = calls(log);
-    expect(rest).toHaveLength(0);
-    expect(c1?.argv).toEqual(["--git-dir", mirror, "fetch", "--no-tags", "--quiet", wt, SHA]);
-    expect(c1?.cwd).toBe(mirror);
-    expect(c1?.env.GIT_CONFIG_COUNT).toBe("1");
-    expect(c1?.env.GIT_CONFIG_KEY_0).toBe("core.hooksPath");
-    expect(c1?.env.GIT_CONFIG_VALUE_0).toBe("/dev/null");
-    expect(c1?.env.GIT_TERMINAL_PROMPT).toBe("0");
-    expect(c2?.argv).toEqual([
-      "--git-dir",
-      mirror,
-      "push",
-      "--no-verify",
-      targetUrl,
-      `${SHA}:refs/heads/friday/152-x`,
+    const res = await host({ gitBinary: bin }).push({ ...REQ, worktree: wt });
+    expect(res).toEqual({ sha: SHA });
+    const all = calls(log);
+    expect(all.map((c) => c.argv)).toEqual([
+      ["config", "--get-regexp", "^filter\\."],
+      ["add", "-A"],
+      ["diff-index", "--cached", "--quiet", "HEAD"],
+      [
+        ...[
+          "-c",
+          "user.name=friday-author",
+          "-c",
+          "user.email=friday-author@users.noreply.github.com",
+        ],
+        ...[
+          "-c",
+          "author.name=friday-author",
+          "-c",
+          "author.email=friday-author@users.noreply.github.com",
+        ],
+        ...["-c", "committer.name=friday-author"],
+        ...["-c", "committer.email=friday-author@users.noreply.github.com"],
+        ...["commit", "--no-verify", "-m", "feat: x"],
+      ],
+      ["rev-parse", "HEAD"],
+      ["--git-dir", mirror, "fetch", "--no-tags", "--quiet", wt, SHA],
+      ["--git-dir", mirror, "push", "--no-verify", targetUrl, `${SHA}:refs/heads/friday/345-x`],
     ]);
-    expect(c2?.cwd).toBe(mirror);
-    expect(c2?.env.GIT_CONFIG_COUNT).toBe("2");
-    expect(c2?.env.GIT_CONFIG_KEY_0).toBe("http.https://github.com/.extraheader");
-    expect(c2?.env.GIT_CONFIG_VALUE_0).toBe(HEADER);
-    expect(c2?.env.GIT_CONFIG_KEY_1).toBe("core.hooksPath");
-    expect(c2?.env.GIT_CONFIG_VALUE_1).toBe("/dev/null");
-    expect(c2?.env.GIT_TERMINAL_PROMPT).toBe("0");
+    expect(all.map((c) => c.cwd)).toEqual([wt, wt, wt, wt, wt, mirror, mirror]);
+    for (const c of all.slice(0, 5)) {
+      expect(c.env.GIT_WORK_TREE).toBe(wt);
+      expect(c.env.GIT_CONFIG_NOSYSTEM).toBe("1");
+      expect(c.env.GIT_ATTR_NOSYSTEM).toBe("1");
+      expect(c.env.GIT_TERMINAL_PROMPT).toBe("0");
+      expect("FRIDAY_AUTHOR_TOKEN" in c.env).toBe(false);
+      expect(c.env.HOME).toBe(c.env.USERPROFILE);
+      expect(c.env.HOME).not.toBe(process.env.HOME);
+      expect(configPairs(c.env)).toMatchObject({
+        "core.hooksPath": "/dev/null",
+        "core.fsmonitor": "false",
+        "commit.gpgSign": "false",
+        "core.attributesFile": "",
+        "gc.auto": "0",
+        "maintenance.auto": "false",
+      });
+    }
+    const fetchEnv = all[5]?.env ?? {};
+    expect(fetchEnv.GIT_CONFIG_COUNT).toBe("1");
+    expect(fetchEnv.GIT_CONFIG_KEY_0).toBe("core.hooksPath");
+    expect(all[6]?.env.GIT_CONFIG_VALUE_0).toBe(HEADER);
+  });
+
+  it("neutralizes every filter driver reported by the worktree config", async () => {
+    const { bin, log } = fakeGit("filters");
+    await host({ gitBinary: bin }).push({ ...REQ, worktree: wt });
+    const [first, add] = calls(log);
+    expect(configPairs(first?.env ?? {})).not.toHaveProperty("filter.evil.clean");
+    expect(configPairs(add?.env ?? {})).toMatchObject({
+      "filter.evil.clean": "",
+      "filter.evil.process": "",
+      "filter.evil.required": "false",
+    });
+  });
+
+  it("skips the commit when the index has no changes and pushes the current HEAD", async () => {
+    const { bin, log } = fakeGit("no-changes");
+    const res = await host({ gitBinary: bin }).push({ ...REQ, worktree: wt });
+    expect(res.sha).toBe(SHA);
+    const subs = calls(log).map((c) => c.argv.find((a) => a === "commit"));
+    expect(subs).not.toContain("commit");
+  });
+
+  it("removes the temporary HOME on success and on failure", async () => {
+    const ok = fakeGit();
+    await host({ gitBinary: ok.bin }).push({ ...REQ, worktree: wt });
+    const home = calls(ok.log)[0]?.env.HOME ?? "";
+    expect(home).not.toBe("");
+    expect(existsSync(home)).toBe(false);
+    rmSync(ok.log);
+    const bad = fakeGit("commit-fails");
+    await expect(host({ gitBinary: bad.bin }).push({ ...REQ, worktree: wt })).rejects.toThrow(
+      /^Falha ao criar o commit: /,
+    );
+    const failedHome = calls(bad.log)[0]?.env.HOME ?? "";
+    expect(failedHome).not.toBe("");
+    expect(existsSync(failedHome)).toBe(false);
+  });
+
+  it("fetches without token and pushes from the mirror", async () => {
+    mkdirSync(mirror);
+    writeFileSync(join(mirror, "HEAD"), "ref: refs/heads/main\n");
+    const { bin, log } = fakeGit();
+    await host({ gitBinary: bin }).push({ ...REQ, worktree: wt });
+    const all = calls(log);
+    expect(all).toHaveLength(7);
+    expect(all[5]?.env.GIT_TERMINAL_PROMPT).toBe("0");
+    expect(all[6]?.env.GIT_CONFIG_COUNT).toBe("2");
+    expect(all[6]?.env.GIT_CONFIG_KEY_1).toBe("core.hooksPath");
   });
 
   it("initializes a missing mirror", async () => {
     const { bin, log } = fakeGit();
-    await host({ gitBinary: bin }).push({ worktree: wt, branch: "friday/152-x", commit: SHA });
+    await host({ gitBinary: bin }).push({ ...REQ, worktree: wt });
     const all = calls(log);
-    expect(all).toHaveLength(3);
-    expect(all[0]?.argv).toEqual(["init", "--bare", "--quiet", mirror]);
-  });
-
-  it("keeps the token out of argv, of the fetch step and of inherited git variables", async () => {
-    mkdirSync(mirror);
-    writeFileSync(join(mirror, "HEAD"), "ref: refs/heads/main\n");
-    const { bin, log } = fakeGit();
-    const env = {
-      ...BASE_ENV,
-      GIT_CONFIG_PARAMETERS: "'x=y'",
-      GIT_ASKPASS: "/bin/x",
-      GIT_CONFIG_GLOBAL: "/tmp/g",
-      GIT_SSH_COMMAND: "ssh -v",
-      GIT_DIR: "/tmp/d",
-      GIT_TRACE: "1",
-      GIT_TRACE_CURL: "1",
-      GIT_CONFIG_KEY_5: "x",
-    };
-    await host({ gitBinary: bin, env }).push({ worktree: wt, branch: "friday/152-x", commit: SHA });
-    const all = calls(log);
-    expect(all).toHaveLength(2);
-    for (const c of all) {
-      for (const a of c.argv) {
-        expect(a).not.toContain(TOKEN);
-        expect(a).not.toContain(B64);
-      }
-      expect("FRIDAY_AUTHOR_TOKEN" in c.env).toBe(false);
-      for (const k of [
-        "GIT_CONFIG_PARAMETERS",
-        "GIT_ASKPASS",
-        "GIT_CONFIG_GLOBAL",
-        "GIT_SSH_COMMAND",
-        "GIT_DIR",
-        "GIT_TRACE",
-        "GIT_TRACE_CURL",
-        "GIT_CONFIG_KEY_5",
-      ]) {
-        expect(k in c.env).toBe(false);
-      }
-    }
-    const fetchText = JSON.stringify(all[0]);
-    expect(fetchText).not.toContain(TOKEN);
-    expect(fetchText).not.toContain(B64);
+    expect(all).toHaveLength(8);
+    expect(all[5]?.argv).toEqual(["init", "--bare", "--quiet", mirror]);
   });
 
   it("fails without running git when the token variable is missing", async () => {
     const { bin, log } = fakeGit();
     const msg = "A variável de ambiente FRIDAY_AUTHOR_TOKEN não está definida.";
-    const req = { worktree: wt, branch: "friday/152-x", commit: SHA };
+    const req = { ...REQ, worktree: wt };
     await expect(host({ gitBinary: bin, env: {} }).push(req)).rejects.toThrow(msg);
     await expect(
       host({ gitBinary: bin, env: { FRIDAY_AUTHOR_TOKEN: "  " } }).push(req),
@@ -241,32 +293,35 @@ describe("GitCliHost", () => {
     expect(() => new GitCliHost({ ...base, targetUrl: "file:///tmp/r.git" })).not.toThrow();
   });
 
-  it("rejects an invalid branch, commit or worktree before running git", async () => {
+  it("rejects an invalid message, branch or worktree before running git", async () => {
     const { bin, log } = fakeGit();
     const h = host({ gitBinary: bin });
-    const ok = { worktree: wt, branch: "friday/152-x", commit: SHA };
+    const ok = { ...REQ, worktree: wt };
     const link = join(dir, "link");
     symlinkSync(dir, link);
     const bad = [
-      ...["develop", "main", "--force", "friday/152-X", "friday/x", "feature/152-x", ""].map(
-        (branch) => ({ ...ok, branch }),
-      ),
-      ...["HEAD", "--force", "A".repeat(40), "a".repeat(39), ""].map((commit) => ({
-        ...ok,
-        commit,
-      })),
+      ...[
+        "develop",
+        "main",
+        "--force",
+        "HEAD",
+        "friday/152-X",
+        "friday/x",
+        "feature/152-x",
+        "",
+      ].map((branch) => ({ ...ok, branch })),
+      ...["", "   "].map((message) => ({ ...ok, message })),
+      { ...ok, commit: SHA },
       ...["", "relative/wt", "-x", mirror, dir, link].map((worktree) => ({ ...ok, worktree })),
     ];
     for (const req of bad) await expect(h.push(req)).rejects.toThrow(Error);
     expect(existsSync(log)).toBe(false);
-    await expect(h.push({ ...ok, branch: "friday/152" })).resolves.toBeUndefined();
-    expect(existsSync(log)).toBe(true);
   });
 
   it("redacts the token from the fetch and push errors", async () => {
     mkdirSync(mirror);
     writeFileSync(join(mirror, "HEAD"), "ref: refs/heads/main\n");
-    const req = { worktree: wt, branch: "friday/152-x", commit: SHA };
+    const req = { ...REQ, worktree: wt };
     const pushFail = fakeGit("push-fails");
     const err = (await host({ gitBinary: pushFail.bin })
       .push(req)
@@ -284,19 +339,11 @@ describe("GitCliHost", () => {
       .catch((e: unknown) => e)) as Error;
     expect(err2.message.startsWith("Falha ao buscar o commit no espelho: ")).toBe(true);
     expect(err2.message).not.toContain(TOKEN);
-    expect(calls(fetchFail.log)).toHaveLength(1);
-  });
-
-  it("rejects a commit that does not exist in the worktree", async () => {
-    commit("C1");
-    await expect(
-      host().push({ worktree: wt, branch: "friday/152-y", commit: "b".repeat(40) }),
-    ).rejects.toThrow(/^Falha ao buscar o commit no espelho: /);
-    expect(() => git(remote, "rev-parse", "--verify", "refs/heads/friday/152-y")).toThrow();
+    expect(calls(fetchFail.log)).toHaveLength(6);
   });
 
   it("ignores the malicious config and hooks of the worktree", async () => {
-    const c1 = commit("C1");
+    edit("C1");
     const marker = join(dir, "marker.txt");
     const script = join(dir, "evil.sh");
     writeFileSync(script, `#!/bin/sh\nenv >> ${marker}\n`);
@@ -307,7 +354,7 @@ describe("GitCliHost", () => {
       writeFileSync(join(hooks, name), `#!/bin/sh\necho ${name} >> ${marker}\n`);
       chmodSync(join(hooks, name), 0o755);
     }
-    const cfg = join(wt, ".git", "config");
+    const cfg = join(git(wt, "rev-parse", "--path-format=absolute", "--git-common-dir"), "config");
     const set = (k: string, v: string): void => {
       execFileSync("git", ["config", "--file", cfg, k, v]);
     };
@@ -321,8 +368,8 @@ describe("GitCliHost", () => {
       set(k, script);
     }
     set("core.hooksPath", hooks);
-    await host().push({ worktree: wt, branch: "friday/152-z", commit: c1 });
-    expect(git(remote, "rev-parse", "refs/heads/friday/152-z")).toBe(c1);
+    const { sha } = await host().push({ ...REQ, worktree: wt });
+    expect(git(remote, "rev-parse", "refs/heads/friday/345-x")).toBe(sha);
     expect(existsSync(marker)).toBe(false);
     const list = git(dir, "--git-dir", mirror, "config", "--list");
     expect(list).not.toContain(TOKEN);

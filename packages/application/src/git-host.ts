@@ -1,3 +1,4 @@
 export interface GitHost {
-  push(request: { worktree: string; branch: string; commit: string }): Promise<void>;
+  /** Commits the worktree changes (if any) as friday-author, pushes, and returns the commit SHA. */
+  push(request: { worktree: string; branch: string; message: string }): Promise<{ sha: string }>;
 }
