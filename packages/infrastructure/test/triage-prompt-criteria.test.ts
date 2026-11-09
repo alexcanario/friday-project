@@ -29,7 +29,9 @@ describe("triage prompt criteria format", () => {
     const example = jsonExample();
     expect(example.criteria[1]).toMatchObject({ index: 2, proof: { kind: "browser" } });
     expect(criteriaSchema.safeParse(example).success).toBe(true);
-    const sentence = prompt.split(/(?<=[.!?])\s+|\n/).find((s) => /\bwhen\b|\bonly\b/i.test(s) && s.includes("browser"));
+    const sentence = prompt
+      .split(/(?<=[.!?])\s+|\n/)
+      .find((s) => /\bwhen\b|\bonly\b/i.test(s) && s.includes("browser"));
     expect(sentence).toBeDefined();
   });
 
@@ -37,9 +39,7 @@ describe("triage prompt criteria format", () => {
     expect(
       criteriaSchema.safeParse({ criteria: ["Critério: o README contém essa linha."] }).success,
     ).toBe(false);
-    expect(
-      criteriaSchema.safeParse({ criteria: [{ index: 1, claim: "x" }] }).success,
-    ).toBe(false);
+    expect(criteriaSchema.safeParse({ criteria: [{ index: 1, claim: "x" }] }).success).toBe(false);
     expect(
       criteriaSchema.safeParse({
         criteria: [{ index: 0, claim: "x", proof: { kind: "command", command: "true" } }],
