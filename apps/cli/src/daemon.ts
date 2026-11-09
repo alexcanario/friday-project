@@ -1,6 +1,12 @@
 import { isAbsolute, join } from "node:path";
 import { toAgentRunOptions, type AgentRunOptions, type WorktreeManager } from "@friday/application";
-import { composeDaemon, type Clock, type Daemon, type SpecialistCompose } from "@friday/daemon";
+import {
+  composeDaemon,
+  createRedactor,
+  type Clock,
+  type Daemon,
+  type SpecialistCompose,
+} from "@friday/daemon";
 import {
   GitWorktreeManager,
   loadFactoryConfig,
@@ -64,6 +70,13 @@ export function specialistComposeOf(
   return card === undefined ? null : { agent: toAgentRunOptions(card) };
 }
 
+/** Names of the token variables configured in pull_requests; empty when the config is not loaded. */
+function tokenEnvNamesOf(loaded: ReturnType<typeof loadFactoryConfig>): string[] {
+  if (!loaded.ok) return [];
+  const { author_token_env: author, review_token_env: review } = loaded.config.pull_requests;
+  return [author, review].filter((name): name is string => name !== undefined);
+}
+
 /** The injected log writer, or stderr by default. */
 function logOf(deps: DaemonDeps): (message: string) => void {
   return deps.log ?? ((message: string) => void process.stderr.write(`${message}\n`));
@@ -85,6 +98,7 @@ function untilSignal(
   stop: () => void,
   onSignal: (handler: () => void) => void,
   exit: (code: number) => void,
+  redact: (text: string) => string,
 ): Promise<Result> {
   return new Promise<Result>((resolve) => {
     let signals = 0;
@@ -109,7 +123,7 @@ function untilSignal(
         .catch((error: unknown) => {
           if (forced) return;
           daemon.release();
-          resolve(fail(`${error instanceof Error ? error.message : String(error)}\n`));
+          resolve(fail(`${redact(error instanceof Error ? error.message : String(error))}\n`));
         });
     });
   });
@@ -118,11 +132,7 @@ function untilSignal(
 export async function startDaemon(deps: DaemonDeps): Promise<Result> {
   if (rootRefusal(deps.env)) return fail("A variável FRIDAY_HOME deve ser um caminho absoluto.\n");
   const { env, homeDir } = deps;
-  const root = daemonPaths({
-    env,
-    homeDir,
-    repository: { owner: "", name: "" },
-  }).root;
+  const root = daemonPaths({ env, homeDir, repository: { owner: "", name: "" } }).root;
   const loaded = loadFactoryConfig(root);
   if (!loaded.ok) return fail("O factory.yaml está inválido ou ausente.\n");
   const repository = loaded.config.repository;
@@ -136,6 +146,7 @@ export async function startDaemon(deps: DaemonDeps): Promise<Result> {
   const specialist = specialistComposeOf(loaded);
   if (specialist === null) return fail("A ficha backend não está no registro central.\n");
   const paths = daemonPaths({ env, homeDir, repository });
+  const redact = createRedactor(env, tokenEnvNamesOf(loaded));
   try {
     const createWorktrees =
       deps.createWorktrees ?? ((d: GitWorktreeManagerDeps) => new GitWorktreeManager(d));
@@ -160,9 +171,9 @@ export async function startDaemon(deps: DaemonDeps): Promise<Result> {
     });
     const stop = startOrRelease(daemon);
     const exit = deps.exit ?? ((code: number) => process.exit(code));
-    return await untilSignal(daemon, stop, deps.onSignal ?? defaultOnSignal, exit);
+    return await untilSignal(daemon, stop, deps.onSignal ?? defaultOnSignal, exit, redact);
   } catch (error) {
-    return fail(`${error instanceof Error ? error.message : String(error)}\n`);
+    return fail(`${redact(error instanceof Error ? error.message : String(error))}\n`);
   }
 }
 
