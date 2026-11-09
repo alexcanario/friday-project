@@ -325,3 +325,33 @@ describe("runTriageStep", () => {
     expect(app.SPECIALIST_LABEL_PREFIX).toBe("specialist:");
   });
 });
+
+describe("runTriageStep criteria envelope", () => {
+  it("accepts criteria wrapped in a criteria envelope and returns the same list", async () => {
+    const s = setup([
+      finished({ specialist: "backend", reason: "x", criteria: { criteria: CRITERIA } }),
+    ]);
+    const out = await runTriageStep(s, makeInput());
+    expect(out.criteria).toEqual(CRITERIA);
+    expect(out.inputs.at(-1)).toEqual({ type: "SpecialistAssigned" });
+  });
+
+  it("holds with SchemaInvalid when criteria is free text, lacks proof, is out of order, or is a bad envelope", async () => {
+    const noProof = [{ index: 1, claim: "a" }];
+    const outOfOrder = [{ ...CRITERIA[0], index: 2 }, CRITERIA[1]];
+    const bad: unknown[] = [
+      "Critério: x",
+      noProof,
+      outOfOrder,
+      { criteria: [] },
+      { criteria: CRITERIA, extra: 1 },
+      { criteria: "x" },
+    ];
+    for (const criteria of bad) {
+      const s = setup([finished({ specialist: "backend", reason: "x", criteria })]);
+      const out = await runTriageStep(s, makeInput());
+      expect(out.criteria).toBeNull();
+      expect(out.inputs.at(-1)).toEqual({ type: "RunHeld", reason: "SchemaInvalid" });
+    }
+  });
+});
