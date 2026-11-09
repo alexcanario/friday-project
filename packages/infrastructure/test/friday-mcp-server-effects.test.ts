@@ -12,6 +12,7 @@ import { createFridayMcpServer } from "../src/index.ts";
 
 const ALL: EffectTool[] = ["git_push", "pr_create", "pr_diff", "issue_comment"];
 const SHA = "a".repeat(40);
+const ZERO = "0".repeat(40);
 const RUN = (pr: number | null = 7) => ({
   issue: 70,
   role: "specialist",
@@ -79,10 +80,10 @@ describe("effect tools", () => {
 
   it("calls the port once on valid input", async () => {
     const s = setup();
-    expect(await s.handlers.git_push!({ branch: "friday/70-x", commit: SHA })).toEqual(
-      text("200: push feito."),
+    expect(await s.handlers.git_push!({ branch: "friday/70-x", message: "m" })).toEqual(
+      text(`200: push feito: ${ZERO}.`),
     );
-    expect(s.gitHost.pushes).toEqual([{ worktree: "/w", branch: "friday/70-x", commit: SHA }]);
+    expect(s.gitHost.pushes).toEqual([{ worktree: "/w", branch: "friday/70-x", message: "m" }]);
     expect((await s.handlers.pr_create!({ title: "t", body: "b" })).isError).toBeUndefined();
     expect(await s.handlers.pr_diff!({})).toEqual(
       text(JSON.stringify({ files: [], diffBytes: 0 })),
@@ -104,10 +105,11 @@ describe("effect tools", () => {
     const s = setup();
     const bad: Array<[EffectTool, unknown]> = [
       ["git_push", {}],
-      ["git_push", { branch: "friday/70-x", commit: SHA, extra: 1 }],
-      ["git_push", { branch: "friday/99-y", commit: SHA }],
-      ["git_push", { branch: "friday/70-x", commit: "a".repeat(39) }],
-      ["git_push", { branch: "friday/70-x", commit: "A".repeat(40) }],
+      ["git_push", { branch: "friday/70-x", commit: SHA }],
+      ["git_push", { branch: "friday/70-x", message: "m", commit: SHA }],
+      ["git_push", { branch: "friday/70-x", message: "" }],
+      ["git_push", { branch: "friday/70-x", message: "m", extra: 1 }],
+      ["git_push", { branch: "friday/99-y", message: "m" }],
       ["pr_create", { title: "t" }],
       ["pr_diff", { x: 1 }],
       ["issue_comment", {}],
@@ -154,7 +156,7 @@ describe("effect tools", () => {
   it("returns 500 when the port fails and keeps serving", async () => {
     const fail = new Error("falha simulada");
     const host = setup({ gitHost: new FakeGitHost({ fail }) });
-    expect(await host.handlers.git_push!({ branch: "friday/70-x", commit: SHA })).toEqual(
+    expect(await host.handlers.git_push!({ branch: "friday/70-x", message: "m" })).toEqual(
       text("500: Falha ao executar git_push: falha simulada", true),
     );
     const gh = setup({ github: new FakeGitHubPort({ fail }) });
@@ -169,17 +171,18 @@ describe("effect tools", () => {
     );
     let first = true;
     class Once extends FakeGitHost {
-      override async push(r: Parameters<FakeGitHost["push"]>[0]): Promise<void> {
+      override async push(r: Parameters<FakeGitHost["push"]>[0]): Promise<{ sha: string }> {
         const failNow = first;
         first = false;
-        await super.push(r);
+        const res = await super.push(r);
         if (failNow) throw fail;
+        return res;
       }
     }
     const once = setup({ gitHost: new Once() });
-    const args = { branch: "friday/70-x", commit: SHA };
+    const args = { branch: "friday/70-x", message: "m" };
     expect((await once.handlers.git_push!(args)).isError).toBe(true);
-    expect(await once.handlers.git_push!(args)).toEqual(text("200: push feito."));
+    expect(await once.handlers.git_push!(args)).toEqual(text(`200: push feito: ${ZERO}.`));
   });
 
   it("returns the existing PR and allows a repeated push", async () => {
@@ -195,10 +198,55 @@ describe("effect tools", () => {
     expect(await fresh.handlers.pr_create!({ title: "t", body: "b" })).toEqual(
       text("200: PR #7 aberto."),
     );
-    const args = { branch: "friday/70-x", commit: SHA };
-    expect(await fresh.handlers.git_push!(args)).toEqual(text("200: push feito."));
-    expect(await fresh.handlers.git_push!(args)).toEqual(text("200: push feito."));
+    const args = { branch: "friday/70-x", message: "m" };
+    expect(await fresh.handlers.git_push!(args)).toEqual(text(`200: push feito: ${ZERO}.`));
+    expect(await fresh.handlers.git_push!(args)).toEqual(text(`200: push feito: ${ZERO}.`));
     expect(fresh.gitHost.pushes).toHaveLength(2);
+  });
+});
+
+describe("git_push commit flow", () => {
+  it("git_push commits and replies with the sha", async () => {
+    const s = setup({ gitHost: new FakeGitHost({ sha: SHA }) });
+    const res = await s.handlers.git_push!({ branch: "friday/70-x", message: "feat: x" });
+    expect(res).toEqual(text(`200: push feito: ${SHA}.`));
+    expect(s.gitHost.pushes).toEqual([
+      { worktree: "/w", branch: "friday/70-x", message: "feat: x" },
+    ]);
+  });
+
+  it("git_push rejects the old commit format and invalid input", async () => {
+    const s = setup();
+    const bad = [
+      { branch: "friday/70-x", commit: SHA },
+      {},
+      { branch: "friday/70-x", message: "" },
+      { branch: "friday/70-x", message: "m", extra: 1 },
+      { branch: "friday/99-y", message: "m" },
+    ];
+    for (const args of bad) {
+      expect(await s.handlers.git_push!(args)).toEqual(
+        text("422: Entrada inválida para git_push.", true),
+      );
+    }
+    expect(s.gitHost.pushes).toEqual([]);
+  });
+
+  it("git_push failure maps to 500 and can be repeated", async () => {
+    let first = true;
+    class Once extends FakeGitHost {
+      override push(r: Parameters<FakeGitHost["push"]>[0]): Promise<{ sha: string }> {
+        if (!first) return super.push(r);
+        first = false;
+        return Promise.reject(new Error("falha simulada"));
+      }
+    }
+    const s = setup({ gitHost: new Once({ sha: SHA }) });
+    const args = { branch: "friday/70-x", message: "m" };
+    expect(await s.handlers.git_push!(args)).toEqual(
+      text("500: Falha ao executar git_push: falha simulada", true),
+    );
+    expect(await s.handlers.git_push!(args)).toEqual(text(`200: push feito: ${SHA}.`));
   });
 });
 
@@ -221,7 +269,7 @@ describe("effect tools through the MCP server", () => {
     const made = setup();
     const push = await callViaMcp(made, "git_push", {
       branch: "friday/70-x",
-      commit: SHA,
+      message: "m",
       extra: 1,
     });
     expect(push.isError).toBe(true);
@@ -235,8 +283,8 @@ describe("effect tools through the MCP server", () => {
 
   it("still runs the effect on valid input through the MCP server", async () => {
     const made = setup();
-    const push = await callViaMcp(made, "git_push", { branch: "friday/70-x", commit: SHA });
-    expect(push.content[0]!.text).toBe("200: push feito.");
+    const push = await callViaMcp(made, "git_push", { branch: "friday/70-x", message: "m" });
+    expect(push.content[0]!.text).toBe(`200: push feito: ${ZERO}.`);
     expect(made.gitHost.pushes).toHaveLength(1);
   });
 });
