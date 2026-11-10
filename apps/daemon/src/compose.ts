@@ -2,10 +2,8 @@ import { homedir } from "node:os";
 import type { AgentRuntime, GitHost, GitHubPort, WorktreeManager } from "@friday/application";
 import {
   GitCliHost,
-  GitHubRestAdapter,
   createBreakerStateRepository,
   createEventStore,
-  createGitHubClient,
   createIssueRepository,
   createLedgerRepository,
   createRunRepository,
@@ -14,6 +12,7 @@ import {
   type FridayDatabase,
   type GitCliHostOptions,
 } from "@friday/infrastructure";
+import { authWiringOf, defaultGitHub } from "./compose-auth.ts";
 import { createApprovalDeps } from "./approval-compose.ts";
 import { createBreaker, type Breaker } from "./breaker.ts";
 import {
@@ -62,6 +61,14 @@ export interface ComposeOptions {
   now?: () => Date;
   log?: (message: string) => void;
   createGitHub?: (token: string, repo: Repo) => GitHubPort;
+  /** Author GitHub port that asks `auth` for the token on every request (`author_app`, D89). */
+  createGitHubWithAuth?: (auth: () => Promise<string>, repo: Repo) => GitHubPort;
+  /** Installation-token provider of the author App; defaults to `createInstallationTokenProvider`. */
+  createTokenProvider?: (input: {
+    appId: number;
+    installationId: number;
+    privateKeyPath: string;
+  }) => { getToken(): Promise<string> };
   /** Home directory used when FRIDAY_HOME is not set; defaults to os.homedir(). */
   homeDir?: string;
   createRuntime?: (deps: ClaudeAgentSdkRuntimeDeps) => AgentRuntime;
@@ -86,9 +93,6 @@ export interface Daemon {
   /** Releases the process lock and closes the database. */
   release(): void;
 }
-
-const defaultGitHub = (token: string, repo: Repo): GitHubPort =>
-  new GitHubRestAdapter(createGitHubClient(token), repo);
 
 /** Builds the breaker from the persisted state; unreadable state fails closed. */
 function buildBreaker(db: FridayDatabase, projectId: string, now: () => Date): Breaker {
@@ -232,14 +236,16 @@ async function assemble(
 
 /** Process composition at startup: lock, database, reconcile, GitHub, intake and ticker. */
 export async function composeDaemon(opts: ComposeOptions): Promise<Daemon> {
-  const { token, tokenEnv, tokenEnvNames, repo, repository } = readAuthor(opts);
-  opts = withRedactedLog(opts, tokenEnvNames);
+  const author = readAuthor(opts);
+  const { repo, repository } = author;
+  opts = withRedactedLog(opts, author.tokenEnvNames);
   assertSingleConcurrentRun(opts.root);
   if (opts.qa !== undefined) assertQaAgentConfig(opts.qa.agent);
   if (opts.specialist !== undefined) assertSpecialistAgentConfig(opts.specialist.agent);
   if (opts.triage !== undefined) assertTriageAgentConfig(opts.triage);
+  const wiring = authWiringOf(opts, author);
   const gitHost = (opts.createGitHost ?? ((o) => new GitCliHost(o)))({
-    tokenEnv,
+    ...wiring.git,
     mirrorDir: mirrorDirOf({ env: opts.env, homeDir: opts.homeDir ?? homedir(), repository }),
     targetUrl: targetUrlOf(repository),
     env: opts.env,
@@ -248,7 +254,7 @@ export async function composeDaemon(opts: ComposeOptions): Promise<Daemon> {
   let db: FridayDatabase | undefined;
   try {
     db = openDatabase(opts.dbPath);
-    const github = (opts.createGitHub ?? defaultGitHub)(token, repo);
+    const github = wiring.github();
     const runtimeFor = buildRuntimeFor({
       db,
       github,
