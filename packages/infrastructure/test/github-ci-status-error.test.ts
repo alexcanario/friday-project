@@ -20,7 +20,7 @@ async function failure(
   try {
     await p;
   } catch (e) {
-    return e as Error;
+    return e as Error & { cause?: { status?: number }; status?: number };
   }
   throw new Error("expected rejection");
 }
