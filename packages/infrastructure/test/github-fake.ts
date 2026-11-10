@@ -21,6 +21,7 @@ export type FakePull = {
   base: string;
   sha: string;
   merged?: boolean;
+  changedFiles?: number;
 };
 export type FakeCheckRun = {
   id: number;
@@ -80,8 +81,9 @@ function page<T>(items: T[], url: URL, size: number): Response {
   return json(slice, 200, headers);
 }
 
-function pullJson(p: FakePull): unknown {
+function pullJson(p: FakePull, fake: FakeGitHub): unknown {
   return {
+    changed_files: p.changedFiles ?? fake.files.get(p.number)?.length ?? 0,
     number: p.number,
     head: { sha: p.sha, ref: p.headRef },
     base: { ref: p.base },
@@ -178,7 +180,7 @@ function route(
   if (method === "GET" && rest === "/pulls") {
     const head = url.searchParams.get("head");
     const base = url.searchParams.get("base");
-    const items = fake.pulls.filter((p) => p.head === head && p.base === base).map(pullJson);
+    const items = fake.pulls.filter((p) => p.head === head && p.base === base).map((p) => pullJson(p, fake));
     return page(items, url, fake.pageSize);
   }
   if (method === "POST" && rest === "/pulls") {
@@ -190,11 +192,11 @@ function route(
       sha: "aaa",
     };
     fake.pulls.push(pr);
-    return json(pullJson(pr), 201);
+    return json(pullJson(pr, fake), 201);
   }
   if ((m = rest.match(/^\/pulls\/(\d+)$/)) && method === "GET") {
     const pr = fake.pulls.find((p) => p.number === Number(m![1]));
-    return pr ? json(pullJson(pr)) : json({ message: "Not Found" }, 404);
+    return pr ? json(pullJson(pr, fake)) : json({ message: "Not Found" }, 404);
   }
   if ((m = rest.match(/^\/pulls\/(\d+)\/files$/)) && method === "GET") {
     return page(fake.files.get(Number(m[1])) ?? [], url, fake.pageSize);
