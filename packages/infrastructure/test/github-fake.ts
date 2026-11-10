@@ -49,6 +49,7 @@ export type FakeGitHub = {
   reviewStatus: number;
   mergeSha: string;
   pageSize: number;
+  checkRunsError: { status: number; message: string; documentation_url?: string } | undefined;
 };
 
 const BASE = /^\/repos\/o\/r/;
@@ -104,6 +105,7 @@ export function createGitHubFake(): FakeGitHub {
     reviewStatus: 200,
     mergeSha: "m1",
     pageSize: 100,
+    checkRunsError: undefined,
   };
   fake.fetch = (async (input: string | URL | Request, init?: RequestInit) => {
     const url = new URL(typeof input === "string" || input instanceof URL ? input : input.url);
@@ -212,6 +214,10 @@ function route(
     return json({ merged: true, sha: fake.mergeSha, message: "ok" });
   }
   if ((m = rest.match(/^\/commits\/([^/]+)\/check-runs$/)) && method === "GET") {
+    if (fake.checkRunsError) {
+      const { status, message, documentation_url } = fake.checkRunsError;
+      return json(documentation_url ? { message, documentation_url } : { message }, status);
+    }
     const runs = fake.checkRuns.get(m[1] ?? "") ?? [];
     const n = Number(url.searchParams.get("page") ?? "1");
     const slice = runs.slice((n - 1) * fake.pageSize, n * fake.pageSize);
