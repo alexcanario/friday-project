@@ -33,6 +33,12 @@ describe("createRedactor", () => {
   });
 });
 
+describe("installation tokens", () => {
+  it("masks ghs_ installation tokens", () => {
+    expect(createRedactor({}, [])("erro com ghs_abc123DEF")).toBe("erro com ***");
+  });
+});
+
 describe("createRedactor with tokenEnvNames", () => {
   it("masks the value of a variable named in tokenEnvNames", () => {
     expect(createRedactor({ MEU_TOKEN: "valor-secreto" }, ["MEU_TOKEN"])("x valor-secreto y")).toBe(
