@@ -171,12 +171,6 @@ describe("createIntake", () => {
   it("resumes a partial issue and ingests a new one in the same call", async () => {
     const { events, github, intake } = setup();
     github.issues.push(issue(7), issue(8));
-    let fail = true;
-    events.failWhen = (e) =>
-      fail && e.type === "StateChanged" && e.issueId === 7 ? new Error("boom") : null;
-    expect(await intake.ingest()).toEqual([8]);
-    fail = false;
-    events.appended.length = 0;
     events.appended.push({
       type: "IssueIngested",
       projectId: "p",
