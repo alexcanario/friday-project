@@ -42,6 +42,7 @@ export type {
 } from "./persistence-ports.ts";
 export { matchesGlob } from "./glob-match.ts";
 export type { PrDiff } from "./pr-diff.ts";
+export { PrDiffTruncatedError } from "./pr-diff.ts";
 export {
   classifyRisk,
   MAX_DIFF_BYTES,
