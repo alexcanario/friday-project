@@ -135,9 +135,12 @@ export class GitWorktreeManager implements WorktreeManager {
   }
 
   async list(req: WorktreeProject): Promise<Result<WorktreeInfo[], WorktreeError>> {
-    const dir = this.projectDir(req.root, req.project);
-    if (dir === undefined) return fail("InvalidPath", "Caminho de worktree inválido.");
+    if (this.projectDir(req.root, req.project) === undefined)
+      return fail("InvalidPath", "Caminho de worktree inválido.");
     try {
+      // Physical root: git reports real paths, so a link or 8.3 root must be resolved first.
+      const root = (await realpathOrNull(resolve(req.root))) ?? req.root;
+      const dir = this.projectDir(root, req.project)!;
       const { stdout } = await this.git("worktree", "list", "--porcelain", "-z");
       return { ok: true, value: parseWorktrees(stdout, dir) };
     } catch (e) {
