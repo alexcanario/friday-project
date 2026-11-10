@@ -45,4 +45,12 @@ describe("createPrOf", () => {
     t.add("PrOpened", { number: 0 });
     expect(t.prOf(5)).toBe(4);
   });
+
+  it("accepts an events port with list only", () => {
+    const t = setup();
+    t.add("PrOpened", { number: 7 });
+    const readOnly = { list: t.events.list.bind(t.events) };
+    expect(createPrOf(readOnly, "p")(5)).toBe(7);
+    expect(createPrOf({ list: () => [] }, "p")(5)).toBeNull();
+  });
 });
