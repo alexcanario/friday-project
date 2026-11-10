@@ -180,7 +180,9 @@ function route(
   if (method === "GET" && rest === "/pulls") {
     const head = url.searchParams.get("head");
     const base = url.searchParams.get("base");
-    const items = fake.pulls.filter((p) => p.head === head && p.base === base).map((p) => pullJson(p, fake));
+    const items = fake.pulls
+      .filter((p) => p.head === head && p.base === base)
+      .map((p) => pullJson(p, fake));
     return page(items, url, fake.pageSize);
   }
   if (method === "POST" && rest === "/pulls") {
