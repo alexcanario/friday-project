@@ -126,6 +126,67 @@ describe("createIntake", () => {
     expect(logs).toContain("Failed to list issues: boom");
   });
 
+  it("does not repeat IssueIngested when the StateChanged append failed", async () => {
+    const { events, github, logs, intake } = setup();
+    github.issues.push(issue(7));
+    let fail = true;
+    events.failWhen = (e) => (fail && e.type === "StateChanged" ? new Error("boom") : null);
+    expect(await intake.ingest()).toEqual([]);
+    expect(logs).toContain("Failed to ingest issue 7: boom");
+    fail = false;
+    expect(await intake.ingest()).toEqual([7]);
+    expect(events.appended.map((e) => e.type)).toEqual(["IssueIngested", "StateChanged"]);
+  });
+
+  it("only rebuilds when both events exist and rebuild failed before", async () => {
+    const { events, issues, github, intake } = setup();
+    github.issues.push(issue(7));
+    const realRebuild = issues.rebuild.bind(issues);
+    let fail = true;
+    issues.rebuild = (projectId: string) => {
+      if (fail) throw new Error("rebuild boom");
+      realRebuild(projectId);
+    };
+    expect(await intake.ingest()).toEqual([]);
+    expect(events.appended).toHaveLength(2);
+    fail = false;
+    expect(await intake.ingest()).toEqual([7]);
+    expect(events.appended.map((e) => e.type)).toEqual(["IssueIngested", "StateChanged"]);
+    expect(issues.rebuilds).toHaveLength(1);
+    expect(issues.get("p", 7)?.state).toBe("Todo");
+  });
+
+  it("records both events after the first append failed", async () => {
+    const { events, github, intake } = setup();
+    github.issues.push(issue(7));
+    let fail = true;
+    events.failWhen = (e) => (fail && e.type === "IssueIngested" ? new Error("boom") : null);
+    expect(await intake.ingest()).toEqual([]);
+    expect(events.appended).toEqual([]);
+    fail = false;
+    expect(await intake.ingest()).toEqual([7]);
+    expect(events.appended.map((e) => e.type)).toEqual(["IssueIngested", "StateChanged"]);
+  });
+
+  it("resumes a partial issue and ingests a new one in the same call", async () => {
+    const { events, github, intake } = setup();
+    github.issues.push(issue(7), issue(8));
+    events.appended.push({
+      type: "IssueIngested",
+      projectId: "p",
+      issueId: 7,
+      runId: null,
+      actor: "daemon",
+      at: NOW,
+      payload: { number: 7, title: "T", body: "B", labels: ["friday"] },
+    });
+    expect(await intake.ingest()).toEqual([7, 8]);
+    expect(events.appended.filter((e) => e.issueId === 7).map((e) => e.type)).toEqual([
+      "IssueIngested",
+      "StateChanged",
+    ]);
+  });
+
   it("default FakeIssueRepository rebuild leaves rows untouched", () => {
     const events = new FakeEvents();
     const issues = new FakeIssueRepository(events);

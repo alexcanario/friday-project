@@ -47,6 +47,41 @@ describe("intake with SQLite", () => {
     expect((ingested?.payload as { body?: unknown }).body).toBe("B");
   });
 
+  it("keeps one IssueIngested and one StateChanged after a rebuild failure", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "friday-intake-"));
+    const db = openDatabase(join(dir, "friday.db"));
+    db.sqlite.prepare("INSERT INTO projects (id) VALUES ('p')").run();
+    const github = new FakeGitHub();
+    github.issues.push({ number: 7, title: "T", body: "B", labels: ["friday"] });
+    const real = createIssueRepository(db);
+    let fail = true;
+    const issues = {
+      ...real,
+      get: real.get.bind(real),
+      list: real.list.bind(real),
+      rebuild: (projectId: string) => {
+        if (fail) throw new Error("rebuild boom");
+        real.rebuild(projectId);
+      },
+    };
+    const intake = createIntake({
+      projectId: "p",
+      github,
+      issues,
+      events: createEventStore(db),
+      now: () => new Date("2026-11-05T03:00:00.000Z"),
+    });
+    expect(await intake.ingest()).toEqual([]);
+    fail = false;
+    expect(await intake.ingest()).toEqual([7]);
+    expect(
+      createEventStore(db)
+        .list("p", 7)
+        .map((e) => e.type),
+    ).toEqual(["IssueIngested", "StateChanged"]);
+    expect(real.get("p", 7)?.state).toBe("Todo");
+  });
+
   it("logs the foreign key failure when the project row is missing", async () => {
     const { db, intake, logs } = setup(false);
     expect(await intake.ingest()).toEqual([]);

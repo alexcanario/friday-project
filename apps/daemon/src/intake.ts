@@ -39,28 +39,32 @@ function admittedPayload(number: number): StateChangedPayload {
   };
 }
 
-export function createIntake(deps: IntakeDeps): Intake {
-  const { projectId, github, issues, events, now } = deps;
-  const log = deps.log ?? (() => undefined);
+type IngestDeps = Pick<IntakeDeps, "projectId" | "issues" | "events" | "now">;
+type ListedIssue = { number: number; title: string; body: string; labels: string[] };
 
-  function ingestOne(issue: {
-    number: number;
-    title: string;
-    body: string;
-    labels: string[];
-  }): boolean {
-    if (issues.get(projectId, issue.number) !== null) return false;
-    const at = now().toISOString();
-    const base = { projectId, issueId: issue.number, runId: null, actor: "daemon", at };
-    events.append({
-      ...base,
-      type: "IssueIngested",
-      payload: { number: issue.number, title: issue.title, body: issue.body, labels: issue.labels },
-    });
-    events.append({ ...base, type: "StateChanged", payload: admittedPayload(issue.number) });
-    issues.rebuild(projectId);
-    return true;
+/** Resumes after a partial failure: only writes the events and rebuild that are still missing. */
+function ingestOne({ projectId, issues, events, now }: IngestDeps, issue: ListedIssue): boolean {
+  if (issues.get(projectId, issue.number) !== null) return false;
+  const at = now().toISOString();
+  const base = { projectId, issueId: issue.number, runId: null, actor: "daemon", at };
+  const existing = events.list(projectId, issue.number);
+  if (!existing.some((e) => e.type === "IssueIngested")) {
+    const { number, title, body, labels } = issue;
+    events.append({ ...base, type: "IssueIngested", payload: { number, title, body, labels } });
   }
+  const admitted = existing.some(
+    (e) => e.type === "StateChanged" && (e.payload as { trigger?: unknown }).trigger === "Admitted",
+  );
+  if (!admitted) {
+    events.append({ ...base, type: "StateChanged", payload: admittedPayload(issue.number) });
+  }
+  issues.rebuild(projectId);
+  return true;
+}
+
+export function createIntake(deps: IntakeDeps): Intake {
+  const { github } = deps;
+  const log = deps.log ?? (() => undefined);
 
   return {
     async ingest() {
@@ -74,7 +78,7 @@ export function createIntake(deps: IntakeDeps): Intake {
       const ingested: number[] = [];
       for (const issue of listed) {
         try {
-          if (ingestOne(issue)) ingested.push(issue.number);
+          if (ingestOne(deps, issue)) ingested.push(issue.number);
         } catch (error) {
           log(`Failed to ingest issue ${issue.number}: ${messageOf(error)}`);
         }
