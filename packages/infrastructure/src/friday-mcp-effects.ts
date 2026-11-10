@@ -108,8 +108,12 @@ export function makeEffectHandler(name: EffectTool, deps: Deps) {
     try {
       return await execute(name, parsed.data as Parameters<typeof execute>[1], deps.effects);
     } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      return reply(`500: Falha ao executar ${name}: ${message}`, true);
+      try {
+        deps.effects.run.onEffectError?.(name, error);
+      } catch {
+        // Um gancho com defeito não pode mudar a resposta nem derrubar o handler.
+      }
+      return reply(`500: Falha ao executar ${name} (effect_failed).`, true);
     }
   };
 }

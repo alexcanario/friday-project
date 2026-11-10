@@ -3,6 +3,7 @@ import {
   runSpecialistStep,
   type AgentRunRequest,
   type AgentRuntime,
+  type EffectTool,
   type SpecialistStepDeps,
 } from "@friday/application";
 import type { RunFinished } from "@friday/contracts";
@@ -41,11 +42,19 @@ type Tracker = { last: RunFinished | null };
 
 type PrBox = { number: number | null };
 
-/** Copies the request with an `onPrCreated` hook that keeps the last PR number; never mutates the original. */
-function withPrHook(request: AgentRunRequest, box: PrBox): AgentRunRequest {
+/** Copies the request with `onPrCreated` and `onEffectError` hooks that keeps the last PR number; never mutates the original. */
+function withPrHook(
+  request: AgentRunRequest,
+  box: PrBox,
+  onEffectError: (tool: EffectTool, error: unknown) => void,
+): AgentRunRequest {
   const effects = request.friday?.effects;
   if (request.friday === undefined || effects === undefined) return request;
-  const run = { ...effects.run, onPrCreated: (pr: number) => void (box.number = pr) };
+  const run = {
+    ...effects.run,
+    onPrCreated: (pr: number) => void (box.number = pr),
+    onEffectError,
+  };
   return { ...request, friday: { ...request.friday, effects: { ...effects, run } } };
 }
 
@@ -155,7 +164,9 @@ async function execute(
   const box: PrBox = { number: null };
   try {
     const runtime = recordingRuntime(deps, ctx, tracker);
-    const hooked = withPrHook(request, box);
+    const hooked = withPrHook(request, box, (tool, error) =>
+      deps.log?.(`Falha na ferramenta ${tool} da issue ${issueId}: ${String(error)}`),
+    );
     const outcome = await runSpecialistStep(
       { ...deps.step, runtime },
       { request: hooked, snapshot },

@@ -1,3 +1,5 @@
+import type { EffectTool } from "./effect-gate.ts";
+
 /** The run an agent's effect tools act on; same shape as `EffectsInput["run"]` in infrastructure. */
 export interface EffectsRun {
   issue: number;
@@ -8,6 +10,8 @@ export interface EffectsRun {
   getPullRequest: () => number | null;
   /** Set by the daemon per run; called once `pr_create` has opened or found the PR. */
   onPrCreated?: (pr: number) => void;
+  /** Set by the daemon per run; receives the original port error, which is never shown to the agent. */
+  onEffectError?: (tool: EffectTool, error: unknown) => void;
 }
 
 /** Validates and returns the run for the effect tools. Pure, no I/O. */
