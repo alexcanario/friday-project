@@ -15,7 +15,7 @@ const commit = () =>
     worktree,
     message: "fix: x",
     baseEnv: { PATH: process.env.PATH ?? "" },
-  });
+  }).then((r) => r.sha);
 const blob = (path: string): string =>
   execFileSync("git", ["cat-file", "blob", `HEAD:${path}`], { cwd: worktree }).toString("latin1");
 const changedFiles = () => git(worktree, "show", "--name-only", "--format=", "HEAD");

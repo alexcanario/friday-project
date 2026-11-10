@@ -4,6 +4,7 @@ import {
   existsSync,
   mkdirSync,
   readFileSync,
+  realpathSync,
   rmSync,
   symlinkSync,
   writeFileSync,
@@ -180,7 +181,15 @@ describe("GitCliHost", () => {
         ...["commit", "--no-verify", "-m", "feat: x"],
       ],
       ["rev-parse", "HEAD"],
-      ["--git-dir", mirror, "fetch", "--no-tags", "--quiet", wt, SHA],
+      [
+        "--git-dir",
+        mirror,
+        "fetch",
+        "--no-tags",
+        "--quiet",
+        realpathSync(git(wt, "rev-parse", "--absolute-git-dir")),
+        SHA,
+      ],
       ["--git-dir", mirror, "push", "--no-verify", targetUrl, `${SHA}:refs/heads/friday/345-x`],
     ]);
     expect(all.map((c) => c.cwd)).toEqual([wt, wt, wt, wt, wt, mirror, mirror]);
