@@ -276,6 +276,9 @@ importers:
       '@friday/domain':
         specifier: workspace:*
         version: link:../domain
+      '@octokit/auth-app':
+        specifier: 8.3.1
+        version: 8.3.1
       better-sqlite3:
         specifier: 13.0.3
         version: 13.0.3
