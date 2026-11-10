@@ -101,6 +101,12 @@ export class GitWorktreeManager implements WorktreeManager {
       await mkdir(dirname(path), { recursive: true });
       await this.git("fetch", "origin", req.base);
       await this.git(
+        "-c",
+        "core.autocrlf=false",
+        "-c",
+        "core.safecrlf=false",
+        "-c",
+        "core.eol=lf",
         "worktree",
         "add",
         "-b",
