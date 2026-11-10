@@ -36,8 +36,8 @@ function setup(o: Over = {}) {
   cpSync(fixture, root, { recursive: true });
   const file = join(root, "factory.yaml");
   const yaml = readFileSync(file, "utf8").replace(
-    "  merge: manual\n",
-    "  merge: manual\n  author_token_env: FRIDAY_AUTHOR_TOKEN\n  review_token_env: FRIDAY_REVIEW_TOKEN\n",
+    "  author_token_env: FRIDAY_AUTHOR_TOKEN\n",
+    "  author_token_env: FRIDAY_AUTHOR_TOKEN\n  review_token_env: FRIDAY_REVIEW_TOKEN\n",
   );
   writeFileSync(file, (o.yaml ?? ((y) => y))(yaml));
   const author = new FakeCiGitHub();

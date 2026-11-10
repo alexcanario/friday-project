@@ -9,8 +9,8 @@ function rootWithToken(): string {
   writeFileSync(
     file,
     readFileSync(file, "utf8").replace(
-      "  merge: manual\n",
-      "  merge: manual\n  author_token_env: MEU_TOKEN\n",
+      "  author_token_env: FRIDAY_AUTHOR_TOKEN\n",
+      "  author_token_env: MEU_TOKEN\n",
     ),
   );
   return root;

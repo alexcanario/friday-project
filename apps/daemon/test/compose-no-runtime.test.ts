@@ -142,8 +142,8 @@ describe("composeDaemon without ComposeOptions.runtime", () => {
     writeFileSync(
       file,
       readFileSync(file, "utf8").replace(
-        "  merge: manual\n",
-        "  merge: manual\n  author_token_env: FRIDAY_AUTHOR_TOKEN\n  review_token_env: FRIDAY_REVIEW_TOKEN\n",
+        "  author_token_env: FRIDAY_AUTHOR_TOKEN\n",
+        "  author_token_env: FRIDAY_AUTHOR_TOKEN\n  review_token_env: FRIDAY_REVIEW_TOKEN\n",
       ),
     );
     const author = new FakeCiGitHub();

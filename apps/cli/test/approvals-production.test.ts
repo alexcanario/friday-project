@@ -20,17 +20,15 @@ const fixture = join(repoRoot, "packages/infrastructure/test/fixtures/valid");
 
 const tmp = (name: string) => mkdtempSync(join(tmpdir(), `friday-${name}-`));
 
-function makeRoot(withEnvName: boolean): string {
+function makeRoot(renamed: boolean, withoutAuthor = false): string {
   const dir = tmp("root");
   cpSync(fixture, dir, { recursive: true });
-  if (withEnvName) {
-    const file = join(dir, "factory.yaml");
-    const text = readFileSync(file, "utf8").replace(
-      "pull_requests:\n",
-      "pull_requests:\n  author_token_env: TEST_AUTHOR_TOKEN\n",
-    );
-    writeFileSync(file, text);
-  }
+  const file = join(dir, "factory.yaml");
+  const line = "  author_token_env: FRIDAY_AUTHOR_TOKEN\n";
+  let text = readFileSync(file, "utf8");
+  if (withoutAuthor) text = text.replace(line, "");
+  else if (renamed) text = text.replace(line, "  author_token_env: TEST_AUTHOR_TOKEN\n");
+  writeFileSync(file, text);
   return dir;
 }
 
@@ -192,6 +190,7 @@ describe("friday approvals production client", () => {
     const noName = makeRoot(false);
     const cases: [Record<string, string>, string][] = [
       [{ FRIDAY_HOME: tmp("empty") }, "O factory.yaml está inválido ou ausente."],
+      [{ FRIDAY_HOME: makeRoot(false, true) }, "O factory.yaml está inválido ou ausente."],
       [{ FRIDAY_HOME: noName }, "A variável FRIDAY_AUTHOR_TOKEN está vazia ou ausente."],
       [{ FRIDAY_HOME: withName }, "A variável TEST_AUTHOR_TOKEN está vazia ou ausente."],
       [

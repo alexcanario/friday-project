@@ -11,12 +11,23 @@ const lockFile = (root: string) => join(root, ".friday", "daemon.lock");
 
 describe("composeDaemon", () => {
   it("rejects without author_token_env and leaves no lock or database", async () => {
-    const t = setup((y) => y.replace("  author_token_env: FRIDAY_AUTHOR_TOKEN\n", ""));
-    await expect(composeDaemon(t.opts)).rejects.toThrow(
-      new Error("A configuração não define pull_requests.author_token_env."),
-    );
-    expect(existsSync(t.opts.dbPath)).toBe(false);
-    expect(existsSync(lockFile(t.root))).toBe(false);
+    const message = "O factory.yaml está inválido ou ausente.";
+    const app =
+      "  author_app:\n    app_id: 1\n    installation_id: 2\n    private_key_path: /etc/friday/author.pem\n";
+    const edits = [
+      (y: string) => y.replace("  author_token_env: FRIDAY_AUTHOR_TOKEN\n", ""),
+      (y: string) =>
+        y.replace(
+          "  author_token_env: FRIDAY_AUTHOR_TOKEN\n",
+          `  author_token_env: FRIDAY_AUTHOR_TOKEN\n${app}`,
+        ),
+    ];
+    for (const edit of edits) {
+      const t = setup(edit);
+      await expect(composeDaemon(t.opts)).rejects.toThrow(new Error(message));
+      expect(existsSync(t.opts.dbPath)).toBe(false);
+      expect(existsSync(lockFile(t.root))).toBe(false);
+    }
   });
 
   it("rejects when the token variable is empty or blank and passes the token to createGitHub otherwise", async () => {

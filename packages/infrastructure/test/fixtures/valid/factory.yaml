@@ -20,6 +20,7 @@ risk:
   max_changed_files: 50
 pull_requests:
   merge: manual
+  author_token_env: FRIDAY_AUTHOR_TOKEN
 limits:
   per_issue_usd: 5
   per_day_usd: 10

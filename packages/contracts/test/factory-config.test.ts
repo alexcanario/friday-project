@@ -20,7 +20,7 @@ function valid(): Json {
       max_changed_lines: 2000,
       max_changed_files: 50,
     },
-    pull_requests: { merge: "manual" },
+    pull_requests: { merge: "manual", author_token_env: "FRIDAY_TOKEN" },
     limits: { per_issue_usd: 5, per_day_usd: 10, approval_expires_min: 30 },
     secrets: ["ANTHROPIC_API_KEY"],
   };
@@ -111,7 +111,7 @@ describe("pull_requests.author_token_env", () => {
       pull_requests: { merge: "manual", ...(v === undefined ? {} : { author_token_env: v }) },
     });
     expect(factoryConfigSchema.safeParse(withEnv("FRIDAY_AUTHOR_TOKEN")).success).toBe(true);
-    expect(factoryConfigSchema.safeParse(withEnv(undefined)).success).toBe(true);
+    expect(factoryConfigSchema.safeParse(withEnv(undefined)).success).toBe(false);
     for (const bad of ["lower", "", "A-B"]) {
       expect(factoryConfigSchema.safeParse(withEnv(bad)).success).toBe(false);
     }
@@ -122,22 +122,35 @@ describe("pull_requests.review_token_env", () => {
   const withPr = (pr: unknown) => ({ ...valid(), pull_requests: pr });
   it("accepts pull_requests.review_token_env", () => {
     const ok = [
-      { merge: "manual", review_token_env: "FRIDAY_JUDGE_TOKEN" },
-      { merge: "auto", review_token_env: "A1_B2" },
-      { merge: "manual" },
+      {
+        merge: "manual",
+        author_token_env: "FRIDAY_AUTHOR_TOKEN",
+        review_token_env: "FRIDAY_JUDGE_TOKEN",
+      },
+      { merge: "auto", author_token_env: "FRIDAY_AUTHOR_TOKEN", review_token_env: "A1_B2" },
     ];
     for (const pr of ok) expect(factoryConfigSchema.safeParse(withPr(pr)).success).toBe(true);
-    const both = { ...withPr({ merge: "manual", review_token_env: "FRIDAY_JUDGE_TOKEN" }) };
+    const both = {
+      ...withPr({
+        merge: "manual",
+        author_token_env: "FRIDAY_AUTHOR_TOKEN",
+        review_token_env: "FRIDAY_JUDGE_TOKEN",
+      }),
+    };
     expect(factoryConfigSchema.safeParse({ ...both, secrets: ["ANTHROPIC_API_KEY"] }).success).toBe(
       true,
     );
   });
   it("rejects an invalid or unknown pull_requests key", () => {
     for (const bad of ["lower", "", "A-B", "1ABC", "_ABC", 5]) {
-      const pr = { merge: "manual", review_token_env: bad };
+      const pr = {
+        merge: "manual",
+        author_token_env: "FRIDAY_AUTHOR_TOKEN",
+        review_token_env: bad,
+      };
       expect(factoryConfigSchema.safeParse(withPr(pr)).success, String(bad)).toBe(false);
     }
-    const unknown = { merge: "manual", review_token: "X" };
+    const unknown = { merge: "manual", author_token_env: "FRIDAY_AUTHOR_TOKEN", review_token: "X" };
     expect(factoryConfigSchema.safeParse(withPr(unknown)).success).toBe(false);
   });
 });
@@ -181,9 +194,54 @@ describe("factoryConfigSchema repository and token rules", () => {
         review_token_env: "FRIDAY_JUDGE_TOKEN",
       },
       { merge: "manual", author_token_env: "FRIDAY_TOKEN" },
-      { merge: "manual", review_token_env: "FRIDAY_TOKEN" },
-      { merge: "manual" },
     ];
     for (const pr of ok) expect(factoryConfigSchema.safeParse(withPr(pr)).success).toBe(true);
+    const bad = [{ merge: "manual", review_token_env: "FRIDAY_TOKEN" }, { merge: "manual" }];
+    for (const pr of bad) expect(factoryConfigSchema.safeParse(withPr(pr)).success).toBe(false);
+  });
+});
+
+describe("pull_requests.author_app", () => {
+  const app = () => ({
+    app_id: 1,
+    installation_id: 2,
+    private_key_path: "/etc/friday/author.pem",
+  });
+  const withPr = (pr: unknown) => ({ ...valid(), pull_requests: pr });
+  const parse = (author_app: unknown, extra: object = {}) =>
+    factoryConfigSchema.safeParse(withPr({ merge: "manual", author_app, ...extra })).success;
+
+  it("accepts and rejects pull_requests.author_app", () => {
+    expect(parse(app())).toBe(true);
+    expect(parse(app(), { review_token_env: "FRIDAY_JUDGE_TOKEN" })).toBe(true);
+    const bad: Array<Record<string, unknown>> = [
+      { app_id: 0 },
+      { app_id: "1" },
+      { app_id: 1.5 },
+      { installation_id: -1 },
+      { installation_id: 0 },
+      { extra: 1 },
+      { private_key_path: "keys/author.pem" },
+      { private_key_path: "./author.pem" },
+      { private_key_path: "" },
+    ];
+    for (const patch of bad) {
+      expect(parse({ ...app(), ...patch }), JSON.stringify(patch)).toBe(false);
+    }
+    for (const key of Object.keys(app())) {
+      const partial: Record<string, unknown> = { ...app() };
+      delete partial[key];
+      expect(parse(partial), `without ${key}`).toBe(false);
+    }
+  });
+
+  it("requires exactly one of author_app and author_token_env", () => {
+    const tok = { author_token_env: "FRIDAY_TOKEN" };
+    expect(factoryConfigSchema.safeParse(withPr({ merge: "manual", ...tok })).success).toBe(true);
+    expect(parse(app())).toBe(true);
+    expect(parse(app(), tok)).toBe(false);
+    expect(factoryConfigSchema.safeParse(withPr({ merge: "manual" })).success).toBe(false);
+    const onlyReview = { merge: "manual", review_token_env: "FRIDAY_TOKEN" };
+    expect(factoryConfigSchema.safeParse(withPr(onlyReview)).success).toBe(false);
   });
 });
