@@ -98,11 +98,15 @@ export class GitHubRestAdapter implements GitHubPort {
 
   async getCiStatus(pr: number, checkName: string): Promise<CiStatus> {
     const headSha = await this.headSha(pr);
-    const runs = await this.octokit.paginate("GET /repos/{owner}/{repo}/commits/{ref}/check-runs", {
-      ...this.repo,
-      ref: headSha,
-      per_page: 100,
-    });
+    const runs = await this.octokit
+      .paginate("GET /repos/{owner}/{repo}/commits/{ref}/check-runs", {
+        ...this.repo,
+        ref: headSha,
+        per_page: 100,
+      })
+      .catch((error: unknown) => {
+        throw isFineGrainedTokenError(error) ? fineGrainedTokenError(error) : error;
+      });
     const latest = runs
       .filter((r) => r.name === checkName)
       .reduce<(typeof runs)[number] | undefined>((a, r) => (a && a.id > r.id ? a : r), undefined);
@@ -214,4 +218,24 @@ export class GitHubRestAdapter implements GitHubPort {
     );
     return labels.map((l) => l.name);
   }
+}
+
+const FINE_GRAINED_MARKER = "Resource not accessible by personal access token";
+
+function isFineGrainedTokenError(error: unknown): boolean {
+  const e = error as {
+    status?: number;
+    message?: string;
+    response?: { data?: { message?: string } };
+  };
+  if (e?.status !== 403) return false;
+  return (e.response?.data?.message ?? e.message ?? "").includes(FINE_GRAINED_MARKER);
+}
+
+function fineGrainedTokenError(cause: unknown): Error {
+  return new Error(
+    "A API de check runs recusou o token do autor: tokens fine-grained não têm acesso a ela. " +
+      "Use um token de GitHub App ou um token clássico com escopo repo (veja docs/token-do-autor.md).",
+    { cause },
+  );
 }
