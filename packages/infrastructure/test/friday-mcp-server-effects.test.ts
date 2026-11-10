@@ -157,17 +157,17 @@ describe("effect tools", () => {
     const fail = new Error("falha simulada");
     const host = setup({ gitHost: new FakeGitHost({ fail }) });
     expect(await host.handlers.git_push!({ branch: "friday/70-x", message: "m" })).toEqual(
-      text("500: Falha ao executar git_push: falha simulada", true),
+      text("500: Falha ao executar git_push (effect_failed).", true),
     );
     const gh = setup({ github: new FakeGitHubPort({ fail }) });
     expect(await gh.handlers.pr_create!({ title: "t", body: "b" })).toEqual(
-      text("500: Falha ao executar pr_create: falha simulada", true),
+      text("500: Falha ao executar pr_create (effect_failed).", true),
     );
     expect(await gh.handlers.pr_diff!({})).toEqual(
-      text("500: Falha ao executar pr_diff: falha simulada", true),
+      text("500: Falha ao executar pr_diff (effect_failed).", true),
     );
     expect(await gh.handlers.issue_comment!({ body: "c" })).toEqual(
-      text("500: Falha ao executar issue_comment: falha simulada", true),
+      text("500: Falha ao executar issue_comment (effect_failed).", true),
     );
     let first = true;
     class Once extends FakeGitHost {
@@ -244,7 +244,7 @@ describe("git_push commit flow", () => {
     const s = setup({ gitHost: new Once({ sha: SHA }) });
     const args = { branch: "friday/70-x", message: "m" };
     expect(await s.handlers.git_push!(args)).toEqual(
-      text("500: Falha ao executar git_push: falha simulada", true),
+      text("500: Falha ao executar git_push (effect_failed).", true),
     );
     expect(await s.handlers.git_push!(args)).toEqual(text(`200: push feito: ${SHA}.`));
   });
@@ -323,7 +323,7 @@ describe("pr_create onPrCreated hook", () => {
       onPrCreated: spy,
     });
     expect(await failing.handlers.pr_create!(args)).toEqual(
-      text("500: Falha ao executar pr_create: falha simulada", true),
+      text("500: Falha ao executar pr_create (effect_failed).", true),
     );
     const invalid = setup({ github: created(true), onPrCreated: spy });
     expect(await invalid.handlers.pr_create!({ title: "t" })).toEqual(
