@@ -225,4 +225,39 @@ describe("GitWorktreeManager", { timeout: 30_000 }, () => {
     expect(await mgr.isClean(c.value.path, "a")).toBe(false);
     expect(await mgr.isClean(c.value.path, "--foo")).toBe(false);
   });
+  const linkedRoot = async () => {
+    await mgr.create(req(15));
+    const link = join(mkdtempSync(join(tmpdir(), "friday-link-")), "wt-link");
+    symlinkSync(fx.root, link, "junction");
+    return link;
+  };
+
+  it("list finds a worktree when the root is reached through a link", async () => {
+    const root = await linkedRoot();
+    const r = await mgr.list({ root, project: fx.project });
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.value.map((w) => w.issue)).toEqual([15]);
+  });
+
+  it("listOrphans finds a worktree when the root is reached through a link", async () => {
+    const root = await linkedRoot();
+    const orphans = await mgr.listOrphans({ root, project: fx.project, activeIssues: [] });
+    expect(orphans.ok).toBe(true);
+    if (orphans.ok) expect(orphans.value.map((w) => w.issue)).toEqual([15]);
+    const active = await mgr.listOrphans({ root, project: fx.project, activeIssues: [15] });
+    expect(active).toEqual({ ok: true, value: [] });
+  });
+
+  it("list through a linked root returns [] for another project and refuses an invalid one", async () => {
+    const root = await linkedRoot();
+    expect(await mgr.list({ root, project: "outro" })).toEqual({ ok: true, value: [] });
+    const bad = await mgr.list({ root, project: "../x" });
+    expect(bad.ok).toBe(false);
+    if (!bad.ok) expect(bad.error.code).toBe("InvalidPath");
+  });
+
+  it("list returns [] when the root does not exist", async () => {
+    const root = join(tmpdir(), "friday-nao-existe-root");
+    expect(await mgr.list({ root, project: fx.project })).toEqual({ ok: true, value: [] });
+  });
 });
