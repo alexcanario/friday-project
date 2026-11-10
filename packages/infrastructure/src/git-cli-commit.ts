@@ -77,6 +77,9 @@ function stepEnv(request: CommitRequest, home: string, drivers: string[]): Recor
     ["core.attributesFile", ""],
     ["gc.auto", "0"],
     ["maintenance.auto", "false"],
+    ["core.autocrlf", "false"],
+    ["core.safecrlf", "false"],
+    ["core.eol", "lf"],
   ];
   for (const d of drivers) {
     pairs.push(
