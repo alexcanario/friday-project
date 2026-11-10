@@ -44,7 +44,7 @@ export {
   type ToolResponse,
 } from "./friday-mcp-server.ts";
 export { GitHubRestAdapter } from "./github-rest-adapter.ts";
-export { createGitHubClient } from "./github-client.ts";
+export { createGitHubClient, createGitHubClientWithAuth } from "./github-client.ts";
 export { SqliteStaleVerdicts } from "./stale-verdicts.ts";
 export { GitCliHost, type GitCliHostOptions } from "./git-cli-host.ts";
 export { createGhNightReader, GH_MAX_BUFFER, type GhExec } from "./gh-night-reader.ts";

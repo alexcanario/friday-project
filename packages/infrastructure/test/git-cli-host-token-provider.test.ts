@@ -19,11 +19,11 @@ function fakeGit(): { bin: string; log: string } {
     `#!${process.execPath}
 import { appendFileSync, mkdirSync } from "node:fs";
 const argv = process.argv.slice(2);
-appendFileSync(${JSON.stringify(log)}, JSON.stringify({ argv, env: process.env }) + "\n");
+appendFileSync(${JSON.stringify(log)}, JSON.stringify({ argv, env: process.env }) + "\\n");
 if (argv[0] === "init") mkdirSync(argv[3], { recursive: true });
 if (argv[0] === "config") process.exit(1);
 if (argv[0] === "diff-index") process.exit(1);
-if (argv[0] === "rev-parse") process.stdout.write(${JSON.stringify(SHA)} + "\n");
+if (argv[0] === "rev-parse") process.stdout.write(${JSON.stringify(SHA)} + "\\n");
 `,
   );
   chmodSync(bin, 0o755);

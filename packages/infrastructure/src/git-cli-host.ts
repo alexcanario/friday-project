@@ -8,7 +8,10 @@ import { commitWorktree, configEnv, FRIDAY_AUTHOR, HOOKS_OFF } from "./git-cli-c
 export { FRIDAY_AUTHOR };
 
 export interface GitCliHostOptions {
-  tokenEnv: string;
+  /** Name of the environment variable holding the token; exclusive with `token`. */
+  tokenEnv?: string;
+  /** Asked for the token on every push; exclusive with `tokenEnv`. */
+  token?: () => Promise<string>;
   mirrorDir: string;
   targetUrl: string;
   env?: Record<string, string | undefined>;
@@ -36,8 +39,24 @@ function validateTargetUrl(targetUrl: string): void {
   }
 }
 
+function validateTokenSource(tokenEnv: string | undefined, token: unknown): void {
+  if ((tokenEnv === undefined) === (token === undefined)) {
+    throw new Error("Informe exatamente um entre tokenEnv e token.");
+  }
+  if (tokenEnv === undefined) return;
+  if (tokenEnv.trim() === "") {
+    throw new Error("O nome da variável de ambiente do token não pode ser vazio.");
+  }
+  if (ALLOWED_KEYS.has(tokenEnv.toUpperCase())) {
+    throw new Error(
+      "O nome da variável de ambiente do token não pode ser uma variável da lista de permissão do ambiente do git.",
+    );
+  }
+}
+
 export class GitCliHost implements GitHost {
-  private readonly tokenEnv: string;
+  private readonly tokenEnv: string | undefined;
+  private readonly tokenFn: (() => Promise<string>) | undefined;
   private readonly mirrorDir: string;
   private readonly targetUrl: string;
   private readonly env: Record<string, string | undefined>;
@@ -46,25 +65,20 @@ export class GitCliHost implements GitHost {
 
   constructor({
     tokenEnv,
+    token,
     mirrorDir,
     targetUrl,
     env = process.env,
     gitBinary = "git",
     afterValidate,
   }: GitCliHostOptions) {
-    if (tokenEnv.trim() === "") {
-      throw new Error("O nome da variável de ambiente do token não pode ser vazio.");
-    }
-    if (ALLOWED_KEYS.has(tokenEnv.toUpperCase())) {
-      throw new Error(
-        "O nome da variável de ambiente do token não pode ser uma variável da lista de permissão do ambiente do git.",
-      );
-    }
+    validateTokenSource(tokenEnv, token);
     if (!isAbsolute(mirrorDir)) {
       throw new Error("O diretório do espelho deve ser um caminho absoluto.");
     }
     validateTargetUrl(targetUrl);
     this.tokenEnv = tokenEnv;
+    this.tokenFn = token;
     this.mirrorDir = mirrorDir;
     this.targetUrl = targetUrl;
     this.env = env;
@@ -74,10 +88,7 @@ export class GitCliHost implements GitHost {
 
   async push(request: PushRequest): Promise<{ sha: string }> {
     this.validate(request);
-    const token = this.env[this.tokenEnv];
-    if (token === undefined || token.trim() === "") {
-      throw new Error(`A variável de ambiente ${this.tokenEnv} não está definida.`);
-    }
+    const token = await this.resolveToken();
     const { worktree, branch, message } = request;
     const { sha: commit, gitDir } = await commitWorktree({
       git: this.git,
@@ -117,6 +128,19 @@ export class GitCliHost implements GitHost {
       "Falha no git push: ",
     );
     return { sha: commit };
+  }
+
+  private async resolveToken(): Promise<string> {
+    if (this.tokenFn !== undefined) {
+      const value = await this.tokenFn();
+      if (value.trim() === "") throw new Error("O token de push está vazio.");
+      return value;
+    }
+    const value = this.env[this.tokenEnv ?? ""];
+    if (value === undefined || value.trim() === "") {
+      throw new Error(`A variável de ambiente ${this.tokenEnv} não está definida.`);
+    }
+    return value;
   }
 
   private validate(request: PushRequest): void {

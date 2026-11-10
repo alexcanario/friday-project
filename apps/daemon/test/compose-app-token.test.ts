@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import type { GitHost, GitHubPort } from "@friday/application";
 import type { GitCliHostOptions } from "@friday/infrastructure";
-import { composeDaemon } from "../src/index.ts";
+import { composeDaemon, type ComposeOptions } from "../src/index.ts";
 import { readAuthor } from "../src/compose-config.ts";
 import { setup } from "./compose-helpers.ts";
 import { FakeGitHub } from "./fakes.ts";
@@ -13,9 +13,11 @@ const toApp = (y: string) => y.replace("  author_token_env: FRIDAY_AUTHOR_TOKEN\
 function withApp(edit: (y: string) => string = toApp) {
   const t = setup(edit);
   const getToken = vi.fn(async () => "tok-1");
-  const createTokenProvider = vi.fn((_input: unknown) => ({ getToken }));
-  const createGitHubWithAuth = vi.fn(
-    (_auth: () => Promise<string>, _repo: unknown) => new FakeGitHub() as unknown as GitHubPort,
+  const createTokenProvider = vi.fn<NonNullable<ComposeOptions["createTokenProvider"]>>(() => ({
+    getToken,
+  }));
+  const createGitHubWithAuth = vi.fn<NonNullable<ComposeOptions["createGitHubWithAuth"]>>(
+    () => new FakeGitHub() as unknown as GitHubPort,
   );
   const gitHostOptions: GitCliHostOptions[] = [];
   const opts = {

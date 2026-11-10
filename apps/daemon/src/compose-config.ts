@@ -37,30 +37,53 @@ export function readGuardedTickConfig(
   return null;
 }
 
-/** Reads the author token by variable name only (D56); fails closed. */
-export function readAuthor(opts: ComposeOptions): {
-  token: string;
-  tokenEnv: string;
-  tokenEnvNames: string[];
-  repo: Repo;
-  repository: { owner: string; name: string };
-} {
+type Repository = { owner: string; name: string };
+
+export type Author =
+  | {
+      mode: "env";
+      token: string;
+      tokenEnv: string;
+      tokenEnvNames: string[];
+      repo: Repo;
+      repository: Repository;
+    }
+  | {
+      mode: "app";
+      app: { appId: number; installationId: number; privateKeyPath: string };
+      tokenEnvNames: string[];
+      repo: Repo;
+      repository: Repository;
+    };
+
+/** Reads the author credential: a token by variable name only (D56) or the App ids (D89); fails closed. */
+export function readAuthor(opts: ComposeOptions): Author {
   const loaded = loadFactoryConfig(opts.root);
   if (!loaded.ok) throw new Error("O factory.yaml está inválido ou ausente.");
-  const name = loaded.config.pull_requests.author_token_env;
+  const { owner, name: repoName } = loaded.config.repository;
+  const common = { repo: { owner, repo: repoName }, repository: { owner, name: repoName } };
+  const pr = loaded.config.pull_requests;
+  const review = pr.review_token_env;
+  if (pr.author_app !== undefined) {
+    const { app_id: appId, installation_id: installationId, private_key_path } = pr.author_app;
+    return {
+      mode: "app",
+      app: { appId, installationId, privateKeyPath: private_key_path },
+      tokenEnvNames: review === undefined ? [] : [review],
+      ...common,
+    };
+  }
+  const name = pr.author_token_env;
   if (name === undefined)
     throw new Error("A configuração não define pull_requests.author_token_env.");
   const token = opts.env[name];
   if (token === undefined || token.trim() === "")
     throw new Error(`A variável ${name} está vazia ou ausente.`);
-  const { owner, name: repo } = loaded.config.repository;
-  const review = loaded.config.pull_requests.review_token_env;
-  const tokenEnvNames = review === undefined ? [name] : [name, review];
   return {
+    mode: "env",
     token,
     tokenEnv: name,
-    tokenEnvNames,
-    repo: { owner, repo },
-    repository: { owner, name: repo },
+    tokenEnvNames: review === undefined ? [name] : [name, review],
+    ...common,
   };
 }
