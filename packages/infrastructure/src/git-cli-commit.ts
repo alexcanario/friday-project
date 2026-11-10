@@ -28,10 +28,12 @@ export interface CommitRequest {
   worktree: string;
   message: string;
   baseEnv: Record<string, string>;
+  /** Test seam: runs right after the worktree is validated and before the first git step. */
+  afterValidate?: () => Promise<void>;
 }
 
 /** The agent owns the worktree: `.git` must be a gitfile that points at a linked worktree dir. */
-async function assertLinkedWorktree(worktree: string): Promise<void> {
+async function assertLinkedWorktree(worktree: string): Promise<string> {
   const fail = (reason: string): never => {
     throw new Error(`Falha ao validar o worktree: ${reason}`);
   };
@@ -58,6 +60,7 @@ async function assertLinkedWorktree(worktree: string): Promise<void> {
   ) {
     fail("o commondir não pertence ao repositório do worktree.");
   }
+  return gitDir;
 }
 
 function filterDrivers(stdout: string): string[] {
@@ -69,7 +72,12 @@ function filterDrivers(stdout: string): string[] {
   return [...names];
 }
 
-function stepEnv(request: CommitRequest, home: string, drivers: string[]): Record<string, string> {
+function stepEnv(
+  request: CommitRequest,
+  gitDir: string,
+  home: string,
+  drivers: string[],
+): Record<string, string> {
   const pairs: [string, string][] = [
     ["core.hooksPath", HOOKS_OFF],
     ["core.fsmonitor", "false"],
@@ -95,6 +103,7 @@ function stepEnv(request: CommitRequest, home: string, drivers: string[]): Recor
     GIT_CONFIG_NOSYSTEM: "1",
     GIT_ATTR_NOSYSTEM: "1",
     GIT_TERMINAL_PROMPT: "0",
+    GIT_DIR: gitDir,
     GIT_WORK_TREE: request.worktree,
     ...configEnv(pairs),
   };
@@ -108,9 +117,12 @@ const identityArgs = (): string[] =>
     `${scope}.email=${FRIDAY_AUTHOR.email}`,
   ]);
 
-/** Commits the pending worktree changes (if any) as friday-author and returns HEAD. */
-export async function commitWorktree(request: CommitRequest): Promise<string> {
-  await assertLinkedWorktree(request.worktree);
+/** Commits the pending worktree changes (if any) as friday-author and returns HEAD and the validated gitdir. */
+export async function commitWorktree(
+  request: CommitRequest,
+): Promise<{ sha: string; gitDir: string }> {
+  const gitDir = await assertLinkedWorktree(request.worktree);
+  await request.afterValidate?.();
   const home = await mkdtemp(join(tmpdir(), "friday-git-home-"));
   try {
     const exec = async (args: string[], env: Record<string, string>, okCodes = [0]) => {
@@ -127,10 +139,10 @@ export async function commitWorktree(request: CommitRequest): Promise<string> {
     };
     const first = await exec(
       ["config", "--get-regexp", "^filter\\."],
-      stepEnv(request, home, []),
+      stepEnv(request, gitDir, home, []),
       [0, 1],
     );
-    const env = stepEnv(request, home, filterDrivers(String(first.stdout ?? "")));
+    const env = stepEnv(request, gitDir, home, filterDrivers(String(first.stdout ?? "")));
     await exec(["add", "-A"], env);
     const diff = await exec(["diff-index", "--cached", "--quiet", "HEAD"], env, [0, 1]);
     if (diff.exitCode === 1) {
@@ -140,7 +152,7 @@ export async function commitWorktree(request: CommitRequest): Promise<string> {
     const sha = String((await exec(["rev-parse", "HEAD"], env)).stdout ?? "").trim();
     if (!SHA_RE.test(sha))
       throw new Error("Falha ao criar o commit: o git devolveu um SHA inválido.");
-    return sha;
+    return { sha, gitDir };
   } finally {
     await rm(home, { recursive: true, force: true });
   }

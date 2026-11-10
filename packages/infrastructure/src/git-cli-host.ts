@@ -13,6 +13,8 @@ export interface GitCliHostOptions {
   targetUrl: string;
   env?: Record<string, string | undefined>;
   gitBinary?: string;
+  /** Exists only for tests: runs after the worktree validation and before the first git step. */
+  afterValidate?: () => Promise<void>;
 }
 
 type PushRequest = Parameters<GitHost["push"]>[0];
@@ -40,6 +42,7 @@ export class GitCliHost implements GitHost {
   private readonly targetUrl: string;
   private readonly env: Record<string, string | undefined>;
   private readonly git: string;
+  private readonly afterValidate: (() => Promise<void>) | undefined;
 
   constructor({
     tokenEnv,
@@ -47,6 +50,7 @@ export class GitCliHost implements GitHost {
     targetUrl,
     env = process.env,
     gitBinary = "git",
+    afterValidate,
   }: GitCliHostOptions) {
     if (tokenEnv.trim() === "") {
       throw new Error("O nome da variável de ambiente do token não pode ser vazio.");
@@ -65,6 +69,7 @@ export class GitCliHost implements GitHost {
     this.targetUrl = targetUrl;
     this.env = env;
     this.git = gitBinary;
+    this.afterValidate = afterValidate;
   }
 
   async push(request: PushRequest): Promise<{ sha: string }> {
@@ -74,11 +79,12 @@ export class GitCliHost implements GitHost {
       throw new Error(`A variável de ambiente ${this.tokenEnv} não está definida.`);
     }
     const { worktree, branch, message } = request;
-    const commit = await commitWorktree({
+    const { sha: commit, gitDir } = await commitWorktree({
       git: this.git,
       worktree,
       message,
       baseEnv: this.baseEnv(),
+      ...(this.afterValidate === undefined ? {} : { afterValidate: this.afterValidate }),
     });
     const mirror = this.mirrorDir;
     if (!existsSync(join(mirror, "HEAD"))) {
@@ -87,7 +93,7 @@ export class GitCliHost implements GitHost {
     const b64 = Buffer.from(`x-access-token:${token}`).toString("base64");
     const fetchEnv = { ...this.baseEnv(), ...hooksConfig([]) };
     await this.run(
-      ["--git-dir", mirror, "fetch", "--no-tags", "--quiet", worktree, commit],
+      ["--git-dir", mirror, "fetch", "--no-tags", "--quiet", gitDir, commit],
       fetchEnv,
       [token, b64],
       "Falha ao buscar o commit no espelho: ",

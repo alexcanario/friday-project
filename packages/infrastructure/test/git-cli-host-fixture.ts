@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { mkdtempSync, writeFileSync } from "node:fs";
+import { chmodSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -39,4 +39,10 @@ export function makeRepoFixture(prefix: string): RepoFixture {
   git(base, "commit", "-q", "-m", "base");
   git(base, "worktree", "add", "-q", "-b", "friday/345-x", wt);
   return { dir, remote, wt, mirror: join(dir, "mirror"), targetUrl: `file://${remote}` };
+}
+
+/** Writes an executable sh script (chmod keeps it runnable on CI) that appends `body` output to a marker. */
+export function markerScript(path: string, body: string): void {
+  writeFileSync(path, `#!/bin/sh\n${body}\n`);
+  chmodSync(path, 0o755);
 }
