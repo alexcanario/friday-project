@@ -109,7 +109,7 @@ describe("ticker overlap", () => {
 
   it("consumes the ready list once and logs no dispatch failure with slow listReady", async () => {
     const { clock, issues, runtime, built, logs, ticker, state } = setup();
-    let consumed = 0;
+    const consumed = 0;
     state.buildRequest = (id) => {
       if (issues.calls > consumed + 1) throw new Error(`issue ${id} não foi despachada por estado`);
       return fakeRequest(id);

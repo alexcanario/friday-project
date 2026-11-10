@@ -71,8 +71,15 @@ export function createTicker(deps: TickerDeps): Ticker {
   }
 
   function start(): () => void {
+    let inFlight = false;
     const safeTick = (): void => {
-      tick().catch(() => undefined);
+      if (inFlight) return;
+      inFlight = true;
+      tick()
+        .catch(() => undefined)
+        .finally(() => {
+          inFlight = false;
+        });
     };
     safeTick();
     return deps.clock.every(TICK_INTERVAL_MS, safeTick);
