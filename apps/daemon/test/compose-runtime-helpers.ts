@@ -24,8 +24,8 @@ export function setupCompose(o: SetupOptions = {}) {
   cpSync(fixture, root, { recursive: true });
   const file = join(root, "factory.yaml");
   const yaml = readFileSync(file, "utf8").replace(
-    "  merge: manual\n",
-    `  merge: manual\n  author_token_env: ${o.tokenEnv ?? "FRIDAY_AUTHOR_TOKEN"}\n`,
+    "  author_token_env: FRIDAY_AUTHOR_TOKEN\n",
+    `  author_token_env: ${o.tokenEnv ?? "FRIDAY_AUTHOR_TOKEN"}\n`,
   );
   writeFileSync(file, yaml);
   const github = new FakeGitHub();

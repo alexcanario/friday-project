@@ -9,26 +9,26 @@ const summary = (root: string) => problemsOf(root).map((p) => [p.file, p.code, p
 describe("secret values", () => {
   it("rejects secrets with values", () => {
     let root = makeRoot();
-    replaceLine(root, F, 28, "  - ANTHROPIC_API_KEY=abc");
+    replaceLine(root, F, 29, "  - ANTHROPIC_API_KEY=abc");
+    expect(summary(root)).toEqual([[F, "secret_value", 29]]);
+
+    root = makeRoot();
+    replaceLine(root, F, 29, "  - KEY: abc");
+    expect(summary(root)).toEqual([[F, "secret_value", 29]]);
+
+    root = makeRoot();
+    replaceLine(root, F, 28, "secrets: A=1");
+    removeLine(root, F, 29);
     expect(summary(root)).toEqual([[F, "secret_value", 28]]);
 
     root = makeRoot();
-    replaceLine(root, F, 28, "  - KEY: abc");
-    expect(summary(root)).toEqual([[F, "secret_value", 28]]);
+    replaceLine(root, F, 28, "secrets:");
+    replaceLine(root, F, 29, "  KEY: abc");
+    expect(summary(root)).toEqual([[F, "secret_value", 29]]);
 
     root = makeRoot();
-    replaceLine(root, F, 27, "secrets: A=1");
-    removeLine(root, F, 28);
-    expect(summary(root)).toEqual([[F, "secret_value", 27]]);
-
-    root = makeRoot();
-    replaceLine(root, F, 27, "secrets:");
-    replaceLine(root, F, 28, "  KEY: abc");
-    expect(summary(root)).toEqual([[F, "secret_value", 28]]);
-
-    root = makeRoot();
-    replaceLine(root, F, 27, "secrets:");
-    replaceLine(root, F, 28, "");
+    replaceLine(root, F, 28, "secrets:");
+    replaceLine(root, F, 29, "");
     expect(summary(root).map((s) => s[1])).toEqual(["invalid_value"]);
 
     for (const prefix of ["sk-ant-", "ghp_", "gho_", "ghs_", "github_pat_"]) {
@@ -42,10 +42,10 @@ describe("secret values", () => {
     expect(summary(root).map((s) => s[1])).toEqual(["secret_value"]);
 
     root = makeRoot();
-    edit(root, F, (l) => [...l.slice(0, 28), "foo: ghp_x1", ""]);
+    edit(root, F, (l) => [...l.slice(0, 29), "foo: ghp_x1", ""]);
     expect(summary(root)).toEqual([
-      [F, "secret_value", 29],
-      [F, "unknown_key", 29],
+      [F, "secret_value", 30],
+      [F, "unknown_key", 30],
     ]);
 
     root = makeRoot();
@@ -75,7 +75,7 @@ describe("secret values", () => {
     roots.push(root);
 
     root = makeRoot();
-    edit(root, F, (l) => [...l.slice(0, 28), "foo: ghp_x1", ""]);
+    edit(root, F, (l) => [...l.slice(0, 29), "foo: ghp_x1", ""]);
     roots.push(root);
 
     for (const r of roots) {

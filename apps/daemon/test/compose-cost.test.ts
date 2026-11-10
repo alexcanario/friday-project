@@ -32,10 +32,7 @@ function setup(o: Options = {}) {
   const root = mkdtempSync(join(tmpdir(), "friday-cost-"));
   cpSync(fixture, root, { recursive: true });
   const file = join(root, "factory.yaml");
-  const yaml = readFileSync(file, "utf8").replace(
-    "  merge: manual\n",
-    "  merge: manual\n  author_token_env: FRIDAY_AUTHOR_TOKEN\n",
-  );
+  const yaml = readFileSync(file, "utf8");
   writeFileSync(file, (o.yaml ?? ((y) => y))(yaml));
   const github = new FakeGitHub();
   github.issues.push({ number: 7, title: "Issue", labels: ["friday"] } as never);

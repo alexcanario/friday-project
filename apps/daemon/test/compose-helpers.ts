@@ -27,10 +27,7 @@ export function setup(edit: (yaml: string) => string = (y) => y) {
   const root = mkdtempSync(join(tmpdir(), "friday-compose-"));
   cpSync(fixture, root, { recursive: true });
   const file = join(root, "factory.yaml");
-  const yaml = readFileSync(file, "utf8").replace(
-    "  merge: manual\n",
-    "  merge: manual\n  author_token_env: FRIDAY_AUTHOR_TOKEN\n",
-  );
+  const yaml = readFileSync(file, "utf8");
   writeFileSync(file, edit(yaml));
   const github = new FakeGitHub();
   const logs: string[] = [];

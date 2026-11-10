@@ -41,10 +41,20 @@ export const factoryConfigSchema = z.strictObject({
         .string()
         .regex(/^[A-Z][A-Z0-9_]*$/)
         .optional(),
+      author_app: z
+        .strictObject({
+          app_id: positiveInt,
+          installation_id: positiveInt,
+          private_key_path: z.string().startsWith("/"),
+        })
+        .optional(),
       review_token_env: z
         .string()
         .regex(/^[A-Z][A-Z0-9_]*$/)
         .optional(),
+    })
+    .refine((pr) => (pr.author_app === undefined) !== (pr.author_token_env === undefined), {
+      path: ["author_app"],
     })
     .refine(
       (pr) => pr.review_token_env === undefined || pr.review_token_env !== pr.author_token_env,
