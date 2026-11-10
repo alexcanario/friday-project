@@ -33,7 +33,7 @@ export type QaCompose = {
 /** Read-only access the QA context needs; reuses the daemon connection (D79). */
 export type QaReadPort = {
   projectId: string;
-  events: EventStore;
+  events: Pick<EventStore, "list">;
   issues: Pick<IssueRepository, "get">;
 };
 
@@ -81,8 +81,9 @@ function pinnedContext(deps: QaBranchDeps) {
   ) as QaContext["friday"]["agent"]["mcp_tools"];
   const read: QaReadPort = {
     projectId: deps.projectId,
-    events: deps.recorder.events,
-    issues: deps.recorder.issues,
+    // Fresh objects with only the read methods: no `append`/`rebuild` exist at runtime (R4).
+    events: { list: (projectId, issueId) => deps.recorder.events.list(projectId, issueId) },
+    issues: { get: (projectId, issueId) => deps.recorder.issues.get(projectId, issueId) },
   };
   return (issueId: number, runId: string): QaContext | null => {
     const context = deps.compose.context(issueId, runId, read);

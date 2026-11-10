@@ -2,7 +2,7 @@ import type { EventStore } from "@friday/application";
 
 /** Reads the number of the last valid PrOpened event of an issue (D71, D74). */
 export function createPrOf(
-  events: EventStore,
+  events: Pick<EventStore, "list">,
   projectId: string,
 ): (issueId: number) => number | null {
   return (issueId) => {
