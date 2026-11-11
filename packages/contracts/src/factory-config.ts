@@ -11,7 +11,7 @@ const model = z.enum(["haiku", "sonnet", "opus"]);
 const appCredential = z.strictObject({
   app_id: positiveInt,
   installation_id: positiveInt,
-  private_key_path: z.string().startsWith("/"),
+  private_key_path: z.string().regex(/^(?:\/(?![\\/])|[A-Za-z]:[\\/])/),
 });
 
 const RISK_RULES = [

@@ -16,7 +16,7 @@ describe("factory.yaml private_key_path", () => {
     expect(result.ok).toBe(true);
     if (result.ok) {
       expect(result.config.pull_requests.author_app?.private_key_path).toBe(
-        "C:\Users\alex\.friday\keys\author.pem",
+        String.raw`C:\Users\alex\.friday\keys\author.pem`,
       );
     }
   });

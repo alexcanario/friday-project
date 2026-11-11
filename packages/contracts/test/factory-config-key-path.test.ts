@@ -40,7 +40,7 @@ describe("private_key_path", () => {
   it("accepts POSIX and Windows absolute private_key_path", () => {
     const paths = [
       "/etc/friday/author.pem",
-      "C:\Users\alex\.friday\keys\author.pem",
+      String.raw`C:\Users\alex\.friday\keys\author.pem`,
       "C:/Users/alex/.friday/keys/author.pem",
     ];
     for (const block of BLOCKS) {
@@ -56,21 +56,25 @@ describe("private_key_path", () => {
       "",
       "keys/author.pem",
       "./author.pem",
-      "keys\author.pem",
-      ".\author.pem",
+      String.raw`keys\author.pem`,
+      String.raw`.\author.pem`,
       "C:author.pem",
       "C:",
-      "\\servidor\pasta\author.pem",
-      "\pasta\author.pem",
+      String.raw`\\servidor\pasta\author.pem`,
+      String.raw`\pasta\author.pem`,
       "//servidor/pasta/author.pem",
-      "/\servidor\pasta\author.pem",
+      String.raw`/\servidor\pasta\author.pem`,
     ];
     for (const block of BLOCKS) {
       for (const path of paths) {
         const result = factoryConfigSchema.safeParse(config(block, path));
         expect(result.success, `${block} ${path}`).toBe(false);
         if (!result.success) {
-          expect(result.error.issues[0]?.path).toEqual(["pull_requests", block, "private_key_path"]);
+          expect(result.error.issues[0]?.path).toEqual([
+            "pull_requests",
+            block,
+            "private_key_path",
+          ]);
         }
       }
     }
