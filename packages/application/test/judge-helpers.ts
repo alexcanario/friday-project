@@ -6,6 +6,7 @@ import {
   type AgentRunOptions,
   type JudgeStepDeps,
   type JudgeStepInput,
+  type ReviewCredential,
   type StaleVerdicts,
 } from "../src/index.ts";
 import { finished } from "./qa-step-helpers.ts";
@@ -67,7 +68,7 @@ export function setup(
     body?: string;
     labels?: string[];
     env?: Record<string, string | undefined>;
-    reviewTokenEnv?: string | undefined;
+    review?: ReviewCredential;
     stale?: MemoryStale;
   } = {},
 ) {
@@ -94,7 +95,7 @@ export function setup(
       };
     },
     env: opts.env ?? { FRIDAY_JUDGE_TOKEN: TOKEN },
-    reviewTokenEnv: "reviewTokenEnv" in opts ? opts.reviewTokenEnv : "FRIDAY_JUDGE_TOKEN",
+    review: opts.review ?? { mode: "env", tokenEnv: "FRIDAY_JUDGE_TOKEN" },
     agents: opts.agents ?? makeAgents(),
   };
   const input: JudgeStepInput = {
