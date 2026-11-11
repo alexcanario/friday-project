@@ -8,6 +8,9 @@ import { FakeGitHub } from "./fakes.ts";
 
 const APP =
   "  author_app:\n    app_id: 1\n    installation_id: 2\n    private_key_path: /etc/friday/author.pem\n";
+const REVIEW_APP =
+  "  review_app:\n    app_id: 3\n    installation_id: 4\n    private_key_path: /etc/friday/judge.pem\n";
+const REVIEW_ENV = "  review_token_env: FRIDAY_REVIEW_TOKEN\n";
 const toApp = (y: string) => y.replace("  author_token_env: FRIDAY_AUTHOR_TOKEN\n", APP);
 
 function withApp(edit: (y: string) => string = toApp) {
@@ -82,20 +85,14 @@ describe("composeDaemon with author_app", () => {
 
 describe("readAuthor", () => {
   it("readAuthor returns the discriminated union", () => {
-    const app = readAuthor(setup(toApp).opts);
+    const app = readAuthor(setup((y) => toApp(y).replace(REVIEW_ENV, REVIEW_APP)).opts);
     expect(app).toMatchObject({
       mode: "app",
       app: { appId: 1, installationId: 2, privateKeyPath: "/etc/friday/author.pem" },
       tokenEnvNames: [],
     });
     const judge = readAuthor(
-      setup((y) =>
-        toApp(y).replace(
-          APP,
-          `${APP}  review_token_env: FRIDAY_JUDGE_TOKEN
-`,
-        ),
-      ).opts,
+      setup((y) => toApp(y).replace(REVIEW_ENV, "  review_token_env: FRIDAY_JUDGE_TOKEN\n")).opts,
     );
     expect(judge.tokenEnvNames).toEqual(["FRIDAY_JUDGE_TOKEN"]);
     const env = readAuthor(setup().opts);
@@ -107,6 +104,13 @@ describe("readAuthor", () => {
     const missing = setup().opts;
     expect(() => readAuthor({ ...missing, env: {} })).toThrow(
       new Error("A variável FRIDAY_AUTHOR_TOKEN está vazia ou ausente."),
+    );
+  });
+
+  it("rejects author_app without review credential", async () => {
+    const t = setup((y) => toApp(y).replace(REVIEW_ENV, ""));
+    await expect(composeDaemon({ ...t.opts, env: {} })).rejects.toThrow(
+      "O factory.yaml está inválido ou ausente.",
     );
   });
 });

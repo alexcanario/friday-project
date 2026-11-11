@@ -21,6 +21,7 @@ risk:
 pull_requests:
   merge: manual
   author_token_env: FRIDAY_AUTHOR_TOKEN
+  review_token_env: FRIDAY_REVIEW_TOKEN
 limits:
   per_issue_usd: 5
   per_day_usd: 10

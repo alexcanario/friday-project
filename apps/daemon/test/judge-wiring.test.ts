@@ -1,4 +1,4 @@
-import { cpSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { cpSync, mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { GitHubPort } from "@friday/application";
@@ -14,14 +14,6 @@ describe("createJudgeBranch", () => {
   it("returns not applied when the issue is not listed", async () => {
     const root = mkdtempSync(join(tmpdir(), "friday-jw-"));
     cpSync(fixture, root, { recursive: true });
-    const file = join(root, "factory.yaml");
-    writeFileSync(
-      file,
-      readFileSync(file, "utf8").replace(
-        "  merge: manual\n",
-        "  merge: manual\n  review_token_env: FRIDAY_REVIEW_TOKEN\n",
-      ),
-    );
     const now = () => new Date("2026-11-05T03:00:00.000Z");
     const events = new FakeEvents();
     const recorder = { projectId: "p", events, issues: new FakeIssueRepository(events), now };

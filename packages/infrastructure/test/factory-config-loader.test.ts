@@ -53,13 +53,35 @@ describe("loadFactoryConfig", () => {
     expect(loadFactoryConfig(root).ok).toBe(false);
   });
 
+  it("loads review_app in place of review_token_env", () => {
+    const app = [
+      "  review_app:",
+      "    app_id: 3",
+      "    installation_id: 4",
+      "    private_key_path: /etc/friday/judge.pem",
+    ];
+    const root = makeRoot();
+    edit(root, F, (l) => [...l.slice(0, 23), ...app, ...l.slice(24)]);
+    const result = loadFactoryConfig(root);
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.config.pull_requests.review_app).toEqual({
+        app_id: 3,
+        installation_id: 4,
+        private_key_path: "/etc/friday/judge.pem",
+      });
+    }
+  });
+
+  it("fails closed without a review credential", () => {
+    const root = makeRoot();
+    edit(root, F, (l) => [...l.slice(0, 23), ...l.slice(24)]);
+    expect(loadFactoryConfig(root).ok).toBe(false);
+  });
+
   it("reports equal token envs on review_token_env", () => {
     const root = makeRoot();
-    edit(root, F, (l) => [
-      ...l.slice(0, 23),
-      "  review_token_env: FRIDAY_AUTHOR_TOKEN",
-      ...l.slice(23),
-    ]);
+    replaceLine(root, F, 24, "  review_token_env: FRIDAY_AUTHOR_TOKEN");
     expect(problemsOf(root)).toEqual([
       {
         file: F,
@@ -71,14 +93,14 @@ describe("loadFactoryConfig", () => {
   });
   it("reports the exact line of each problem", () => {
     let root = makeRoot();
-    edit(root, F, (l) => [...l.slice(0, 29), "extra: 1", ""].filter((x, i) => i < 30 || x !== ""));
+    edit(root, F, (l) => [...l.slice(0, 30), "extra: 1", ""].filter((x, i) => i < 31 || x !== ""));
     expect(problemsOf(root)).toEqual([
-      { file: F, line: 30, code: "unknown_key", message: "Chave não prevista em raiz." },
+      { file: F, line: 31, code: "unknown_key", message: "Chave não prevista em raiz." },
     ]);
 
     root = makeRoot();
-    edit(root, F, (l) => [...l.slice(0, 29), "1: a", ""]);
-    expect(problemsOf(root).map((p) => [p.code, p.line])).toEqual([["unknown_key", 30]]);
+    edit(root, F, (l) => [...l.slice(0, 30), "1: a", ""]);
+    expect(problemsOf(root).map((p) => [p.code, p.line])).toEqual([["unknown_key", 31]]);
 
     root = makeRoot();
     edit(root, F, (l) => [...l.slice(0, 13), "  max_qa_rounds: 3", ...l.slice(13)]);
