@@ -8,6 +8,11 @@ const githubName = z
   .regex(/^[A-Za-z0-9._-]+$/)
   .refine((s) => s !== "." && s !== "..");
 const model = z.enum(["haiku", "sonnet", "opus"]);
+const appCredential = z.strictObject({
+  app_id: positiveInt,
+  installation_id: positiveInt,
+  private_key_path: z.string().startsWith("/"),
+});
 
 const RISK_RULES = [
   "migrations",
@@ -41,21 +46,26 @@ export const factoryConfigSchema = z.strictObject({
         .string()
         .regex(/^[A-Z][A-Z0-9_]*$/)
         .optional(),
-      author_app: z
-        .strictObject({
-          app_id: positiveInt,
-          installation_id: positiveInt,
-          private_key_path: z.string().startsWith("/"),
-        })
-        .optional(),
+      author_app: appCredential.optional(),
       review_token_env: z
         .string()
         .regex(/^[A-Z][A-Z0-9_]*$/)
         .optional(),
+      review_app: appCredential.optional(),
     })
     .refine((pr) => (pr.author_app === undefined) !== (pr.author_token_env === undefined), {
       path: ["author_app"],
     })
+    .refine((pr) => (pr.review_app === undefined) !== (pr.review_token_env === undefined), {
+      path: ["review_app"],
+    })
+    .refine(
+      (pr) =>
+        pr.author_app === undefined ||
+        pr.review_app === undefined ||
+        pr.author_app.app_id !== pr.review_app.app_id,
+      { path: ["review_app", "app_id"] },
+    )
     .refine(
       (pr) => pr.review_token_env === undefined || pr.review_token_env !== pr.author_token_env,
       { path: ["review_token_env"] },

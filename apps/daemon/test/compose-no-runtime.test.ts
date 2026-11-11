@@ -1,4 +1,4 @@
-import { cpSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { cpSync, mkdirSync, mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
@@ -138,7 +138,6 @@ describe("composeDaemon without ComposeOptions.runtime", () => {
   it("runs the judge branch through createRuntime when runtime is omitted", async () => {
     const root = mkdtempSync(join(tmpdir(), "friday-nort-"));
     cpSync(fixture, root, { recursive: true });
-    const file = join(root, "factory.yaml");
     const author = new FakeCiGitHub();
     author.issues.push({ number: 7, title: "T", body: "- risco: low — x", labels: ["friday"] });
     const reviewers: FakeReviewer[] = [];
