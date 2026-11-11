@@ -121,6 +121,12 @@ describe("judge agent definitions", () => {
     }
   });
 
+  it("judge prompt tells the judge where the head SHA comes from", () => {
+    expect(prompt).toContain("head SHA given in the run prompt");
+    expect(prompt).toContain("truncated");
+    expect(prompt).not.toContain("Note the head SHA of the revision you reviewed");
+  });
+
   it("has no secret in the judge definitions", () => {
     for (const { role, text } of both) {
       expect(scanSecrets(text, `agents/${role}.yaml`)).toEqual([]);

@@ -86,7 +86,7 @@ describe("effect tools", () => {
     expect(s.gitHost.pushes).toEqual([{ worktree: "/w", branch: "friday/70-x", message: "m" }]);
     expect((await s.handlers.pr_create!({ title: "t", body: "b" })).isError).toBeUndefined();
     expect(await s.handlers.pr_diff!({})).toEqual(
-      text(JSON.stringify({ files: [], diffBytes: 0 })),
+      text(JSON.stringify({ headSha: "a".repeat(40), truncated: false, files: [] })),
     );
     expect(await s.handlers.issue_comment!({ body: "c" })).toEqual(
       text("200: comentário publicado."),
@@ -96,7 +96,7 @@ describe("effect tools", () => {
         method: "createPullRequest",
         args: [{ head: "friday/70-x", base: "develop", title: "t", body: "b" }],
       },
-      { method: "getPrDiff", args: [7] },
+      { method: "getPrReviewDiff", args: [7] },
       { method: "postAgentComment", args: [70, "specialist", "c"] },
     ]);
   });
