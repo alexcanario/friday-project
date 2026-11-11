@@ -15,13 +15,17 @@ import type { StaleVerdicts } from "./stale-verdicts.ts";
 
 type ReviewApproved = Extract<WorkflowInput, { type: "ReviewApproved" }>;
 
+/** How the Judge obtains the review token: a variable name (D53) or the App token provider (D90). */
+export type ReviewCredential =
+  { mode: "env"; tokenEnv: string } | { mode: "app"; getToken: () => Promise<string> };
+
 export type JudgeStepDeps = {
   runtime: AgentRuntime;
   stale: StaleVerdicts;
   readPrHead: (pr: number) => Promise<string>;
   reviewer: (token: string) => Pick<GitHubPort, "postReview">;
   env: Record<string, string | undefined>;
-  reviewTokenEnv: string | undefined;
+  review: ReviewCredential;
   agents: Record<"judge" | "judge-strong", AgentRunOptions>;
 };
 
@@ -48,14 +52,20 @@ export type JudgeStepOutcome =
   | { kind: "invalid"; violations: Violation[] }
   | { kind: "held"; input: { type: "RunHeld"; reason: RunHeldReason } };
 
-function readToken(deps: JudgeStepDeps): string {
-  if (deps.reviewTokenEnv === undefined) {
-    throw new Error("A chave pull_requests.review_token_env não está configurada.");
-  }
-  const token = deps.env[deps.reviewTokenEnv];
+function readEnvToken(env: Record<string, string | undefined>, name: string): string {
+  const token = env[name];
   if (token === undefined || token.trim() === "") {
-    throw new Error(`A variável de ambiente ${deps.reviewTokenEnv} não está definida.`);
+    throw new Error(`A variável de ambiente ${name} não está definida.`);
   }
+  return token;
+}
+
+/** Reads the review token; in app mode every call asks the provider, which renews near expiry. */
+async function readToken(deps: JudgeStepDeps): Promise<string> {
+  const { review } = deps;
+  if (review.mode === "env") return readEnvToken(deps.env, review.tokenEnv);
+  const token = await review.getToken();
+  if (token.trim() === "") throw new Error("O token de revisão do App está vazio.");
   return token;
 }
 
@@ -117,7 +127,7 @@ export async function runJudgeStep(
   deps: JudgeStepDeps,
   input: JudgeStepInput,
 ): Promise<JudgeStepOutcome> {
-  const token = readToken(deps);
+  await readToken(deps);
   const role = chooseJudgeRole({
     declaredRisk: parseDeclaredRisk(input.issue.body),
     labels: input.issue.labels,
@@ -139,6 +149,8 @@ export async function runJudgeStep(
       input: { type: "ReviewApproved", headSha: verdict.headSha, prHeadSha },
     };
   }
+  // Fresh token right before posting: the run duration must not eat the renewal margin.
+  const token = await readToken(deps);
   const { id: reviewId } = await deps.reviewer(token).postReview(pr, {
     commitId: verdict.headSha,
     body: renderReviewBody(verdict),

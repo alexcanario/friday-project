@@ -1,7 +1,7 @@
 import { join } from "node:path";
 import type { AgentRuntime, GitHubPort, WorktreeManager } from "@friday/application";
 import type { BudgetDeps } from "./budget-gate.ts";
-import { createJudgeBranch, type JudgeCompose } from "./judge-wiring.ts";
+import { createJudgeBranch, type JudgeCompose, type TokenProviderFactory } from "./judge-wiring.ts";
 import { createQaBranch, type QaCompose } from "./qa-wiring.ts";
 import type { RunRecorderDeps } from "./run-recorder.ts";
 import type { RunRecordingDeps } from "./run-registration.ts";
@@ -20,6 +20,7 @@ export type BranchOptions = {
   worktrees: WorktreeManager;
   log?: (message: string) => void;
   judge?: JudgeCompose;
+  createTokenProvider?: TokenProviderFactory;
   qa?: QaCompose;
   specialist?: SpecialistCompose;
   worktreesRoot?: string;
@@ -53,6 +54,9 @@ export function judgeBranchOf(opts: BranchOptions, ctx: BranchContext) {
       reviewerFor: (token) => clientFor(token, repo),
       compose: opts.judge,
       env: opts.env,
+      ...(opts.createTokenProvider === undefined
+        ? {}
+        : { createTokenProvider: opts.createTokenProvider }),
       ...(opts.runtime === undefined ? {} : { runtime: opts.runtime }),
       prOf: ctx.prOf,
       recorder: recorderDeps,

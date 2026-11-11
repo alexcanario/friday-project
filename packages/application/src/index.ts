@@ -111,6 +111,7 @@ export {
   type JudgeStepDeps,
   type JudgeStepInput,
   type JudgeStepOutcome,
+  type ReviewCredential,
 } from "./judge-step.ts";
 export {
   runTriageStep,

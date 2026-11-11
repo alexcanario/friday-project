@@ -112,7 +112,7 @@ export function setup(o: Options = {}) {
       runtime,
       stale,
       env: o.env ?? { FRIDAY_REVIEW_TOKEN: TOKEN },
-      reviewTokenEnv: "FRIDAY_REVIEW_TOKEN",
+      review: { mode: "env", tokenEnv: "FRIDAY_REVIEW_TOKEN" },
       agents: o.agents ?? agents(),
     },
     readPrHead: () => Promise.resolve(heads.length > 1 ? (heads.shift() as string) : heads[0]!),

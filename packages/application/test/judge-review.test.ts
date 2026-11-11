@@ -41,16 +41,12 @@ describe("judge review", () => {
     expect(JSON.stringify(s.posted[0]?.[1].body)).not.toContain(TOKEN);
     expect(JSON.stringify(out)).not.toContain(TOKEN);
 
-    const unset = setup(verdict(), { reviewTokenEnv: undefined });
-    await expect(unset.run()).rejects.toThrow(
-      "A chave pull_requests.review_token_env não está configurada.",
-    );
     const empty = setup(verdict(), { env: {} });
     const err = await empty.run().catch((e: Error) => e);
     expect((err as Error).message).toBe(
       "A variável de ambiente FRIDAY_JUDGE_TOKEN não está definida.",
     );
-    for (const x of [unset, empty]) {
+    for (const x of [empty]) {
       expect(x.runtime.requests).toHaveLength(0);
       expect(x.tokens).toHaveLength(0);
     }
