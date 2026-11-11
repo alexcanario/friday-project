@@ -39,6 +39,20 @@ describe("friday night digest", () => {
     ).toEqual({ stdout: "", stderr: "Falha ao ler o GitHub: boom\n", code: 1 });
   });
 
+  it("rejects a digest whose since is not ISO 8601 with exit 1", async () => {
+    const bad: NightReader = {
+      ...fake,
+      listComments: async () => [
+        { body: "## Noite de 07/11", createdAt: "2026-11-07T10:00:00Z; rm -rf /" },
+      ],
+    };
+    expect(await nightDigest(["night", "digest", "--report-issue", "1"], { reader: bad })).toEqual({
+      stdout: "",
+      stderr: "Digest inválido: since\n",
+      code: 1,
+    });
+  });
+
   it("exits 2 with usage on bad arguments (spawned process)", { timeout: 30_000 }, () => {
     const bad = [
       ["night", "digest"],
