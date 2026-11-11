@@ -4,7 +4,7 @@ const titled = z.strictObject({ number: z.number().int(), title: z.string() });
 
 export const nightDigestSchema = z.strictObject({
   reportIssue: z.number().int(),
-  since: z.string().nullable(),
+  since: z.iso.datetime().nullable(),
   merges: z.array(
     z.strictObject({ issue: z.number().int().nullable(), pr: z.number().int(), title: z.string() }),
   ),

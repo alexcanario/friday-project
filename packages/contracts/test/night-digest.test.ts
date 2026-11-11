@@ -28,3 +28,25 @@ describe("nightDigestSchema", () => {
     ).toBe(false);
   });
 });
+
+describe("nightDigestSchema since", () => {
+  const parse = (since: unknown) => nightDigestSchema.safeParse({ ...valid, since }).success;
+
+  it("accepts an ISO 8601 UTC datetime", () => {
+    expect(parse("2026-11-07T10:00:00Z")).toBe(true);
+  });
+
+  it("accepts null", () => {
+    expect(parse(null)).toBe(true);
+  });
+
+  it("rejects values that are not ISO 8601 (incl. shell metacharacters)", () => {
+    for (const bad of ["ontem", "2026-11-07", "2026-11-07T10:00:00Z; rm -rf /", "$(date)", ""]) {
+      expect(parse(bad), bad).toBe(false);
+    }
+  });
+
+  it("rejects an offset datetime", () => {
+    expect(parse("2026-11-07T10:00:00+03:00")).toBe(false);
+  });
+});
