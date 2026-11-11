@@ -16,13 +16,6 @@ function setup(prOf?: () => number) {
   const root = mkdtempSync(join(tmpdir(), "friday-prof-"));
   cpSync(fixture, root, { recursive: true });
   const file = join(root, "factory.yaml");
-  writeFileSync(
-    file,
-    readFileSync(file, "utf8").replace(
-      "  author_token_env: FRIDAY_AUTHOR_TOKEN\n",
-      "  author_token_env: FRIDAY_AUTHOR_TOKEN\n  review_token_env: FRIDAY_REVIEW_TOKEN\n",
-    ),
-  );
   const author = new FakeCiGitHub();
   author.issues.push({ number: 7, title: "T", body: "- risco: low — x", labels: ["friday"] });
   const logs: string[] = [];

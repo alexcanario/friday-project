@@ -71,10 +71,7 @@ describe("composeDaemon log redaction", () => {
 
   it("redacts the value of the configured review_token_env", async () => {
     const t = setup((y) =>
-      y.replace(
-        "  author_token_env: FRIDAY_AUTHOR_TOKEN\n",
-        "  author_token_env: FRIDAY_AUTHOR_TOKEN\n  review_token_env: MEU_REVIEW\n",
-      ),
+      y.replace("  review_token_env: FRIDAY_REVIEW_TOKEN\n", "  review_token_env: MEU_REVIEW\n"),
     );
     vi.spyOn(t.github, "listIssuesByLabel").mockRejectedValue(new Error("Bearer revisao-secreta"));
     const daemon = await composeDaemon({

@@ -35,10 +35,7 @@ function setup(o: Over = {}) {
   const root = mkdtempSync(join(tmpdir(), "friday-judge-"));
   cpSync(fixture, root, { recursive: true });
   const file = join(root, "factory.yaml");
-  const yaml = readFileSync(file, "utf8").replace(
-    "  author_token_env: FRIDAY_AUTHOR_TOKEN\n",
-    "  author_token_env: FRIDAY_AUTHOR_TOKEN\n  review_token_env: FRIDAY_REVIEW_TOKEN\n",
-  );
+  const yaml = readFileSync(file, "utf8");
   writeFileSync(file, (o.yaml ?? ((y) => y))(yaml));
   const author = new FakeCiGitHub();
   author.issues.push({ number: 7, title: "T", body: "- risco: low — x", labels: ["friday"] });
@@ -151,14 +148,11 @@ describe("composeDaemon with the Judge", () => {
     expect(text).not.toContain("t0k3n");
   });
 
-  it("logs when review_token_env is missing without failing the startup", async () => {
-    const t = await runJudge({
+  it("rejects a config without review credential", async () => {
+    const t = setup({
       yaml: (y) => y.replace("  review_token_env: FRIDAY_REVIEW_TOKEN\n", ""),
     });
-    expect(t.reviewers.flatMap((r) => r.posted)).toHaveLength(0);
-    expect(t.logs.join("\n")).toContain(
-      "A chave pull_requests.review_token_env não está configurada.",
-    );
+    await expect(composeDaemon(t.opts)).rejects.toThrow("O factory.yaml está inválido ou ausente.");
   });
 
   it("never logs the review token", async () => {
