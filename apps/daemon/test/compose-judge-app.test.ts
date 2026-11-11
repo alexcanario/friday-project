@@ -1,7 +1,8 @@
-import type { GitHubPort } from "@friday/application";
+import { FakeAgentRuntime, type AgentRuntime, type GitHubPort } from "@friday/application";
 import { describe, expect, it, vi } from "vitest";
 import { composeDaemon, type ComposeOptions } from "../src/index.ts";
 import { eventsOf, put, setup, stateOf } from "./compose-judge-helpers.ts";
+import { finished, verdict } from "./judge-dispatch-helpers.ts";
 import { FakeReviewer } from "./judge-fakes.ts";
 
 const AUTHOR_APP =
@@ -15,14 +16,18 @@ const toApps = (y: string) =>
 
 type Provider = NonNullable<ComposeOptions["createTokenProvider"]>;
 
-function withApps(judgeToken: () => Promise<string> = async () => "ghs_judge") {
-  const t = setup({ yaml: toApps, env: {} });
+function withApps(
+  judgeToken: () => Promise<string> = async () => "ghs_judge",
+  runtime?: AgentRuntime,
+) {
+  const t = setup({ yaml: toApps, env: {}, ...(runtime === undefined ? {} : { runtime }) });
   const createTokenProvider = vi.fn<Provider>((input) => ({
     getToken: input.appId === 3 ? judgeToken : async () => "ghs_author",
   }));
   const createGitHubWithAuth = vi.fn(() => t.author as unknown as GitHubPort);
   t.opts.createTokenProvider = createTokenProvider;
-  t.opts.createGitHubWithAuth = createGitHubWithAuth as unknown as ComposeOptions["createGitHubWithAuth"];
+  t.opts.createGitHubWithAuth =
+    createGitHubWithAuth as unknown as ComposeOptions["createGitHubWithAuth"];
   return { ...t, createTokenProvider, createGitHubWithAuth };
 }
 
@@ -63,7 +68,8 @@ describe("composeDaemon with review_app", () => {
   });
 
   it("composeDaemon reuses the review token provider across judge runs", async () => {
-    const t = withApps();
+    const twice = new FakeAgentRuntime([finished(verdict()), finished(verdict())]);
+    const t = withApps(undefined, twice);
     const daemon = await tickJudge(t);
     expect(eventsOf(daemon, "RunFinished")).toHaveLength(1);
     put(daemon, 7, "InReview");

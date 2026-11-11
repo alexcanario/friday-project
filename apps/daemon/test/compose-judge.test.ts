@@ -1,5 +1,9 @@
 import { FakeAgentRuntime } from "@friday/application";
-import { createEventStore, createLedgerRepository, createRunRepository } from "@friday/infrastructure";
+import {
+  createEventStore,
+  createLedgerRepository,
+  createRunRepository,
+} from "@friday/infrastructure";
 import { describe, expect, it, vi } from "vitest";
 import * as daemonIndex from "../src/index.ts";
 import { composeDaemon } from "../src/index.ts";

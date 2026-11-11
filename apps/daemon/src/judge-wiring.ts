@@ -1,5 +1,14 @@
-import type { AgentRunOptions, AgentRuntime, GitHubPort } from "@friday/application";
-import { SqliteStaleVerdicts, loadFactoryConfig } from "@friday/infrastructure";
+import type {
+  AgentRunOptions,
+  AgentRuntime,
+  GitHubPort,
+  ReviewCredential,
+} from "@friday/application";
+import {
+  SqliteStaleVerdicts,
+  createInstallationTokenProvider,
+  loadFactoryConfig,
+} from "@friday/infrastructure";
 import type { BudgetDeps } from "./budget-gate.ts";
 import { runJudgeForIssue, prHeadReader, type JudgeApplyResult } from "./judge-dispatch.ts";
 import type { RunRecorderDeps } from "./run-recorder.ts";
@@ -11,6 +20,13 @@ export type JudgeCompose = {
   input: (issueId: number) => { cwd: string; prompt: string; configRoot: string };
 };
 
+/** Builds the installation-token provider of one App (same shape as `ComposeOptions.createTokenProvider`). */
+export type TokenProviderFactory = (input: {
+  appId: number;
+  installationId: number;
+  privateKeyPath: string;
+}) => { getToken(): Promise<string> };
+
 export type JudgeBranchDeps = {
   projectId: string;
   root: string;
@@ -18,6 +34,8 @@ export type JudgeBranchDeps = {
   reviewerFor: (token: string) => Pick<GitHubPort, "postReview">;
   compose: JudgeCompose;
   env: Record<string, string | undefined>;
+  /** Provider of the review App; defaults to `createInstallationTokenProvider` (#379). */
+  createTokenProvider?: TokenProviderFactory;
   runtime?: AgentRuntime;
   prOf: (issueId: number) => number | null;
   recorder: RunRecorderDeps;
@@ -27,10 +45,39 @@ export type JudgeBranchDeps = {
   log?: (message: string) => void;
 };
 
-/** Reads `pull_requests.review_token_env` on every run; undefined when absent or unreadable. */
-function readReviewTokenEnv(root: string): string | undefined {
+/** Reads the review credential on every run (`review_app` or `review_token_env`); null when the config is unreadable. */
+export function readReviewCredential(
+  root: string,
+  providerFor: TokenProviderFactory,
+): ReviewCredential | null {
   const loaded = loadFactoryConfig(root);
-  return loaded.ok ? loaded.config.pull_requests.review_token_env : undefined;
+  if (!loaded.ok) return null;
+  const { review_app: app, review_token_env: tokenEnv } = loaded.config.pull_requests;
+  if (app !== undefined) {
+    const provider = providerFor({
+      appId: app.app_id,
+      installationId: app.installation_id,
+      privateKeyPath: app.private_key_path,
+    });
+    return { mode: "app", getToken: () => provider.getToken() };
+  }
+  return tokenEnv === undefined ? null : { mode: "env", tokenEnv };
+}
+
+const defaultProvider: TokenProviderFactory = (input) =>
+  createInstallationTokenProvider({ ...input, now: Date.now, fetch: globalThis.fetch });
+
+/** Memoizes providers per App/installation/key: the config is re-read per run, the renewal cache must survive. */
+function memoized(create: TokenProviderFactory): TokenProviderFactory {
+  const cache = new Map<string, ReturnType<TokenProviderFactory>>();
+  return (input) => {
+    const key = JSON.stringify([input.appId, input.installationId, input.privateKeyPath]);
+    const found = cache.get(key);
+    if (found !== undefined) return found;
+    const created = create(input);
+    cache.set(key, created);
+    return created;
+  };
 }
 
 /** Builds the Judge branch of the dispatcher (D64); config is re-read on every execution. */
@@ -42,9 +89,11 @@ export function createJudgeBranch(
     if (found === undefined) throw new Error(`A issue ${id} não está na listagem do label friday.`);
     return { body: found.body, labels: found.labels };
   };
+  const providerFor = memoized(deps.createTokenProvider ?? defaultProvider);
   return (issueId) => {
     const config = readTickConfig(deps.root);
-    if (config === null) {
+    const review = readReviewCredential(deps.root, providerFor);
+    if (config === null || review === null) {
       deps.log?.(`Falha no Judge da issue ${issueId}: o factory.yaml está inválido ou ausente.`);
       return Promise.resolve({ applied: false, feedback: null });
     }
@@ -58,7 +107,7 @@ export function createJudgeBranch(
           ...(deps.runtime === undefined ? {} : { runtime: deps.runtime }),
           stale: new SqliteStaleVerdicts(deps.recorder.events, deps.now),
           env: deps.env,
-          reviewTokenEnv: readReviewTokenEnv(deps.root),
+          review,
           agents: deps.compose.agents,
         },
         readPrHead: prHeadReader(deps.github),

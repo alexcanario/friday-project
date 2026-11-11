@@ -46,11 +46,7 @@ describe("createJudgeBranch", () => {
 });
 
 const APP =
-  "  review_app:
-    app_id: 3
-    installation_id: 4
-    private_key_path: /etc/friday/judge.pem
-";
+  "  review_app:\n    app_id: 3\n    installation_id: 4\n    private_key_path: /etc/friday/judge.pem\n";
 
 function rootWith(edit: (y: string) => string = (y) => y): string {
   const root = mkdtempSync(join(tmpdir(), "friday-jw-"));
@@ -64,8 +60,7 @@ describe("readReviewCredential", () => {
   it("readReviewCredential maps review_app and review_token_env and returns null for a bad config", async () => {
     const getToken = vi.fn(async () => "x");
     const providerFor = vi.fn(() => ({ getToken }));
-    const app = rootWith((y) => y.replace("  review_token_env: FRIDAY_REVIEW_TOKEN
-", APP));
+    const app = rootWith((y) => y.replace("  review_token_env: FRIDAY_REVIEW_TOKEN\n", APP));
     const cred = readReviewCredential(app, providerFor);
     expect(cred?.mode).toBe("app");
     expect(providerFor).toHaveBeenCalledWith({
@@ -80,8 +75,12 @@ describe("readReviewCredential", () => {
       mode: "env",
       tokenEnv: "FRIDAY_REVIEW_TOKEN",
     });
-    expect(readReviewCredential(rootWith((y) => y + "
-  : : bad"), providerFor)).toBeNull();
+    expect(
+      readReviewCredential(
+        rootWith(() => "not: [valid"),
+        providerFor,
+      ),
+    ).toBeNull();
     const missing = rootWith();
     rmSync(join(missing, "factory.yaml"));
     expect(readReviewCredential(missing, providerFor)).toBeNull();

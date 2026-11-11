@@ -51,8 +51,9 @@ export function prHeadReader(
 }
 
 function redact(deps: JudgeDispatchDeps, message: string): string {
-  const name = deps.step.reviewTokenEnv;
-  const token = name === undefined ? undefined : deps.step.env[name];
+  // App mode has no value in `env`: the ghs_ pattern of redact.ts masks the token.
+  const { review } = deps.step;
+  const token = review.mode === "env" ? deps.step.env[review.tokenEnv] : undefined;
   if (token === undefined || token === "") return message;
   return message.replaceAll(token, "***");
 }

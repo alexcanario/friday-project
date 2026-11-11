@@ -87,4 +87,3 @@ export async function runJudge(o: Over = {}) {
   await daemon.ticker.idle();
   return { ...t, daemon };
 }
-
