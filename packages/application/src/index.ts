@@ -41,8 +41,8 @@ export type {
   UnitOfWork,
 } from "./persistence-ports.ts";
 export { matchesGlob } from "./glob-match.ts";
-export type { PrDiff } from "./pr-diff.ts";
-export { PrDiffTruncatedError } from "./pr-diff.ts";
+export type { PrDiff, PrReviewDiff } from "./pr-diff.ts";
+export { MAX_REVIEW_PATCH_BYTES, PrDiffTruncatedError } from "./pr-diff.ts";
 export {
   classifyRisk,
   MAX_DIFF_BYTES,

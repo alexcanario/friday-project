@@ -6,7 +6,7 @@ import type {
   MergeResult,
   PrMergeState,
 } from "./github-port.ts";
-import type { PrDiff } from "./pr-diff.ts";
+import type { PrDiff, PrReviewDiff } from "./pr-diff.ts";
 
 const missing = (method: string): Promise<never> =>
   Promise.reject(new Error(`não implementado: ${method}`));
@@ -15,17 +15,24 @@ export class FakeGitHubPort implements GitHubPort {
   readonly calls: Array<{ method: string; args: unknown[] }> = [];
   readonly #createdPr: CreatedPr;
   readonly #prDiff: PrDiff;
+  readonly #prReviewDiff: PrReviewDiff;
   readonly #prMergeState: PrMergeState;
   readonly #fail: Error | undefined;
 
   constructor(options?: {
     createdPr?: CreatedPr;
     prDiff?: PrDiff;
+    prReviewDiff?: PrReviewDiff;
     prMergeState?: PrMergeState;
     fail?: Error;
   }) {
     this.#createdPr = options?.createdPr ?? { number: 1, headSha: "a".repeat(40), created: true };
     this.#prDiff = options?.prDiff ?? { files: [], diffBytes: 0 };
+    this.#prReviewDiff = options?.prReviewDiff ?? {
+      headSha: "a".repeat(40),
+      truncated: false,
+      files: [],
+    };
     this.#prMergeState = options?.prMergeState ?? { merged: false, headSha: "a".repeat(40) };
     this.#fail = options?.fail;
   }
@@ -46,6 +53,10 @@ export class FakeGitHubPort implements GitHubPort {
 
   getPrDiff(pr: number): Promise<PrDiff> {
     return this.#record("getPrDiff", [pr], this.#prDiff);
+  }
+
+  getPrReviewDiff(pr: number): Promise<PrReviewDiff> {
+    return this.#record("getPrReviewDiff", [pr], this.#prReviewDiff);
   }
 
   getPrMergeState(pr: number): Promise<PrMergeState> {

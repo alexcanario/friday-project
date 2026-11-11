@@ -5,11 +5,13 @@ import type {
   IssueSummary,
   MergeResult,
   PrDiff,
+  PrReviewDiff,
   PrMergeState,
   ReviewEvent,
 } from "@friday/application";
 import { PrDiffTruncatedError } from "@friday/application";
 import type { Octokit } from "octokit";
+import { toPrReviewDiff } from "./pr-review-diff.ts";
 
 type Repo = { owner: string; repo: string };
 
@@ -115,16 +117,16 @@ export class GitHubRestAdapter implements GitHubPort {
     return { headSha, state: latest.conclusion === "success" ? "success" : "failure" };
   }
 
-  private async changedFiles(pr: number): Promise<number> {
+  private async changedFiles(pr: number): Promise<{ count: number; headSha: string }> {
     const res = await this.octokit.request("GET /repos/{owner}/{repo}/pulls/{pull_number}", {
       ...this.repo,
       pull_number: pr,
     });
-    return res.data.changed_files;
+    return { count: res.data.changed_files, headSha: res.data.head.sha };
   }
 
-  async getPrDiff(pr: number): Promise<PrDiff> {
-    const expected = await this.changedFiles(pr);
+  private async prFiles(pr: number) {
+    const { count: expected, headSha } = await this.changedFiles(pr);
     const files = await this.octokit.paginate(
       "GET /repos/{owner}/{repo}/pulls/{pull_number}/files",
       {
@@ -135,6 +137,16 @@ export class GitHubRestAdapter implements GitHubPort {
     );
     // The route caps at 3000 files: an incomplete diff must never reach classifyRisk.
     if (files.length !== expected) throw new PrDiffTruncatedError(expected, files.length);
+    return { files, headSha };
+  }
+
+  async getPrReviewDiff(pr: number): Promise<PrReviewDiff> {
+    const { files, headSha } = await this.prFiles(pr);
+    return toPrReviewDiff(headSha, files);
+  }
+
+  async getPrDiff(pr: number): Promise<PrDiff> {
+    const { files } = await this.prFiles(pr);
     return {
       files: files.flatMap((f) => [
         {

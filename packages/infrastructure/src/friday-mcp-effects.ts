@@ -85,7 +85,7 @@ async function execute(
     case "pr_diff": {
       const pr = run.getPullRequest();
       if (pr === null) return reply("404: A run ainda não tem PR.", true);
-      return reply(JSON.stringify(await github.getPrDiff(pr)));
+      return reply(JSON.stringify(await github.getPrReviewDiff(pr)));
     }
     case "issue_comment":
       await github.postAgentComment(run.issue, run.role, args.body);

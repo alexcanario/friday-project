@@ -17,7 +17,10 @@ export type JudgeDispatchDeps = {
   projectId: string;
   prOf: (issueId: number) => number | null;
   getIssue: (issueId: number) => Promise<{ body: string; labels: string[] }>;
-  judgeInput: (issueId: number) => { cwd: string; prompt: string; configRoot: string };
+  judgeInput: (
+    issueId: number,
+    headSha: string,
+  ) => { cwd: string; prompt: string; configRoot: string };
   step: Omit<JudgeStepDeps, "reviewer" | "readPrHead" | "runtime"> & { runtime?: AgentRuntime };
   readPrHead: JudgeStepDeps["readPrHead"];
   reviewerFor: JudgeStepDeps["reviewer"];
@@ -142,6 +145,7 @@ async function execute(
   issueId: number,
   pr: number,
   runId: string,
+  head: string,
 ): Promise<Execution> {
   const { runs } = deps.recording;
   const row = {
@@ -164,7 +168,7 @@ async function execute(
         projectId: deps.projectId,
         issue: { id: issueId, ...issue },
         pr,
-        ...deps.judgeInput(issueId),
+        ...deps.judgeInput(issueId, head),
       },
     );
     completed = outcome.kind !== "held";
@@ -231,7 +235,7 @@ export async function runJudgeForIssue(
       deps.log ?? (() => {}),
     );
     if (!allowed) return NOT_APPLIED;
-    const { outcome } = await execute(deps, issueId, pr, runId);
+    const { outcome } = await execute(deps, issueId, pr, runId, head);
     return record(deps, issueId, runId, head, outcome);
   } catch (error) {
     const text = error instanceof Error ? error.message : String(error);

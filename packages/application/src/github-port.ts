@@ -1,4 +1,4 @@
-import type { PrDiff } from "./pr-diff.ts";
+import type { PrDiff, PrReviewDiff } from "./pr-diff.ts";
 
 export type IssueSummary = { number: number; title: string; body: string; labels: string[] };
 export type CiState = "success" | "failure" | "pending" | "missing";
@@ -24,6 +24,7 @@ export interface GitHubPort {
   }): Promise<CreatedPr>;
   getCiStatus(pr: number, checkName: string): Promise<CiStatus>;
   getPrDiff(pr: number): Promise<PrDiff>;
+  getPrReviewDiff(pr: number): Promise<PrReviewDiff>;
   getPrMergeState(pr: number): Promise<PrMergeState>;
   squashMerge(pr: number, expectedHeadSha: string): Promise<MergeResult>;
   postReview(

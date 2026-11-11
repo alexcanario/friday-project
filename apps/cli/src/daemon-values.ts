@@ -23,18 +23,26 @@ export function projectIdOf(repository: Repository): string {
 }
 
 /** Production values of the Judge input (D73, D76); the config root is the central one, never a worktree (R4). */
-export function judgeInputOf(input: { root: string; repository: Repository; issueId: number }): {
+export function judgeInputOf(input: {
+  root: string;
+  repository: Repository;
+  issueId: number;
+  headSha: string;
+}): {
   cwd: string;
   prompt: string;
   configRoot: string;
 } {
-  const { root, repository, issueId } = input;
+  const { root, repository, issueId, headSha } = input;
   if (!Number.isInteger(issueId) || issueId <= 0) {
     throw new Error(`O número da issue deve ser um inteiro positivo: ${issueId}.`);
   }
+  if (!/^[0-9a-f]{40}$/.test(headSha)) {
+    throw new Error(`O head SHA deve ter 40 caracteres hexadecimais minúsculos: ${headSha}.`);
+  }
   return {
     cwd: join(root, "worktrees", `${repository.owner}__${repository.name}`, String(issueId)),
-    prompt: `Review the pull request of issue #${issueId}. Read the diff with pr_diff and finish by calling review_verdict once.`,
+    prompt: `Review the pull request of issue #${issueId}. The head SHA of the pull request is ${headSha}. Read the diff with pr_diff and finish by calling review_verdict once, with that value in headSha.`,
     configRoot: root,
   };
 }
