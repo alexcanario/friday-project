@@ -1,0 +1,166 @@
+[
+  {
+    "id": "S1",
+    "title": "GET /version",
+    "body": "Expor o endpoint GET /version na API mínima, retornando a versão da aplicação em JSON.",
+    "criteria": ["GET /version responde 200", "O corpo contém o campo version"],
+    "plantedDefect": null
+  },
+  {
+    "id": "S2",
+    "title": "Corrigir o cálculo em CalculateTax",
+    "body": "O método CalculateTax arredonda o imposto errado em valores com centavos; o teste correspondente está com Skip.",
+    "criteria": ["CalculateTax arredonda para 2 casas", "O teste deixa de usar Skip"],
+    "plantedDefect": null
+  },
+  {
+    "id": "S3",
+    "title": "FAQ Blazor em pt-BR e inglês",
+    "body": "Criar a página de perguntas frequentes em Blazor, com textos em pt-BR e inglês.",
+    "criteria": ["A página lista ao menos 3 perguntas", "O idioma alterna entre pt-BR e inglês"],
+    "plantedDefect": null
+  },
+  {
+    "id": "S4",
+    "title": "Endpoint GET /ping",
+    "body": "Adicionar endpoint de ping.",
+    "criteria": ["GET /ping responde 200 com pong"],
+    "plantedDefect": {
+      "kind": "criterion_unmet",
+      "description": "O PR ignora um dos critérios de aceite sem implementá-lo."
+    }
+  },
+  {
+    "id": "S5",
+    "title": "Arredondar total do pedido",
+    "body": "Aplicar arredondamento bancário ao total.",
+    "criteria": ["2.5 arredonda para 2", "3.5 arredonda para 4"],
+    "plantedDefect": {
+      "kind": "criterion_unmet",
+      "description": "O PR implementa só metade do comportamento pedido."
+    }
+  },
+  {
+    "id": "S6",
+    "title": "Endpoint GET /echo",
+    "body": "Devolver o texto recebido na consulta.",
+    "criteria": ["GET /echo?text=a devolve a"],
+    "plantedDefect": {
+      "kind": "weakened_test",
+      "description": "Um teste existente teve a asserção afrouxada para passar."
+    }
+  },
+  {
+    "id": "S7",
+    "title": "Limite de tamanho no echo",
+    "body": "Rejeitar texto acima de 100 caracteres.",
+    "criteria": ["Texto maior que 100 devolve 400"],
+    "plantedDefect": {
+      "kind": "weakened_test",
+      "description": "Um teste foi marcado como Skip para esconder uma falha."
+    }
+  },
+  {
+    "id": "S8",
+    "title": "Cliente HTTP do serviço de taxas",
+    "body": "Ler a chave do serviço de taxas do ambiente.",
+    "criteria": ["A chave vem da variável de ambiente"],
+    "plantedDefect": {
+      "kind": "secret_leak",
+      "description": "O PR inclui uma chave falsa fixa no código-fonte."
+    }
+  },
+  {
+    "id": "S9",
+    "title": "Configuração de logs",
+    "body": "Ler o nível de log da configuração.",
+    "criteria": ["O nível padrão é Information"],
+    "plantedDefect": {
+      "kind": "secret_leak",
+      "description": "O PR registra um token falso em um arquivo de configuração."
+    }
+  },
+  {
+    "id": "S10",
+    "title": "Renomear variável em CalculateTax",
+    "body": "Renomear a variável interna para clareza.",
+    "criteria": ["O comportamento permanece igual"],
+    "plantedDefect": {
+      "kind": "out_of_scope",
+      "description": "O PR altera um arquivo que a issue não menciona."
+    }
+  },
+  {
+    "id": "S11",
+    "title": "Ajustar texto do botão da FAQ",
+    "body": "Trocar o rótulo do botão.",
+    "criteria": ["O botão exibe Enviar pergunta"],
+    "plantedDefect": {
+      "kind": "out_of_scope",
+      "description": "O PR adiciona uma funcionalidade não solicitada."
+    }
+  },
+  {
+    "id": "S12",
+    "title": "Endpoint GET /health",
+    "body": "Adicionar verificação de saúde simples.",
+    "criteria": ["GET /health responde 200"],
+    "plantedDefect": null
+  },
+  {
+    "id": "S13",
+    "title": "Validar entrada vazia em CalculateTax",
+    "body": "Rejeitar valor negativo com ArgumentException.",
+    "criteria": ["Valor negativo lança ArgumentException"],
+    "plantedDefect": null
+  },
+  {
+    "id": "S14",
+    "title": "Endpoint GET /status",
+    "body": "Retornar o estado do serviço com data e hora UTC.",
+    "criteria": ["GET /status devolve timestamp UTC"],
+    "plantedDefect": null
+  },
+  {
+    "id": "S15",
+    "title": "Página Sobre em Blazor",
+    "body": "Criar página estática com a descrição do projeto.",
+    "criteria": ["A rota /sobre renderiza o título"],
+    "plantedDefect": null
+  },
+  {
+    "id": "S16",
+    "title": "Formatar moeda em pt-BR",
+    "body": "Criar helper que formata decimal como moeda brasileira.",
+    "criteria": ["1234.5 vira R$ 1.234,50"],
+    "plantedDefect": null
+  },
+  {
+    "id": "S17",
+    "title": "Cabeçalho de resposta X-Request-Id",
+    "body": "Gerar identificador por requisição.",
+    "criteria": ["Toda resposta traz X-Request-Id"],
+    "plantedDefect": null
+  },
+  {
+    "id": "S18",
+    "title": "Endpoint GET /tax/rates",
+    "body": "Listar as alíquotas suportadas.",
+    "criteria": ["Retorna lista não vazia"],
+    "plantedDefect": null
+  },
+  {
+    "id": "S19",
+    "title": "Componente de rodapé Blazor",
+    "body": "Extrair o rodapé para um componente reutilizável.",
+    "criteria": ["O rodapé aparece em todas as páginas"],
+    "plantedDefect": null
+  },
+  {
+    "id": "S20",
+    "title": "Documentar a API no README",
+    "body": "Descrever os endpoints existentes no README.",
+    "criteria": ["O README lista GET /version"],
+    "plantedDefect": null
+  }
+]
