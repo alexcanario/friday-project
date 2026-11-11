@@ -17,7 +17,7 @@ import { readTickConfig } from "./tick-config.ts";
 
 export type JudgeCompose = {
   agents: Record<"judge" | "judge-strong", AgentRunOptions>;
-  input: (issueId: number) => { cwd: string; prompt: string; configRoot: string };
+  input: (issueId: number, headSha: string) => { cwd: string; prompt: string; configRoot: string };
 };
 
 /** Builds the installation-token provider of one App (same shape as `ComposeOptions.createTokenProvider`). */

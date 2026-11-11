@@ -119,9 +119,33 @@ describe("ClaudeAgentSdkRuntime effect tools", () => {
         method: "createPullRequest",
         args: [{ head: "friday/96-x", base: "develop", title: "t", body: "b" }],
       },
-      { method: "getPrDiff", args: [7] },
+      { method: "getPrReviewDiff", args: [7] },
       { method: "postAgentComment", args: [96, "specialist", "c"] },
     ]);
+  });
+
+  it("pr_diff returns headSha and patch from getPrReviewDiff", async () => {
+    const prReviewDiff = {
+      headSha: "c".repeat(40),
+      truncated: false,
+      files: [{ path: "a.ts", changedLines: 2, hasPatch: true, patch: "@@ -1 +1 @@" }],
+    };
+    const github = new FakeGitHubPort({ prReviewDiff });
+    const s = setup(async (c) => c.handlers.pr_diff!({}));
+    const runtime = new ClaudeAgentSdkRuntime({ ...s.deps, github, gitHost: s.gitHost });
+    await runtime.run(request());
+    expect(s.calls[0]!.value).toEqual({
+      content: [{ type: "text", text: JSON.stringify(prReviewDiff) }],
+    });
+    expect(github.calls).toEqual([{ method: "getPrReviewDiff", args: [7] }]);
+
+    const none = setup(async (c) => c.handlers.pr_diff!({}));
+    const rt = new ClaudeAgentSdkRuntime({ ...none.deps, github, gitHost: none.gitHost });
+    await rt.run(request({ effects: { run: { ...RUN, getPullRequest: () => null } } }));
+    expect(none.calls[0]!.value).toEqual({
+      content: [{ type: "text", text: "404: A run ainda não tem PR." }],
+      isError: true,
+    });
   });
 
   it("is misconfigured when an effect tool lacks a port or the run", async () => {
@@ -190,6 +214,6 @@ describe("ClaudeAgentSdkRuntime effect tools", () => {
     await other.run(request({ effects: { run: { ...RUN, getPullRequest: () => 9 } } }));
     expect(t.calls).toHaveLength(1);
     expect(t.calls[0]!.error).toBeUndefined();
-    expect(t.github.calls).toEqual([{ method: "getPrDiff", args: [9] }]);
+    expect(t.github.calls).toEqual([{ method: "getPrReviewDiff", args: [9] }]);
   });
 });

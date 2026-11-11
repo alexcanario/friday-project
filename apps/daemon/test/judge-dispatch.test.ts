@@ -14,6 +14,45 @@ import {
 } from "./judge-dispatch-helpers.ts";
 
 describe("runJudgeForIssue", () => {
+  const pinnedRuntime = (prompts: string[]) => ({
+    run: (request: { prompt: string }) => {
+      prompts.push(request.prompt);
+      const sha = /head ([0-9a-f]{40})/.exec(request.prompt)?.[1];
+      return Promise.resolve(finished(verdict({ headSha: sha })));
+    },
+  });
+  const inputOf = (_id: number, sha: string) => ({
+    cwd: "/tmp/wt",
+    prompt: `head ${sha}`,
+    configRoot: "/tmp/cfg",
+  });
+
+  it("the judge run prompt carries the head read before the run", async () => {
+    const t = setup({ heads: [B, B] });
+    const prompts: string[] = [];
+    t.deps.judgeInput = inputOf;
+    t.deps.step.runtime = pinnedRuntime(prompts);
+    const reads: string[] = [];
+    const read = t.deps.readPrHead;
+    t.deps.readPrHead = async (pr) => {
+      const head = await read(pr);
+      reads.push(head);
+      return head;
+    };
+    await runJudgeForIssue(t.deps, 7);
+    expect(prompts).toEqual([`head ${B}`]);
+    expect(reads).toEqual([B, B]);
+  });
+
+  it("a verdict pinned to the prompt head is posted and not skipped", async () => {
+    const t = setup({ heads: [B] });
+    t.deps.judgeInput = inputOf;
+    t.deps.step.runtime = pinnedRuntime([]);
+    await expect(runJudgeForIssue(t.deps, 7)).resolves.toEqual({ applied: true, feedback: null });
+    expect(t.posted).toEqual([expect.objectContaining({ commitId: B, event: "APPROVE" })]);
+    expect(t.ofType("JudgeSkipped")).toEqual([]);
+  });
+
   it("runs the judge, posts the review and applies the outcome", async () => {
     const t = setup();
     await expect(runJudgeForIssue(t.deps, 7)).resolves.toEqual({ applied: true, feedback: null });

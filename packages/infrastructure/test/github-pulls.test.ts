@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { PrDiffTruncatedError } from "@friday/application";
+import { MAX_REVIEW_PATCH_BYTES, PrDiffTruncatedError } from "@friday/application";
 import { GitHubRestAdapter } from "../src/github-rest-adapter.ts";
 import { createGitHubFake, createTestOctokit } from "./github-fake.ts";
 
@@ -157,6 +157,76 @@ describe("GitHubRestAdapter pull requests", () => {
     expect(e).toMatchObject({ code: "diff_truncated", expected: 4, received: 3 });
     expect(e.name).toBe("PrDiffTruncatedError");
     expect(e.message).toBe("Diff do PR incompleto: esperados 4 arquivos, recebidos 3.");
+  });
+
+  it("getPrReviewDiff returns headSha and the patch of each file", async () => {
+    const { fake, adapter } = setup();
+    const sha = "0123456789abcdef".repeat(2) + "01234567";
+    fake.pulls = [pr(sha)];
+    fake.pageSize = 1;
+    fake.files.set(30, [
+      { filename: "a.ts", additions: 3, deletions: 2, patch: "@@ ção" },
+      { filename: "img.png", additions: 0, deletions: 0 },
+      {
+        filename: "docs/ci.yml",
+        previous_filename: ".github/workflows/ci.yml",
+        additions: 1,
+        deletions: 1,
+        patch: "@@ x",
+      },
+    ]);
+    expect(await adapter.getPrReviewDiff(30)).toEqual({
+      headSha: sha,
+      truncated: false,
+      files: [
+        { path: "a.ts", changedLines: 5, hasPatch: true, patch: "@@ ção" },
+        { path: "img.png", changedLines: 0, hasPatch: false },
+        {
+          path: "docs/ci.yml",
+          changedLines: 2,
+          hasPatch: true,
+          patch: "@@ x",
+          previousPath: ".github/workflows/ci.yml",
+        },
+      ],
+    });
+  });
+
+  it("getPrReviewDiff omits patches beyond MAX_REVIEW_PATCH_BYTES and sets truncated", async () => {
+    expect(MAX_REVIEW_PATCH_BYTES).toBe(40000);
+    const { fake, adapter } = setup();
+    fake.pulls = [pr("abc")];
+    const file = (name: string, size: number) => ({
+      filename: name,
+      additions: 1,
+      deletions: 0,
+      patch: "x".repeat(size),
+    });
+    fake.files.set(30, [file("a.ts", 30000), file("b.ts", 30000)]);
+    const cut = await adapter.getPrReviewDiff(30);
+    expect(cut.truncated).toBe(true);
+    expect(cut.files[0]).toMatchObject({ path: "a.ts", hasPatch: true, patch: "x".repeat(30000) });
+    expect(cut.files[1]).toEqual({ path: "b.ts", changedLines: 1, hasPatch: true });
+    expect("patch" in cut.files[1]!).toBe(false);
+    const bytes = cut.files.reduce((n, f) => n + Buffer.byteLength(f.patch ?? "", "utf8"), 0);
+    expect(bytes).toBeLessThanOrEqual(MAX_REVIEW_PATCH_BYTES);
+
+    fake.files.set(30, [file("a.ts", 25000), file("b.ts", 15000)]);
+    const exact = await adapter.getPrReviewDiff(30);
+    expect(exact.truncated).toBe(false);
+    expect(exact.files.every((x) => x.patch !== undefined)).toBe(true);
+  });
+
+  it("getPrReviewDiff rejects with diff_truncated when the file count differs", async () => {
+    const { fake, adapter } = setup();
+    fake.pulls = [{ ...pr("abc"), changedFiles: 4 }];
+    fake.files.set(30, [f("a.ts"), f("b.ts"), f("c.ts")]);
+    const fewer = await adapter.getPrReviewDiff(30).catch((e: unknown) => e);
+    expect(fewer).toBeInstanceOf(PrDiffTruncatedError);
+    expect(fewer).toMatchObject({ code: "diff_truncated", expected: 4, received: 3 });
+    fake.pulls = [{ ...pr("abc"), changedFiles: 2 }];
+    const more = await adapter.getPrReviewDiff(30).catch((e: unknown) => e);
+    expect(more).toMatchObject({ code: "diff_truncated", expected: 2, received: 3 });
   });
 
   it("squashMerge refuses a different head sha", async () => {

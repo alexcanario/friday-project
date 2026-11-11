@@ -66,6 +66,7 @@ function rejectingGithub(fail: unknown): FakeGitHubPort {
   const reject = () => Promise.reject(fail);
   g.createPullRequest = reject as unknown as FakeGitHubPort["createPullRequest"];
   g.getPrDiff = reject as unknown as FakeGitHubPort["getPrDiff"];
+  g.getPrReviewDiff = reject as unknown as FakeGitHubPort["getPrReviewDiff"];
   g.postAgentComment = reject as unknown as FakeGitHubPort["postAgentComment"];
   return g;
 }

@@ -166,7 +166,8 @@ export async function startDaemon(deps: DaemonDeps): Promise<Result> {
       log: logOf(deps),
       judge: {
         agents: judgeAgents,
-        input: (issueId) => judgeInputOf({ root: paths.root, repository, issueId }),
+        input: (issueId, headSha) =>
+          judgeInputOf({ root: paths.root, repository, issueId, headSha }),
       },
     });
     const stop = startOrRelease(daemon);

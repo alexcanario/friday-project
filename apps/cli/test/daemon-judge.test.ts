@@ -11,11 +11,12 @@ type Opts = {
   root: string;
   judge: {
     agents: Record<string, unknown>;
-    input: (n: number) => { cwd: string; prompt: string; configRoot: string };
+    input: (n: number, headSha: string) => { cwd: string; prompt: string; configRoot: string };
   };
 };
-const P = (n: number) =>
-  `Review the pull request of issue #${n}. Read the diff with pr_diff and finish by calling review_verdict once.`;
+const HEAD = "a".repeat(40);
+const P = (n: number, headSha: string) =>
+  `Review the pull request of issue #${n}. The head SHA of the pull request is ${headSha}. Read the diff with pr_diff and finish by calling review_verdict once, with that value in headSha.`;
 const optsOf = (s: ReturnType<typeof setup>) => (s.compose.mock.calls[0] as unknown[])[0] as Opts;
 
 describe("daemon judge input", () => {
@@ -23,9 +24,9 @@ describe("daemon judge input", () => {
     const root = validRoot();
     const s = setup({ FRIDAY_HOME: root });
     await runUntilSignal(s);
-    expect(optsOf(s).judge.input(7)).toEqual({
+    expect(optsOf(s).judge.input(7, HEAD)).toEqual({
       cwd: join(root, "worktrees", "alexcanario__friday-sandbox", "7"),
-      prompt: P(7),
+      prompt: P(7, HEAD),
       configRoot: root,
     });
   });
@@ -40,7 +41,7 @@ describe("daemon judge input", () => {
       await runUntilSignal(s);
       const opts = optsOf(s);
       for (const n of [1, 7, 999]) {
-        const { configRoot, cwd } = opts.judge.input(n);
+        const { configRoot, cwd } = opts.judge.input(n, HEAD);
         expect(configRoot).toBe(opts.root);
         const rel = relative(join(configRoot, "worktrees"), cwd);
         expect(rel).not.toBe("");
