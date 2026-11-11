@@ -64,8 +64,13 @@ describe("createGhNightReader", () => {
 });
 
 describe("listComments pagination", () => {
-  const items = (n: number) =>
-    JSON.stringify(Array.from({ length: n }, (_, i) => ({ body: `b${i}`, created_at: `t${i}` })));
+  const items = (n: number, prefix = "b") =>
+    JSON.stringify(
+      Array.from({ length: n }, (_, i) => ({
+        body: `${prefix}${i}`,
+        created_at: `${prefix === "b" ? "" : prefix}t${i}`,
+      })),
+    );
   const page = (args: string[]) => args[1]?.match(/&page=(\d+)/)?.[1];
 
   it("listComments makes one page=1 call without --paginate for an empty result", async () => {
@@ -77,13 +82,15 @@ describe("listComments pagination", () => {
   });
 
   it("listComments reads page 2 when page 1 has 100 items and stops after a short page", async () => {
-    const exec = vi.fn(async (a: string[]) => (page(a) === "1" ? items(100) : items(1)));
+    const exec = vi.fn(async (a: string[]) =>
+      page(a) === "1" ? items(100, "p1-") : items(1, "p2-"),
+    );
     const out = await createGhNightReader({ exec }).listComments(1);
     expect(exec.mock.calls.map((c) => page(c[0]))).toEqual(["1", "2"]);
     expect(out).toHaveLength(101);
-    expect(out[0]).toEqual({ body: "b0", createdAt: "t0" });
-    expect(out[100]).toEqual({ body: "b0", createdAt: "t0" });
-    expect(out[99]).toEqual({ body: "b99", createdAt: "t99" });
+    expect(out[0]).toEqual({ body: "p1-0", createdAt: "p1-t0" });
+    expect(out[99]).toEqual({ body: "p1-99", createdAt: "p1-t99" });
+    expect(out[100]).toEqual({ body: "p2-0", createdAt: "p2-t0" });
   });
 
   it("listComments does not request a second page when page 1 has fewer than 100 items", async () => {
