@@ -4,6 +4,8 @@ import {
   createApprovalStore,
   createEventStore,
   createGitHubClient,
+  createGitHubClientWithAuth,
+  createInstallationTokenProvider,
   createIssueRepository,
   createUnitOfWork,
   GitHubRestAdapter,
@@ -22,29 +24,60 @@ export type ProductionOptions = {
   env: Env;
   homeDir: string;
   createGitHub?: (token: string, repo: Repo) => GitHubDeps;
+  createTokenProvider?: (input: AppInput) => { getToken(): Promise<string> };
+  createGitHubWithAuth?: (auth: () => Promise<string>, repo: Repo) => GitHubDeps;
 };
 
-const DEFAULT_TOKEN_ENV = "FRIDAY_AUTHOR_TOKEN";
+type AppInput = { appId: number; installationId: number; privateKeyPath: string };
+type Author =
+  { mode: "env"; token: string; repo: Repo } | { mode: "app"; app: AppInput; repo: Repo };
 
 export function resolveConfigRoot(input: { env: Env; homeDir: string }): string {
   const home = input.env.FRIDAY_HOME;
   return home !== undefined && home !== "" ? home : join(input.homeDir, ".friday");
 }
 
-/** Reads the author token by variable name only; fails closed before touching anything. */
-function readAuthor(opts: ProductionOptions): { token: string; repo: Repo } {
+/** Reads the author credential (variable name or App); fails closed before touching anything. */
+function readAuthor(opts: ProductionOptions): Author {
   const loaded = loadFactoryConfig(resolveConfigRoot(opts));
   if (!loaded.ok) throw new Error("O factory.yaml está inválido ou ausente.");
-  const name = loaded.config.pull_requests.author_token_env ?? DEFAULT_TOKEN_ENV;
-  const token = opts.env[name];
+  const { owner, name } = loaded.config.repository;
+  const repo = { owner, repo: name };
+  const pr = loaded.config.pull_requests;
+  if (pr.author_app !== undefined) {
+    const { app_id, installation_id, private_key_path } = pr.author_app;
+    const app = {
+      appId: app_id,
+      installationId: installation_id,
+      privateKeyPath: private_key_path,
+    };
+    return { mode: "app", app, repo };
+  }
+  const envName = pr.author_token_env;
+  if (envName === undefined)
+    throw new Error("A configuração não define pull_requests.author_token_env.");
+  const token = opts.env[envName];
   if (token === undefined || token.trim() === "")
-    throw new Error(`A variável ${name} está vazia ou ausente.`);
-  const { owner, name: repo } = loaded.config.repository;
-  return { token, repo: { owner, repo } };
+    throw new Error(`A variável ${envName} está vazia ou ausente.`);
+  return { mode: "env", token, repo };
 }
 
 const defaultGitHub = (token: string, repo: Repo): GitHubDeps =>
   new GitHubRestAdapter(createGitHubClient(token), repo);
+
+const defaultGitHubWithAuth = (auth: () => Promise<string>, repo: Repo): GitHubDeps =>
+  new GitHubRestAdapter(createGitHubClientWithAuth(auth), repo);
+
+const defaultTokenProvider = (input: AppInput) =>
+  createInstallationTokenProvider({ ...input, now: Date.now, fetch: globalThis.fetch });
+
+function buildGitHub(opts: ProductionOptions): GitHubDeps {
+  const author = readAuthor(opts);
+  if (author.mode === "env") return (opts.createGitHub ?? defaultGitHub)(author.token, author.repo);
+  const provider = (opts.createTokenProvider ?? defaultTokenProvider)(author.app);
+  const create = opts.createGitHubWithAuth ?? defaultGitHubWithAuth;
+  return create(() => provider.getToken(), author.repo);
+}
 
 export function createProductionOpen(opts: ProductionOptions): (dbPath: string) => ApprovalsClient {
   return (dbPath) => {
@@ -79,10 +112,7 @@ export function createProductionOpen(opts: ProductionOptions): (dbPath: string) 
         return direct.list(project);
       },
       async decide(id, decision) {
-        if (github === null) {
-          const { token, repo } = readAuthor(opts);
-          github = (opts.createGitHub ?? defaultGitHub)(token, repo);
-        }
+        github ??= buildGitHub(opts);
         direct ??= openDirect();
         return direct.decide(id, decision);
       },
