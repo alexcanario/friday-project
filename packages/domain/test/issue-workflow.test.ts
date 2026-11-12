@@ -192,6 +192,25 @@ describe("issue workflow", () => {
     );
   });
 
+  it("resume from JudgeContextMissing goes to InProgress and keeps every counter", () => {
+    const held = snap("Held", {
+      heldReason: "JudgeContextMissing",
+      verifyRound: 1,
+      qaRound: 1,
+      reviewIter: 2,
+    });
+    const r = transition(held, INPUTS.Resumed);
+    if (!r.ok) throw new Error(r.error);
+    expect(r.value.snapshot).toMatchObject({
+      state: "InProgress",
+      heldReason: null,
+      phaseIndex: 0,
+      verifyRound: 1,
+      qaRound: 1,
+      reviewIter: 2,
+    });
+  });
+
   it("never mutates the snapshot on any allowed pair", () => {
     const deepFreeze = <T extends object>(o: T): T => {
       for (const v of Object.values(o)) if (v && typeof v === "object") deepFreeze(v);

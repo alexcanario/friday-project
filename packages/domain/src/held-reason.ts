@@ -23,6 +23,7 @@ export const HELD_REASONS = [
   "Reconciled",
   "PausedByHuman",
   "SpecialistWithoutAgent",
+  "JudgeContextMissing",
 ] as const;
 
 export type HeldReason = (typeof HELD_REASONS)[number];
@@ -40,6 +41,7 @@ export const RUN_HELD_REASONS = [
   "Reconciled",
   "PausedByHuman",
   "SpecialistWithoutAgent",
+  "JudgeContextMissing",
 ] as const satisfies readonly HeldReason[];
 
 export type RunHeldReason = (typeof RUN_HELD_REASONS)[number];

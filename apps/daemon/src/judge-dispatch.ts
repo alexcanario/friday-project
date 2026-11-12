@@ -8,9 +8,8 @@ import {
 } from "@friday/application";
 import type { RunFinished } from "@friday/contracts";
 import { passesBudget, type BudgetCaps, type BudgetDeps } from "./budget-gate.ts";
-import { judgeContextOf } from "./judge-context.ts";
+import { contextOrHold } from "./judge-context-gate.ts";
 import { judgeFridayOf } from "./judge-request.ts";
-import { judgeRedactorOf } from "./redact.ts";
 import { applyInput, type RunContext, type RunRecorderDeps } from "./run-recorder.ts";
 import { baseRuntimeOf, statusFor, type RunRecordingDeps } from "./run-registration.ts";
 
@@ -232,18 +231,6 @@ function record(
   return result;
 }
 
-/** The Judge context of the head, or null after logging and recording JudgeSkipped (fail closed, D104). */
-function contextOrSkip(deps: JudgeDispatchDeps, issueId: number, head: string): string | null {
-  const events = deps.recorder.events.list(deps.projectId, issueId);
-  const context = judgeContextOf(events, head, judgeRedactorOf(deps.step.env, deps.step.review));
-  if (context !== null) return context;
-  deps.log?.(
-    `O Judge da issue ${issueId} não roda: faltam os critérios ou o relatório do QA do head ${head}`,
-  );
-  appendEvent(deps, issueId, null, "JudgeSkipped", { reason: "context_missing", headSha: head });
-  return null;
-}
-
 /** Runs the Judge for an issue in review, posts the review and records the verdict. Never rejects. */
 export async function runJudgeForIssue(
   deps: JudgeDispatchDeps,
@@ -261,7 +248,7 @@ export async function runJudgeForIssue(
       deps.log?.(`O Judge já ignorou o head ${head} da issue ${issueId}`);
       return NOT_APPLIED;
     }
-    const context = contextOrSkip(deps, issueId, head);
+    const context = contextOrHold(deps, issueId, head);
     if (context === null) return NOT_APPLIED;
     // The same run may call `judge` and then `judge-strong`, so the ceiling is the sum of both.
     const { agents } = deps.step;
