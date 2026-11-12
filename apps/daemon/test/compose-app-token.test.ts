@@ -3,13 +3,11 @@ import type { GitHost, GitHubPort } from "@friday/application";
 import type { GitCliHostOptions } from "@friday/infrastructure";
 import { composeDaemon, type ComposeOptions } from "../src/index.ts";
 import { readAuthor } from "../src/compose-config.ts";
-import { setup } from "./compose-helpers.ts";
+import { AUTHOR_KEY, JUDGE_KEY, setup } from "./compose-helpers.ts";
 import { FakeGitHub } from "./fakes.ts";
 
-const APP =
-  "  author_app:\n    app_id: 1\n    installation_id: 2\n    private_key_path: /etc/friday/author.pem\n";
-const REVIEW_APP =
-  "  review_app:\n    app_id: 3\n    installation_id: 4\n    private_key_path: /etc/friday/judge.pem\n";
+const APP = `  author_app:\n    app_id: 1\n    installation_id: 2\n    private_key_path: ${AUTHOR_KEY}\n`;
+const REVIEW_APP = `  review_app:\n    app_id: 3\n    installation_id: 4\n    private_key_path: ${JUDGE_KEY}\n`;
 const REVIEW_ENV = "  review_token_env: FRIDAY_REVIEW_TOKEN\n";
 const toApp = (y: string) => y.replace("  author_token_env: FRIDAY_AUTHOR_TOKEN\n", APP);
 
@@ -44,7 +42,7 @@ describe("composeDaemon with author_app", () => {
     expect(t.createTokenProvider).toHaveBeenCalledWith({
       appId: 1,
       installationId: 2,
-      privateKeyPath: "/etc/friday/author.pem",
+      privateKeyPath: AUTHOR_KEY,
     });
     expect(t.createGitHubWithAuth).toHaveBeenCalledTimes(1);
     const auth = t.createGitHubWithAuth.mock.calls[0]![0];
@@ -88,7 +86,7 @@ describe("readAuthor", () => {
     const app = readAuthor(setup((y) => toApp(y).replace(REVIEW_ENV, REVIEW_APP)).opts);
     expect(app).toMatchObject({
       mode: "app",
-      app: { appId: 1, installationId: 2, privateKeyPath: "/etc/friday/author.pem" },
+      app: { appId: 1, installationId: 2, privateKeyPath: AUTHOR_KEY },
       tokenEnvNames: [],
     });
     const judge = readAuthor(

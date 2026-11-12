@@ -5,7 +5,7 @@ import type { GitHubPort } from "@friday/application";
 import { describe, expect, it, vi } from "vitest";
 import { createJudgeBranch, readReviewCredential } from "../src/judge-wiring.ts";
 import { createRunRecorder } from "../src/run-recorder.ts";
-import { fixture } from "./compose-helpers.ts";
+import { JUDGE_KEY, fixture } from "./compose-helpers.ts";
 import { FakeEvents, FakeIssueRepository, FakeRunRepository, slackBudget } from "./fakes.ts";
 import { agents } from "./judge-dispatch-helpers.ts";
 import { CountingPendingRuntime, FakeCiGitHub } from "./judge-fakes.ts";
@@ -45,8 +45,7 @@ describe("createJudgeBranch", () => {
   });
 });
 
-const APP =
-  "  review_app:\n    app_id: 3\n    installation_id: 4\n    private_key_path: /etc/friday/judge.pem\n";
+const APP = `  review_app:\n    app_id: 3\n    installation_id: 4\n    private_key_path: ${JUDGE_KEY}\n`;
 
 function rootWith(edit: (y: string) => string = (y) => y): string {
   const root = mkdtempSync(join(tmpdir(), "friday-jw-"));
@@ -66,7 +65,7 @@ describe("readReviewCredential", () => {
     expect(providerFor).toHaveBeenCalledWith({
       appId: 3,
       installationId: 4,
-      privateKeyPath: "/etc/friday/judge.pem",
+      privateKeyPath: JUDGE_KEY,
     });
     if (cred?.mode === "app") await expect(cred.getToken()).resolves.toBe("x");
 

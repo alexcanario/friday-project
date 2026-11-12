@@ -4,6 +4,7 @@ import {
   createApprovalStore,
   createEventStore,
   createGitHubClient,
+  assertPrivateKeyReadable,
   createGitHubClientWithAuth,
   createInstallationTokenProvider,
   createIssueRepository,
@@ -74,6 +75,7 @@ const defaultTokenProvider = (input: AppInput) =>
 function buildGitHub(opts: ProductionOptions): GitHubDeps {
   const author = readAuthor(opts);
   if (author.mode === "env") return (opts.createGitHub ?? defaultGitHub)(author.token, author.repo);
+  assertPrivateKeyReadable(author.app.privateKeyPath, "pull_requests.author_app");
   const provider = (opts.createTokenProvider ?? defaultTokenProvider)(author.app);
   const create = opts.createGitHubWithAuth ?? defaultGitHubWithAuth;
   return create(() => provider.getToken(), author.repo);
