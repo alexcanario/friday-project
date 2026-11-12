@@ -54,7 +54,7 @@ export function setup(o: Over = {}) {
     log: (m) => logs.push(m),
     createGitHub: createGitHub as unknown as ComposeOptions["createGitHub"],
     createRuntime,
-    ...(o.withJudge === false ? {} : { judge: { agents: agents(), input } }),
+    ...(o.withJudge === false ? {} : { judge: { base: "main", agents: agents(), input } }),
     ...o.extra,
   };
   return { root, opts, author, reviewers, logs, runtime, optsRuntime, createRuntime };

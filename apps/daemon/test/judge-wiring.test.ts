@@ -27,6 +27,7 @@ describe("createJudgeBranch", () => {
       github: github as unknown as GitHubPort,
       reviewerFor: () => ({ postReview: () => Promise.resolve({ id: 1 }) }),
       compose: {
+        base: "main",
         agents: agents(),
         input: () => ({ cwd: "/tmp/wt", prompt: "judge", configRoot: "/tmp/cfg" }),
       },
@@ -103,6 +104,7 @@ describe("readReviewCredential", () => {
       github: new FakeCiGitHub() as unknown as GitHubPort,
       reviewerFor: () => ({ postReview: () => Promise.resolve({ id: 1 }) }),
       compose: {
+        base: "main",
         agents: agents(),
         input: () => ({ cwd: "/tmp/wt", prompt: "judge", configRoot: "/tmp/cfg" }),
       },

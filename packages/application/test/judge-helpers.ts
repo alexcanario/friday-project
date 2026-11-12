@@ -3,6 +3,7 @@ import { createWorkflow, type WorkflowSnapshot } from "@friday/domain";
 import {
   FakeAgentRuntime,
   runJudgeStep,
+  type EffectsRun,
   type AgentRunOptions,
   type JudgeStepDeps,
   type JudgeStepInput,
@@ -14,6 +15,14 @@ import { finished } from "./qa-step-helpers.ts";
 export const A = "a".repeat(40);
 export const B = "b".repeat(40);
 export const TOKEN = "ghs_marker_token";
+export const EFFECTS_RUN: EffectsRun = {
+  issue: 7,
+  role: "judge",
+  branch: "friday/7",
+  base: "main",
+  worktree: "/tmp/wt",
+  getPullRequest: () => 30,
+};
 
 export const rules = (): ReviewVerdict["rules"] =>
   [1, 2, 3, 4, 5].map((n) => ({ rule: n, answer: "yes" as const, evidence: `ok-${n}` }));
@@ -105,6 +114,7 @@ export function setup(
     cwd: "/tmp/wt",
     prompt: "judge",
     configRoot: "/tmp/cfg",
+    friday: { runId: "run-1", getIssueState: () => "InReview", effects: { run: EFFECTS_RUN } },
   };
   return {
     runtime,

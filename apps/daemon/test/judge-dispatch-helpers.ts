@@ -105,6 +105,7 @@ export function setup(o: Options = {}) {
   const log = vi.fn<(m: string) => void>();
   const deps: JudgeDispatchDeps = {
     projectId: "p",
+    base: "main",
     prOf: () => (o.pr === undefined ? 30 : o.pr),
     getIssue: () => Promise.resolve({ body: "- risco: low — x", labels: ["friday"] }),
     judgeInput: () => ({ cwd: "/tmp/wt", prompt: "judge", configRoot: "/tmp/cfg" }),
