@@ -16,7 +16,7 @@ import {
 describe("runJudgeForIssue", () => {
   const pinnedRuntime = (prompts: string[]) => ({
     run: (request: { prompt: string }) => {
-      prompts.push(request.prompt);
+      prompts.push(request.prompt.split("\n\n")[0]!);
       const sha = /head ([0-9a-f]{40})/.exec(request.prompt)?.[1];
       return Promise.resolve(finished(verdict({ headSha: sha })));
     },
@@ -89,7 +89,7 @@ describe("runJudgeForIssue", () => {
   });
 
   it("does not run the judge without the review token", async () => {
-    const t = setup({ env: {}, context: false });
+    const t = setup({ env: {} });
     await expect(runJudgeForIssue(t.deps, 7)).resolves.toEqual({ applied: false, feedback: null });
     expect(t.runtime.requests).toHaveLength(0);
     expect(t.events.appended).toEqual([]);

@@ -105,6 +105,35 @@ export function seedJudgeContext(events: EventStore, issueId: number, head: stri
   });
 }
 
+/**
+ * Seeds the context of each head the test reads, but keeps it out of `events.appended`, so the
+ * assertions on what the dispatch wrote stay as they were; `events.list` returns the context of
+ * the head read last (`current.head`) before the appended events, which is what the dispatch reads.
+ */
+function withSeededContext(events: FakeEvents, heads: string[], current: { head: string }): void {
+  const byHead = new Map(
+    [...new Set(heads)].map((head) => {
+      const scratch = new FakeEvents();
+      seedJudgeContext(scratch, 7, head);
+      return [head, scratch.appended] as const;
+    }),
+  );
+  const list = events.list.bind(events);
+  events.list = (projectId, issueId) => {
+    const seeded = byHead.get(current.head) ?? [];
+    return [
+      ...seeded
+        .map((event, index) => ({ ...event, seq: index + 1 }))
+        .filter(
+          (e) =>
+            (projectId === undefined || e.projectId === projectId) &&
+            (issueId === undefined || e.issueId === issueId),
+        ),
+      ...list(projectId, issueId).map((e) => ({ ...e, seq: e.seq + seeded.length })),
+    ];
+  };
+}
+
 export type Options = {
   /** `false` skips `seedJudgeContext`, for tests that do not run the Judge. */
   context?: boolean;
@@ -120,7 +149,8 @@ export type Options = {
 
 export function setup(o: Options = {}) {
   const events = new FakeEvents();
-  if (o.context !== false) seedJudgeContext(events, 7, A);
+  const current = { head: o.heads?.[0] ?? A };
+  if (o.context !== false) withSeededContext(events, o.heads ?? [A], current);
   const issues = new FakeIssueRepository(events);
   issues.row = row(o.state ?? "InReview", o.reviewIter ?? 0);
   const runs = new FakeRunRepository();
@@ -152,7 +182,10 @@ export function setup(o: Options = {}) {
       review: { mode: "env", tokenEnv: "FRIDAY_REVIEW_TOKEN" },
       agents: o.agents ?? agents(),
     },
-    readPrHead: () => Promise.resolve(heads.length > 1 ? (heads.shift() as string) : heads[0]!),
+    readPrHead: () => {
+      current.head = heads.length > 1 ? (heads.shift() as string) : heads[0]!;
+      return Promise.resolve(current.head);
+    },
     reviewerFor: (token) => {
       tokens.push(token);
       return {

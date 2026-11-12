@@ -2,7 +2,10 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
-const prompt = readFileSync(join(import.meta.dirname, "../../../registry/prompts/judge.md"), "utf8");
+const prompt = readFileSync(
+  join(import.meta.dirname, "../../../registry/prompts/judge.md"),
+  "utf8",
+);
 
 describe("judge.md", () => {
   it("judge.md tells the Judge that the run prompt carries untrusted data blocks", () => {

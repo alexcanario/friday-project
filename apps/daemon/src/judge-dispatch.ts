@@ -8,7 +8,9 @@ import {
 } from "@friday/application";
 import type { RunFinished } from "@friday/contracts";
 import { passesBudget, type BudgetCaps, type BudgetDeps } from "./budget-gate.ts";
+import { judgeContextOf } from "./judge-context.ts";
 import { judgeFridayOf } from "./judge-request.ts";
+import { judgeRedactorOf } from "./redact.ts";
 import { applyInput, type RunContext, type RunRecorderDeps } from "./run-recorder.ts";
 import { baseRuntimeOf, statusFor, type RunRecordingDeps } from "./run-registration.ts";
 
@@ -75,7 +77,7 @@ function alreadySkippedAt(deps: JudgeDispatchDeps, issueId: number, head: string
 function appendEvent(
   deps: JudgeDispatchDeps,
   issueId: number,
-  runId: string,
+  runId: string | null,
   type: string,
   payload: unknown,
 ): void {
@@ -145,9 +147,13 @@ function recordingRuntime(
 /** The cwd, prompt and config root of the Judge run plus its `friday` MCP server. */
 function stepTarget(
   deps: JudgeDispatchDeps,
-  t: { issueId: number; pr: number; runId: string; head: string },
+  t: { issueId: number; pr: number; runId: string; head: string; context: string },
 ) {
-  const target = deps.judgeInput(t.issueId, t.head);
+  const input = deps.judgeInput(t.issueId, t.head);
+  const target = {
+    ...input,
+    prompt: `${input.prompt}\n\n${t.context}`,
+  };
   const friday = judgeFridayOf({
     projectId: deps.projectId,
     issueId: t.issueId,
@@ -167,6 +173,7 @@ async function execute(
   pr: number,
   runId: string,
   head: string,
+  context: string,
 ): Promise<Execution> {
   const { runs } = deps.recording;
   const row = {
@@ -189,7 +196,7 @@ async function execute(
         projectId: deps.projectId,
         issue: { id: issueId, ...issue },
         pr,
-        ...stepTarget(deps, { issueId, pr, runId, head }),
+        ...stepTarget(deps, { issueId, pr, runId, head, context }),
       },
     );
     completed = outcome.kind !== "held";
@@ -225,6 +232,18 @@ function record(
   return result;
 }
 
+/** The Judge context of the head, or null after logging and recording JudgeSkipped (fail closed, D104). */
+function contextOrSkip(deps: JudgeDispatchDeps, issueId: number, head: string): string | null {
+  const events = deps.recorder.events.list(deps.projectId, issueId);
+  const context = judgeContextOf(events, head, judgeRedactorOf(deps.step.env, deps.step.review));
+  if (context !== null) return context;
+  deps.log?.(
+    `O Judge da issue ${issueId} não roda: faltam os critérios ou o relatório do QA do head ${head}`,
+  );
+  appendEvent(deps, issueId, null, "JudgeSkipped", { reason: "context_missing", headSha: head });
+  return null;
+}
+
 /** Runs the Judge for an issue in review, posts the review and records the verdict. Never rejects. */
 export async function runJudgeForIssue(
   deps: JudgeDispatchDeps,
@@ -242,6 +261,8 @@ export async function runJudgeForIssue(
       deps.log?.(`O Judge já ignorou o head ${head} da issue ${issueId}`);
       return NOT_APPLIED;
     }
+    const context = contextOrSkip(deps, issueId, head);
+    if (context === null) return NOT_APPLIED;
     // The same run may call `judge` and then `judge-strong`, so the ceiling is the sum of both.
     const { agents } = deps.step;
     const allowed = passesBudget(
@@ -256,7 +277,7 @@ export async function runJudgeForIssue(
       deps.log ?? (() => {}),
     );
     if (!allowed) return NOT_APPLIED;
-    const { outcome } = await execute(deps, issueId, pr, runId, head);
+    const { outcome } = await execute(deps, issueId, pr, runId, head, context);
     return record(deps, issueId, runId, head, outcome);
   } catch (error) {
     const text = error instanceof Error ? error.message : String(error);

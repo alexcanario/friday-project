@@ -7,7 +7,7 @@ import { createJudgeBranch, readReviewCredential } from "../src/judge-wiring.ts"
 import { createRunRecorder } from "../src/run-recorder.ts";
 import { JUDGE_KEY, fixture } from "./compose-helpers.ts";
 import { FakeEvents, FakeIssueRepository, FakeRunRepository, slackBudget } from "./fakes.ts";
-import { agents } from "./judge-dispatch-helpers.ts";
+import { A, agents, seedJudgeContext } from "./judge-dispatch-helpers.ts";
 import { CountingPendingRuntime, FakeCiGitHub } from "./judge-fakes.ts";
 
 describe("createJudgeBranch", () => {
@@ -16,6 +16,7 @@ describe("createJudgeBranch", () => {
     cpSync(fixture, root, { recursive: true });
     const now = () => new Date("2026-11-05T03:00:00.000Z");
     const events = new FakeEvents();
+    seedJudgeContext(events, 7, A);
     const recorder = { projectId: "p", events, issues: new FakeIssueRepository(events), now };
     const runtime = new CountingPendingRuntime();
     const log = vi.fn<(m: string) => void>();

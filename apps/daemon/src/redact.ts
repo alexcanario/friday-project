@@ -34,3 +34,11 @@ export function withRedactedLog<T extends { env: Env; log?: (message: string) =>
   const redact = createRedactor(opts.env, tokenEnvNames);
   return { ...opts, log: (message: string) => log(redact(message)) };
 }
+
+/** The redactor of the Judge context: the env tokens plus the review token env when there is one. */
+export function judgeRedactorOf(
+  env: Env,
+  review: { mode: "env"; tokenEnv: string } | { mode: "app" },
+): (text: string) => string {
+  return createRedactor(env, review.mode === "env" ? [review.tokenEnv] : []);
+}

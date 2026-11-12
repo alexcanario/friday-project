@@ -27,9 +27,7 @@ const criteria = (claims: string[] = ["a", "b"]): Spec => ({
       index: i + 1,
       claim,
       proof:
-        i === 1
-          ? { kind: "browser", step: "abrir /" }
-          : { kind: "command", command: "pnpm test" },
+        i === 1 ? { kind: "browser", step: "abrir /" } : { kind: "command", command: "pnpm test" },
     })),
   },
 });

@@ -39,7 +39,7 @@ describe("composeDaemon with the Judge", () => {
     const t = setup();
     t.author.headSha = "b".repeat(40);
     const daemon = await composeDaemon(t.opts);
-    put(daemon, 7, "InReview");
+    put(daemon, 7, "InReview", t.author.headSha);
     await daemon.ticker.tick();
     await daemon.ticker.idle();
     expect(t.reviewers.flatMap((r) => r.posted)).toHaveLength(0);

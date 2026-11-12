@@ -60,8 +60,8 @@ export function setup(o: Over = {}) {
   return { root, opts, author, reviewers, logs, runtime, optsRuntime, createRuntime };
 }
 
-export function put(daemon: Daemon, issueId: number, to: string): void {
-  if (to === "InReview") seedJudgeContext(createEventStore(daemon.db), issueId, A);
+export function put(daemon: Daemon, issueId: number, to: string, head = A): void {
+  if (to === "InReview") seedJudgeContext(createEventStore(daemon.db), issueId, head);
   createEventStore(daemon.db).append({
     projectId: "p",
     issueId,
