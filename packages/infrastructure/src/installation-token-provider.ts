@@ -7,6 +7,8 @@ export interface InstallationTokenProviderInput {
   appId: number;
   installationId: number;
   privateKeyPath: string;
+  /** Narrows the installation token; omitted means every permission of the App. */
+  permissions?: { pull_requests?: "write" | "read" };
   now: () => number;
   fetch: typeof fetch;
 }
@@ -51,7 +53,11 @@ export function createInstallationTokenProvider(input: InstallationTokenProvider
       request,
     });
     let failure: unknown;
-    const res = await auth({ type: "installation", refresh: true }).catch((err: unknown) => {
+    const res = await auth({
+      type: "installation",
+      refresh: true,
+      ...(input.permissions === undefined ? {} : { permissions: input.permissions }),
+    }).catch((err: unknown) => {
       failure = err;
       return undefined;
     });
