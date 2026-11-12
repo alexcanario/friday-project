@@ -7,7 +7,7 @@ import { vi } from "vitest";
 import { composeDaemon, type ComposeOptions, type Daemon } from "../src/index.ts";
 import { fakeWorktrees, fixture, NOW } from "./compose-helpers.ts";
 import { FakeClock } from "./fakes.ts";
-import { agents, finished, verdict } from "./judge-dispatch-helpers.ts";
+import { agents, finished, seedJudgeContext, verdict } from "./judge-dispatch-helpers.ts";
 import { CountingPendingRuntime, FakeCiGitHub, FakeReviewer } from "./judge-fakes.ts";
 
 export const A = "a".repeat(40);
@@ -61,6 +61,7 @@ export function setup(o: Over = {}) {
 }
 
 export function put(daemon: Daemon, issueId: number, to: string): void {
+  if (to === "InReview") seedJudgeContext(createEventStore(daemon.db), issueId, A);
   createEventStore(daemon.db).append({
     projectId: "p",
     issueId,
@@ -77,7 +78,7 @@ export const stateOf = (d: Daemon, id: number) => createIssueRepository(d.db).ge
 export const eventsOf = (d: Daemon, type: string) =>
   createEventStore(d.db)
     .list("p", 7)
-    .filter((e) => e.type === type);
+    .filter((e) => e.type === type && e.runId !== "qa-1");
 
 export async function runJudge(o: Over = {}) {
   const t = setup(o);

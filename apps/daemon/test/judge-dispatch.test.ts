@@ -80,7 +80,7 @@ describe("runJudgeForIssue", () => {
   });
 
   it("does not run the judge without a pull request", async () => {
-    const t = setup({ pr: null });
+    const t = setup({ pr: null, context: false });
     await expect(runJudgeForIssue(t.deps, 7)).resolves.toEqual({ applied: false, feedback: null });
     expect(t.runtime.requests).toHaveLength(0);
     expect(t.posted).toHaveLength(0);
@@ -89,7 +89,7 @@ describe("runJudgeForIssue", () => {
   });
 
   it("does not run the judge without the review token", async () => {
-    const t = setup({ env: {} });
+    const t = setup({ env: {}, context: false });
     await expect(runJudgeForIssue(t.deps, 7)).resolves.toEqual({ applied: false, feedback: null });
     expect(t.runtime.requests).toHaveLength(0);
     expect(t.events.appended).toEqual([]);

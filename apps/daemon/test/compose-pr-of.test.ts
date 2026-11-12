@@ -7,7 +7,7 @@ import { describe, expect, it } from "vitest";
 import { composeDaemon, type ComposeOptions, type Daemon } from "../src/index.ts";
 import { fakeWorktrees, fixture, NOW } from "./compose-helpers.ts";
 import { FakeClock } from "./fakes.ts";
-import { agents, finished, verdict } from "./judge-dispatch-helpers.ts";
+import { A, agents, finished, seedJudgeContext, verdict } from "./judge-dispatch-helpers.ts";
 import { CountingPendingRuntime, FakeCiGitHub, FakeReviewer } from "./judge-fakes.ts";
 
 const input = () => ({ cwd: "/tmp/wt", prompt: "judge", configRoot: "/tmp/cfg" });
@@ -41,6 +41,7 @@ function setup(prOf?: () => number) {
 }
 
 function inReview(daemon: Daemon): void {
+  seedJudgeContext(createEventStore(daemon.db), 7, A);
   createEventStore(daemon.db).append({
     projectId: "p",
     issueId: 7,
