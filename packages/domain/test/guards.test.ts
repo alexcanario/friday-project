@@ -153,7 +153,10 @@ describe("guards", () => {
       });
     }
     for (const from of ["RiskCheck", "Held", "Done"] as const) {
-      expect(transition(snap(from), input), from).toEqual({ ok: false, error: "InvalidTransition" });
+      expect(transition(snap(from), input), from).toEqual({
+        ok: false,
+        error: "InvalidTransition",
+      });
     }
   });
 });
