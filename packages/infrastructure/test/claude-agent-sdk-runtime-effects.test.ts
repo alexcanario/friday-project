@@ -91,7 +91,7 @@ describe("ClaudeAgentSdkRuntime effect tools", () => {
     expect(s.inputs).toHaveLength(1);
     expect(s.inputs[0]!.effects!.github).toBe(s.github);
     expect(s.inputs[0]!.effects!.gitHost).toBe(s.gitHost);
-    expect(s.inputs[0]!.effects!.run).toBe(RUN);
+    expect(s.inputs[0]!.effects!.run).toEqual({ ...RUN, onPushed: expect.any(Function) });
     expect(s.queries).toHaveLength(1);
     expect(Object.keys(s.queries[0]!.mcpServers!)).toEqual(["friday"]);
   });

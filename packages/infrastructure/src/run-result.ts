@@ -10,6 +10,8 @@ export interface RunObservation {
   toolViolation: boolean;
   result: ResultMessage | null;
   timedOut: boolean;
+  /** Sha of the last `git_push` of the run; it replaces the agent's `headSha` of a workReport. */
+  pushedSha: string | null;
 }
 
 type Tokens = NonNullable<RunFinished["tokens"]>;
@@ -74,7 +76,7 @@ export function classify(obs: RunObservation, agent: AgentRunOptions): RunFinish
   };
   if (obs.toolViolation || !obs.initSeen) return { ...finished, status: "misconfigured" };
   if (finished.status === "succeeded" && agent.outputKind != null) {
-    return withOutput(finished, result, agent.outputKind);
+    return withOutput(finished, result, agent.outputKind, obs.pushedSha);
   }
   return finished;
 }
@@ -83,8 +85,12 @@ function withOutput(
   finished: RunFinished,
   result: ResultMessage,
   kind: NonNullable<AgentRunOptions["outputKind"]>,
+  pushedSha: string | null,
 ): RunFinished {
-  const raw = "structured_output" in result ? result.structured_output : undefined;
+  let raw = "structured_output" in result ? result.structured_output : undefined;
+  if (kind === "workReport" && pushedSha !== null && typeof raw === "object" && raw !== null) {
+    raw = { ...raw, headSha: pushedSha };
+  }
   if (raw === undefined)
     return { ...finished, status: "invalid_output", violations: [MISSING_OUTPUT] };
   const checked = validateContract(kind, raw);

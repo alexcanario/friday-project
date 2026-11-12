@@ -23,7 +23,29 @@ import { classify, emptyFinished, type RunObservation } from "./run-result.ts";
 type QueryFn = (params: { prompt: string; options: Options }) => AsyncIterable<SDKMessage>;
 
 function newObservation(): RunObservation {
-  return { model: null, initSeen: false, toolViolation: false, result: null, timedOut: false };
+  return {
+    model: null,
+    initSeen: false,
+    toolViolation: false,
+    result: null,
+    timedOut: false,
+    pushedSha: null,
+  };
+}
+
+/** Copies the request with an `onPushed` hook that keeps the last pushed sha; never mutates the original. */
+function withPushCapture(request: AgentRunRequest, obs: RunObservation): AgentRunRequest {
+  const effects = request.friday?.effects;
+  if (request.friday === undefined || effects === undefined) return request;
+  const original = effects.run.onPushed;
+  const run = {
+    ...effects.run,
+    onPushed: (sha: string) => {
+      obs.pushedSha = sha;
+      original?.(sha);
+    },
+  };
+  return { ...request, friday: { ...request.friday, effects: { ...effects, run } } };
 }
 
 export interface ClaudeAgentSdkRuntimeDeps {
@@ -55,7 +77,9 @@ export class ClaudeAgentSdkRuntime implements AgentRuntime {
     if (isInside(request.cwd, configRoot)) return emptyFinished("misconfigured", null);
     const built = buildToolPolicy(request.agent, request.cwd);
     if (!built.ok) return emptyFinished("misconfigured", null);
-    const mcpServers = buildFridayMcpServers(request, {
+    const obs = newObservation();
+    const observed = withPushCapture(request, obs);
+    const mcpServers = buildFridayMcpServers(observed, {
       runs: this.#deps.runs,
       results: this.#deps.results,
       github: this.#deps.github,
@@ -71,14 +95,13 @@ export class ClaudeAgentSdkRuntime implements AgentRuntime {
       return emptyFinished("misconfigured", null);
     }
     const abortController = new AbortController();
-    const obs = newObservation();
     const timer = setTimeout(() => {
       obs.timedOut = true;
       abortController.abort();
     }, request.agent.timeoutMs);
     try {
       const options = buildQueryOptions({
-        request,
+        request: observed,
         env: buildRunEnv(this.#env),
         systemPromptAppend,
         abortController,

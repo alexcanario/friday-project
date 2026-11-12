@@ -15,3 +15,11 @@ describe("backend prompt", () => {
     expect(agent).not.toMatch(/git add|git commit/);
   });
 });
+
+describe("backend prompt rework", () => {
+  it("backend prompt tells the specialist to push again on rework", () => {
+    expect(prompt).toContain(
+      "On a rework round, call git_push again before work_report and copy the SHA it returns into headSha; the orchestrator also fills headSha from the last push.",
+    );
+  });
+});

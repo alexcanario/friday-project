@@ -66,6 +66,11 @@ async function execute(
         branch: args.branch,
         message: args.message,
       });
+      try {
+        run.onPushed?.(sha);
+      } catch {
+        // O push já foi feito; um gancho com defeito não pode virar 500.
+      }
       return reply(`200: push feito: ${sha}.`);
     }
     case "pr_create": {

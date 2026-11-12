@@ -10,6 +10,8 @@ export interface EffectsRun {
   getPullRequest: () => number | null;
   /** Set by the daemon per run; called once `pr_create` has opened or found the PR. */
   onPrCreated?: (pr: number) => void;
+  /** Set by the runtime per run; called with the sha `git_push` returned. */
+  onPushed?: (sha: string) => void;
   /** Set by the daemon per run; receives the original port error, which is never shown to the agent. */
   onEffectError?: (tool: EffectTool, error: unknown) => void;
 }
