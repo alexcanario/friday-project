@@ -1,5 +1,30 @@
 import { describe, expect, it, vi } from "vitest";
-import { createRedactor, withRedactedLog } from "../src/redact.ts";
+import { createRedactor, judgeRedactorOf, withRedactedLog } from "../src/redact.ts";
+
+describe("judgeRedactorOf", () => {
+  it("judgeRedactorOf in env mode masks the review token and the env tokens only", () => {
+    const redact = judgeRedactorOf(
+      {
+        FRIDAY_REVIEW_TOKEN: "tok-review-value",
+        OTHER_VAR: "outro-valor",
+        ANTHROPIC_API_KEY: "sk-key-value",
+      },
+      { mode: "env", tokenEnv: "FRIDAY_REVIEW_TOKEN" },
+    );
+    expect(redact("a tok-review-value b sk-key-value c")).toBe("a *** b *** c");
+    expect(redact("outro-valor")).toBe("outro-valor");
+    expect(redact("texto sem segredo")).toBe("texto sem segredo");
+  });
+
+  it("judgeRedactorOf in app mode masks the env tokens and token shapes", () => {
+    const redact = judgeRedactorOf(
+      { FRIDAY_JUDGE_TOKEN: "jt-value", FRIDAY_REVIEW_TOKEN: "tok-review-value" },
+      { mode: "app" },
+    );
+    expect(redact("x jt-value y ghs_abc123 z")).toBe("x *** y *** z");
+    expect(redact("texto sem segredo")).toBe("texto sem segredo");
+  });
+});
 
 describe("createRedactor", () => {
   it("replaces the values of the three token variables with *** ", () => {

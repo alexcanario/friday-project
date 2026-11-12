@@ -11,6 +11,7 @@ export const JUDGE_CLAIM_MAX_CHARS = 500;
 
 const TRUNCATED = "[truncado]";
 const CLOSING_TAG = /<\/\s*untrusted_data/gi;
+const OPENING_TAG = /<\s*untrusted_data/gi;
 const OPEN = (kind: string) => `<untrusted_data kind="${kind}">\n`;
 const CLOSE = "\n</untrusted_data>";
 
@@ -23,10 +24,44 @@ function cut(text: string, max: number): string {
   return text.slice(0, max - TRUNCATED.length) + TRUNCATED;
 }
 
-/** Redacts secrets, neutralizes the closing delimiter and caps the field. */
+const SHORT_ESCAPES: Record<string, string> = { "\n": "\\n", "\r": "\\r", "\t": "\\t" };
+const PARTIAL_ESCAPE = /\\(?:u[0-9a-f]{0,3})?$/;
+
+/** C0, DEL, C1, U+2028 and U+2029. */
+function isControl(code: number): boolean {
+  return code <= 0x1f || (code >= 0x7f && code <= 0x9f) || code === 0x2028 || code === 0x2029;
+}
+
+/** Turns line breaks and other control characters into visible escape sequences. */
+function escapeControl(text: string): string {
+  let out = "";
+  for (const ch of text) {
+    const code = ch.charCodeAt(0);
+    if (!isControl(code)) out += ch;
+    else out += SHORT_ESCAPES[ch] ?? `\\u${code.toString(16).padStart(4, "0")}`;
+  }
+  return out;
+}
+
+/** Caps an escaped field to `max` characters, backing off before a half escape sequence. */
+function capField(text: string, max: number): string {
+  if (text.length <= max) return text;
+  let head = text.slice(0, max);
+  const next = text[max] ?? "";
+  const partial = PARTIAL_ESCAPE.exec(head);
+  if (partial !== null && (partial[0].length > 1 || /[nrtu]/.test(next))) {
+    head = head.slice(0, partial.index);
+  }
+  return head + TRUNCATED;
+}
+
+/** Redacts secrets, escapes control characters, neutralizes the delimiters and caps the field. */
 function field(text: string, redact: Redact, max: number): string {
-  const safe = redact(text).replace(CLOSING_TAG, (m) => `<\\/${m.slice(2).trimStart()}`);
-  return safe.length <= max ? safe : safe.slice(0, max) + TRUNCATED;
+  const escaped = escapeControl(redact(text));
+  const safe = escaped
+    .replace(CLOSING_TAG, (m) => `<\\/${m.slice(2).trimStart()}`)
+    .replace(OPENING_TAG, (m) => `<\\${m.slice(1).trimStart()}`);
+  return capField(safe, max);
 }
 
 function criteriaText(events: StoredEvent[], redact: Redact): string | null {
@@ -94,10 +129,13 @@ export function judgeContextOf(
   const overhead =
     OPEN("criteria").length + OPEN("qa_report").length + 2 * CLOSE.length + "\n\n".length;
   const budget = JUDGE_CONTEXT_MAX_CHARS - overhead;
-  const criteriaBudget = Math.max(0, budget - report.length);
+  // The criteria are guaranteed half of the body budget; what a block does not use goes to the other (D105).
+  const half = Math.floor(budget / 2);
+  const criteriaMax = Math.max(half, budget - report.length);
+  const reportMax = budget - Math.min(criteria.length, criteriaMax);
   const body = {
-    criteria: cut(criteria, criteriaBudget),
-    report: cut(report, budget),
+    criteria: cut(criteria, criteriaMax),
+    report: cut(report, reportMax),
   };
   return (
     OPEN("criteria") + body.criteria + CLOSE + "\n\n" + OPEN("qa_report") + body.report + CLOSE
