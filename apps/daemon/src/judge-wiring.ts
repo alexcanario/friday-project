@@ -26,6 +26,7 @@ export type TokenProviderFactory = (input: {
   appId: number;
   installationId: number;
   privateKeyPath: string;
+  permissions?: { pull_requests?: "write" | "read" };
 }) => { getToken(): Promise<string> };
 
 export type JudgeBranchDeps = {
@@ -59,6 +60,7 @@ export function readReviewCredential(
       appId: app.app_id,
       installationId: app.installation_id,
       privateKeyPath: app.private_key_path,
+      permissions: { pull_requests: "write" },
     });
     return { mode: "app", getToken: () => provider.getToken() };
   }
