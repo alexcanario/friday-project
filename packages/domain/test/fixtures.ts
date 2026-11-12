@@ -68,6 +68,7 @@ export const RUN_HELD_REASONS: readonly RunHeldReason[] = [
   "Reconciled",
   "PausedByHuman",
   "SpecialistWithoutAgent",
+  "JudgeContextMissing",
 ];
 
 export const RUN_HELD_FROM: readonly IssueState[] = [

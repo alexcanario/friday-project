@@ -24,7 +24,13 @@ beforeEach(() => {
 });
 afterEach(() => db.close());
 
-function seed(issue: number, to: string, heldReason: string | null = null, verifyRound = 0) {
+function seed(
+  issue: number,
+  to: string,
+  heldReason: string | null = null,
+  verifyRound = 0,
+  reviewIter = 0,
+) {
   createEventStore(db).append({
     projectId: "p1",
     issueId: issue,
@@ -41,7 +47,7 @@ function seed(issue: number, to: string, heldReason: string | null = null, verif
       heldReason,
       verifyRound,
       qaRound: 0,
-      reviewIter: 0,
+      reviewIter,
     },
   });
   createIssueRepository(db).rebuild("p1");
@@ -85,6 +91,18 @@ describe("friday resume", () => {
     seed(7, "Held", "VerifyRoundsExhausted", 3);
     await run("7");
     expect(createIssueRepository(db).get("p1", 7)?.verifyRound).toBe(0);
+  });
+
+  it("resume releases an issue held by JudgeContextMissing and keeps the counters", async () => {
+    seed(7, "Held", "JudgeContextMissing", 0, 2);
+    const out = await run("7");
+    expect(out).toEqual({ stdout: "Issue 7 retomada.\n", stderr: "", code: 0 });
+    const last = createEventStore(db).list("p1", 7).at(-1);
+    expect(last?.type).toBe("StateChanged");
+    expect(last?.actor).toBe("human:cli");
+    expect(last?.payload).toMatchObject({ trigger: "Resumed", from: "Held", to: "InProgress" });
+    const row = createIssueRepository(db).get("p1", 7);
+    expect(row).toMatchObject({ state: "InProgress", heldReason: null, reviewIter: 2 });
   });
 
   it("resume refuses an issue that is not Held and writes nothing", async () => {

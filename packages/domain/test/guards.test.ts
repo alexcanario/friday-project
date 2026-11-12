@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { transition, type WorkflowInput } from "../src/index.ts";
+import {
+  HELD_REASONS,
+  RUN_HELD_REASONS as RUN_HELD_REASONS_SRC,
+  transition,
+  type WorkflowInput,
+} from "../src/index.ts";
 import { INPUTS, RUN_HELD_FROM, RUN_HELD_REASONS, SHA, snap } from "./fixtures.ts";
 
 describe("guards", () => {
@@ -124,5 +129,31 @@ describe("guards", () => {
       reason: "Nope",
     } as unknown as WorkflowInput);
     expect(bad).toEqual({ ok: false, error: "InvalidTransition" });
+  });
+
+  it("RunHeld accepts JudgeContextMissing from every run state and rejects it elsewhere", () => {
+    expect(HELD_REASONS.filter((r) => r === "JudgeContextMissing")).toHaveLength(1);
+    expect(RUN_HELD_REASONS_SRC.filter((r) => r === "JudgeContextMissing")).toHaveLength(1);
+    const input = { type: "RunHeld", reason: "JudgeContextMissing" } as const;
+    for (const from of RUN_HELD_FROM) {
+      const entry = snap(from, { verifyRound: 1, qaRound: 2, reviewIter: 3 });
+      const r = transition(entry, input);
+      if (!r.ok) throw new Error(`${from}`);
+      expect(r.value.snapshot).toMatchObject({
+        state: "Held",
+        heldReason: "JudgeContextMissing",
+        verifyRound: 1,
+        qaRound: 2,
+        reviewIter: 3,
+      });
+      expect(r.value.event).toMatchObject({
+        trigger: "RunHeld",
+        to: "Held",
+        heldReason: "JudgeContextMissing",
+      });
+    }
+    for (const from of ["RiskCheck", "Held", "Done"] as const) {
+      expect(transition(snap(from), input), from).toEqual({ ok: false, error: "InvalidTransition" });
+    }
   });
 });
