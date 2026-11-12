@@ -1,10 +1,17 @@
 #!/usr/bin/env node
-import { createGhNightReader, loadFactoryConfig } from "@friday/infrastructure";
+import {
+  createEventStore,
+  createGhNightReader,
+  createIssueRepository,
+  loadFactoryConfig,
+  openDatabase,
+} from "@friday/infrastructure";
 import { costs } from "./costs.ts";
 import { report } from "./report.ts";
 import { nightDigest } from "./night-digest.ts";
 import { homedir } from "node:os";
 import { runApprovals } from "./approvals.ts";
+import { runResume } from "./resume.ts";
 import { runDaemonCommand } from "./daemon.ts";
 import { createProductionOpen } from "./production-client.ts";
 
@@ -36,6 +43,16 @@ export function main(args: string[]): { stdout: string; stderr: string; code: nu
 async function run(args: string[]): Promise<{ stdout: string; stderr: string; code: number }> {
   if (args[0] === "approvals")
     return runApprovals(args, createProductionOpen({ env: process.env, homeDir: homedir() }));
+  if (args[0] === "resume")
+    return runResume(args, (p) => {
+      const db = openDatabase(p);
+      return {
+        events: createEventStore(db),
+        issues: createIssueRepository(db),
+        now: () => Date.now(),
+        close: () => db.close(),
+      };
+    });
   if (args[0] === "daemon") return runDaemonCommand(args, { env: process.env, homeDir: homedir() });
   if (args[0] === "costs") return costs(args);
   if (args[0] === "report") return report(args);
