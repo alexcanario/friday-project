@@ -5,15 +5,14 @@ import { createIssueRepository, createRunRepository, openDatabase } from "@frida
 import { describe, expect, it, vi } from "vitest";
 import { AlreadyRunningError, composeDaemon } from "../src/index.ts";
 import { FakeClock } from "./fakes.ts";
-import { NOW, fakeWorktrees, setup } from "./compose-helpers.ts";
+import { AUTHOR_KEY, NOW, fakeWorktrees, setup } from "./compose-helpers.ts";
 
 const lockFile = (root: string) => join(root, ".friday", "daemon.lock");
 
 describe("composeDaemon", () => {
   it("rejects without author_token_env and leaves no lock or database", async () => {
     const message = "O factory.yaml está inválido ou ausente.";
-    const app =
-      "  author_app:\n    app_id: 1\n    installation_id: 2\n    private_key_path: /etc/friday/author.pem\n";
+    const app = `  author_app:\n    app_id: 1\n    installation_id: 2\n    private_key_path: ${AUTHOR_KEY}\n`;
     const edits = [
       (y: string) => y.replace("  author_token_env: FRIDAY_AUTHOR_TOKEN\n", ""),
       (y: string) =>

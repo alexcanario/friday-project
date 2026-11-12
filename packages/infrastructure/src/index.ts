@@ -52,3 +52,4 @@ export {
   createInstallationTokenProvider,
   type InstallationTokenProviderInput,
 } from "./installation-token-provider.ts";
+export { assertPrivateKeyReadable } from "./private-key-check.ts";

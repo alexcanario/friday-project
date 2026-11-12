@@ -1,14 +1,13 @@
 import { FakeAgentRuntime, type AgentRuntime, type GitHubPort } from "@friday/application";
 import { describe, expect, it, vi } from "vitest";
 import { composeDaemon, type ComposeOptions } from "../src/index.ts";
+import { AUTHOR_KEY, JUDGE_KEY } from "./compose-helpers.ts";
 import { eventsOf, put, setup, stateOf } from "./compose-judge-helpers.ts";
 import { finished, verdict } from "./judge-dispatch-helpers.ts";
 import { FakeReviewer } from "./judge-fakes.ts";
 
-const AUTHOR_APP =
-  "  author_app:\n    app_id: 1\n    installation_id: 2\n    private_key_path: /etc/friday/author.pem\n";
-const REVIEW_APP =
-  "  review_app:\n    app_id: 3\n    installation_id: 4\n    private_key_path: /etc/friday/judge.pem\n";
+const AUTHOR_APP = `  author_app:\n    app_id: 1\n    installation_id: 2\n    private_key_path: ${AUTHOR_KEY}\n`;
+const REVIEW_APP = `  review_app:\n    app_id: 3\n    installation_id: 4\n    private_key_path: ${JUDGE_KEY}\n`;
 const toApps = (y: string) =>
   y
     .replace("  author_token_env: FRIDAY_AUTHOR_TOKEN\n", AUTHOR_APP)
@@ -46,7 +45,7 @@ describe("composeDaemon with review_app", () => {
     expect(t.createTokenProvider).toHaveBeenCalledWith({
       appId: 3,
       installationId: 4,
-      privateKeyPath: "/etc/friday/judge.pem",
+      privateKeyPath: JUDGE_KEY,
     });
     expect(t.opts.createGitHub).toHaveBeenCalledWith("ghs_judge", expect.anything());
     expect(t.opts.createGitHub).not.toHaveBeenCalledWith("ghs_author", expect.anything());

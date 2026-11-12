@@ -16,8 +16,9 @@ const A = "a".repeat(40);
 const repoRoot = join(import.meta.dirname, "..", "..", "..");
 const fixture = join(repoRoot, "packages/infrastructure/test/fixtures/valid");
 const ENV_LINE = "  author_token_env: FRIDAY_AUTHOR_TOKEN\n";
-const APP_BLOCK =
-  "  author_app:\n    app_id: 1\n    installation_id: 2\n    private_key_path: /etc/friday/author.pem\n";
+const KEY = join(mkdtempSync(join(tmpdir(), "friday-key-")), "author.pem");
+writeFileSync(KEY, "SEGREDO-NAO-PEM");
+const APP_BLOCK = `  author_app:\n    app_id: 1\n    installation_id: 2\n    private_key_path: ${KEY}\n`;
 
 const tmp = (name: string) => mkdtempSync(join(tmpdir(), `friday-${name}-`));
 
@@ -113,9 +114,7 @@ describe("friday approvals production client with author_app", () => {
     const client = open({ FRIDAY_HOME: makeRoot(APP_BLOCK) })(dbPath);
     expect(await client.decide("00000001", "approve")).toEqual({ kind: "merged", sha: "m1" });
     client.close?.();
-    expect(tokenSpy.mock.calls).toEqual([
-      [{ appId: 1, installationId: 2, privateKeyPath: "/etc/friday/author.pem" }],
-    ]);
+    expect(tokenSpy.mock.calls).toEqual([[{ appId: 1, installationId: 2, privateKeyPath: KEY }]]);
     expect(withAuthSpy).toHaveBeenCalledTimes(1);
     const [auth, repo] = withAuthSpy.mock.calls[0] as [() => Promise<string>, unknown];
     expect(repo).toEqual({ owner: "alexcanario", repo: "friday-sandbox" });

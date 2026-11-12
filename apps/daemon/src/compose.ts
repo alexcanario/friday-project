@@ -28,6 +28,7 @@ import {
   readDispatchConfig,
   readGuardedTickConfig,
   readAuthor,
+  assertAppKeysReadable,
 } from "./compose-config.ts";
 import { assertQaAgentConfig, type QaCompose } from "./qa-wiring.ts";
 import { assertSpecialistAgentConfig, type SpecialistCompose } from "./specialist-wiring.ts";
@@ -237,6 +238,7 @@ async function assemble(
 /** Process composition at startup: lock, database, reconcile, GitHub, intake and ticker. */
 export async function composeDaemon(opts: ComposeOptions): Promise<Daemon> {
   const author = readAuthor(opts);
+  assertAppKeysReadable(opts.root, author);
   const { repo, repository } = author;
   opts = withRedactedLog(opts, author.tokenEnvNames);
   assertSingleConcurrentRun(opts.root);

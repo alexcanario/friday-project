@@ -10,6 +10,11 @@ export const fixture = join(
   import.meta.dirname,
   "../../../packages/infrastructure/test/fixtures/valid",
 );
+export const KEY_DIR = mkdtempSync(join(tmpdir(), "friday-keys-"));
+export const AUTHOR_KEY = join(KEY_DIR, "author.pem");
+export const JUDGE_KEY = join(KEY_DIR, "judge.pem");
+writeFileSync(AUTHOR_KEY, "SEGREDO-NAO-PEM");
+writeFileSync(JUDGE_KEY, "SEGREDO-NAO-PEM");
 export const NOW = new Date("2026-11-05T03:00:00.000Z");
 const ok = <T>(value: T) => Promise.resolve({ ok: true as const, value });
 
