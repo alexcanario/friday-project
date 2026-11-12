@@ -16,6 +16,7 @@ import type { RunRecordingDeps } from "./run-registration.ts";
 import { readTickConfig } from "./tick-config.ts";
 
 export type JudgeCompose = {
+  base: string;
   agents: Record<"judge" | "judge-strong", AgentRunOptions>;
   input: (issueId: number, headSha: string) => { cwd: string; prompt: string; configRoot: string };
 };
@@ -100,6 +101,7 @@ export function createJudgeBranch(
     return runJudgeForIssue(
       {
         projectId: deps.projectId,
+        base: deps.compose.base,
         prOf: deps.prOf,
         getIssue,
         judgeInput: deps.compose.input,

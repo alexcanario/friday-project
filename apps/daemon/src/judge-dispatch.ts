@@ -8,6 +8,7 @@ import {
 } from "@friday/application";
 import type { RunFinished } from "@friday/contracts";
 import { passesBudget, type BudgetCaps, type BudgetDeps } from "./budget-gate.ts";
+import { judgeFridayOf } from "./judge-request.ts";
 import { applyInput, type RunContext, type RunRecorderDeps } from "./run-recorder.ts";
 import { baseRuntimeOf, statusFor, type RunRecordingDeps } from "./run-registration.ts";
 
@@ -15,6 +16,8 @@ export type JudgeApplyResult = { applied: boolean; feedback: string | null };
 
 export type JudgeDispatchDeps = {
   projectId: string;
+  /** The repository base branch (`repository.base`), for the effect tools' run. */
+  base: string;
   prOf: (issueId: number) => number | null;
   getIssue: (issueId: number) => Promise<{ body: string; labels: string[] }>;
   judgeInput: (
@@ -139,6 +142,24 @@ function recordingRuntime(
   };
 }
 
+/** The cwd, prompt and config root of the Judge run plus its `friday` MCP server. */
+function stepTarget(
+  deps: JudgeDispatchDeps,
+  t: { issueId: number; pr: number; runId: string; head: string },
+) {
+  const target = deps.judgeInput(t.issueId, t.head);
+  const friday = judgeFridayOf({
+    projectId: deps.projectId,
+    issueId: t.issueId,
+    runId: t.runId,
+    pr: t.pr,
+    base: deps.base,
+    cwd: target.cwd,
+    issues: deps.recorder.issues,
+  });
+  return { ...target, friday };
+}
+
 /** Runs the judge step with a registered run row and a recording runtime. */
 async function execute(
   deps: JudgeDispatchDeps,
@@ -168,7 +189,7 @@ async function execute(
         projectId: deps.projectId,
         issue: { id: issueId, ...issue },
         pr,
-        ...deps.judgeInput(issueId, head),
+        ...stepTarget(deps, { issueId, pr, runId, head }),
       },
     );
     completed = outcome.kind !== "held";

@@ -34,7 +34,7 @@ function setup(prOf?: () => number) {
         ? author
         : new FakeReviewer(token)) as unknown as ComposeOptions["createGitHub"],
     createRuntime: () => new FakeAgentRuntime([finished(verdict())]),
-    judge: { agents: agents(), input },
+    judge: { base: "main", agents: agents(), input },
     ...(prOf === undefined ? {} : { prOf }),
   };
   return { opts, author, logs };

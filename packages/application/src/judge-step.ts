@@ -1,7 +1,8 @@
 import { validateContract, type ReviewVerdict, type Violation } from "@friday/contracts";
-import type { RunHeldReason, WorkflowInput } from "@friday/domain";
+import type { IssueState, RunHeldReason, WorkflowInput } from "@friday/domain";
 import type { AgentRunOptions } from "./agent-run-options.ts";
-import type { AgentRuntime } from "./agent-runtime.ts";
+import type { AgentRunRequest, AgentRuntime } from "./agent-runtime.ts";
+import type { EffectsRun } from "./effects-run.ts";
 import type { GitHubPort } from "./github-port.ts";
 import { heldReasonFor } from "./held-reason-for.ts";
 import { renderReviewBody, reviewEventFor } from "./judge-review.ts";
@@ -36,6 +37,8 @@ export type JudgeStepInput = {
   cwd: string;
   prompt: string;
   configRoot: string;
+  /** The `friday` MCP server of the run: run id, issue state and the run the effect tools act on. */
+  friday: { runId: string; getIssueState: () => IssueState; effects: { run: EffectsRun } };
 };
 
 export type JudgeStepOutcome =
@@ -75,6 +78,17 @@ function misconfigured(agent: AgentRunOptions): boolean {
   return agent.tools.some((t) => !tools.has(t)) || agent.allowedTools.some((t) => !mcp.has(t));
 }
 
+const FRIDAY_PREFIX = "mcp__friday__";
+
+/** The card's MCP tool names without the server prefix, in card order. */
+type McpTool = NonNullable<AgentRunRequest["friday"]>["agent"]["mcp_tools"][number];
+
+/** The card's MCP tool names without the server prefix, in card order. Safe cast: `misconfigured` limits them to JUDGE_ALLOWED_MCP. */
+const mcpToolsOf = (agent: AgentRunOptions): McpTool[] =>
+  agent.allowedTools
+    .filter((t) => t.startsWith(FRIDAY_PREFIX))
+    .map((t) => t.slice(FRIDAY_PREFIX.length) as McpTool);
+
 const held = (reason: RunHeldReason): JudgeStepOutcome => ({
   kind: "held",
   input: { type: "RunHeld", reason },
@@ -111,6 +125,12 @@ async function runAndValidate(
     prompt: input.prompt,
     configRoot: input.configRoot,
     agent,
+    friday: {
+      runId: input.friday.runId,
+      agent: { states: agent.states, mcp_tools: mcpToolsOf(agent) },
+      getIssueState: input.friday.getIssueState,
+      effects: input.friday.effects,
+    },
   });
   if (finished.status === "invalid_output") {
     const violations = finished.violations as Violation[];

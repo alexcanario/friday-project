@@ -165,6 +165,7 @@ export async function startDaemon(deps: DaemonDeps): Promise<Result> {
       specialist,
       log: logOf(deps),
       judge: {
+        base: repository.base,
         agents: judgeAgents,
         input: (issueId, headSha) =>
           judgeInputOf({ root: paths.root, repository, issueId, headSha }),

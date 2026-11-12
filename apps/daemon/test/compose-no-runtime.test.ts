@@ -160,7 +160,11 @@ describe("composeDaemon without ComposeOptions.runtime", () => {
       now: () => NOW,
       createGitHub: createGitHub as unknown as ComposeOptions["createGitHub"],
       createRuntime: vi.fn(() => runtime),
-      judge: { agents: agents(), input: () => ({ cwd: "/tmp/wt", prompt: "j", configRoot: root }) },
+      judge: {
+        base: "main",
+        agents: agents(),
+        input: () => ({ cwd: "/tmp/wt", prompt: "j", configRoot: root }),
+      },
     } as unknown as ComposeOptions;
     const daemon = await composeDaemon(withoutRuntime(opts));
     put(daemon, "StateChanged", toState("InReview"));
