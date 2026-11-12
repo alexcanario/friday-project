@@ -1,7 +1,7 @@
 import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { Options, SDKMessage } from "@anthropic-ai/claude-agent-sdk";
+import type { SDKMessage } from "@anthropic-ai/claude-agent-sdk";
 import {
   FakeGitHost,
   FakeGitHubPort,
@@ -58,7 +58,7 @@ function request(): AgentRunRequest {
 
 async function runWith(o: { push: boolean; headSha: string }) {
   let created: Captured | undefined;
-  const query = async function* (_: { prompt: string; options: Options }) {
+  const query = async function* () {
     if (o.push) await created!.handlers.git_push!({ branch: RUN.branch, message: "m" });
     yield init(["Read", "StructuredOutput"]);
     yield result({

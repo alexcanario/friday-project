@@ -77,7 +77,12 @@ function setup() {
   const query: QueryFn = async function* ({ prompt }) {
     prompts.push(prompt);
     await server!.handlers.git_push!({ branch: BRANCH, message: "m" });
-    yield { type: "system", subtype: "init", model: "m", tools: ["Read", "StructuredOutput"] } as unknown as Message;
+    yield {
+      type: "system",
+      subtype: "init",
+      model: "m",
+      tools: ["Read", "StructuredOutput"],
+    } as unknown as Message;
     yield {
       type: "result",
       subtype: "success",
