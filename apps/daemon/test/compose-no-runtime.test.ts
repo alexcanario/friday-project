@@ -14,7 +14,7 @@ import { composeDaemon, type ComposeOptions, type Daemon, type QaCompose } from 
 import { fakeWorktrees, fixture, NOW, setup as baseSetup } from "./compose-helpers.ts";
 import { setupCompose } from "./compose-runtime-helpers.ts";
 import { FakeClock } from "./fakes.ts";
-import { agents, finished, verdict } from "./judge-dispatch-helpers.ts";
+import { A, agents, finished, seedJudgeContext, verdict } from "./judge-dispatch-helpers.ts";
 import { FakeCiGitHub, FakeReviewer } from "./judge-fakes.ts";
 import {
   AGENT_CONFIG,
@@ -167,6 +167,7 @@ describe("composeDaemon without ComposeOptions.runtime", () => {
       },
     } as unknown as ComposeOptions;
     const daemon = await composeDaemon(withoutRuntime(opts));
+    seedJudgeContext(createEventStore(daemon.db), 7, A);
     put(daemon, "StateChanged", toState("InReview"));
     createIssueRepository(daemon.db).rebuild("p");
     await daemon.ticker.tick();

@@ -2,6 +2,7 @@ import { expect, vi } from "vitest";
 import {
   FakeAgentRuntime,
   type AgentRunOptions,
+  type EventStore,
   type IssueRow,
   type JudgeStepOutcome,
 } from "@friday/application";
@@ -72,7 +73,70 @@ export const agents = (judge: Record<string, unknown> = {}, strong: Record<strin
     "judge-strong": { ...base, model: "opus", ...strong },
   }) as unknown as Record<"judge" | "judge-strong", AgentRunOptions>;
 
+/** Records what the Judge needs in the run prompt: criteria, the work head and the QA pass of that head. */
+export function seedJudgeContext(events: EventStore, issueId: number, head: string): void {
+  const base = { projectId: "p", issueId, actor: "daemon", at: now().toISOString() };
+  const criteria = [{ index: 1, claim: "c", proof: { kind: "command", command: "pnpm test" } }];
+  events.append({ ...base, runId: null, type: "CriteriaSet", payload: { criteria } });
+  events.append({
+    ...base,
+    runId: null,
+    type: "WorkReported",
+    payload: { worktreePath: "/tmp/wt", headSha: head, changedFiles: [] },
+  });
+  const report = {
+    verdict: "pass",
+    criteria: [{ index: 1, result: "pass", how: "ok", screenshots: [] }],
+    notChecked: [],
+  };
+  events.append({ ...base, runId: "qa-1", type: "RunFinished", payload: finished(report) });
+  events.append({
+    ...base,
+    runId: "qa-1",
+    type: "StateChanged",
+    payload: {
+      trigger: "QaPassed",
+      to: "InReview",
+      heldReason: null,
+      verifyRound: 0,
+      qaRound: 0,
+      reviewIter: 0,
+    },
+  });
+}
+
+/**
+ * Seeds the context of each head the test reads, but keeps it out of `events.appended`, so the
+ * assertions on what the dispatch wrote stay as they were; `events.list` returns the context of
+ * the head read last (`current.head`) before the appended events, which is what the dispatch reads.
+ */
+function withSeededContext(events: FakeEvents, heads: string[], current: { head: string }): void {
+  const byHead = new Map(
+    [...new Set(heads)].map((head) => {
+      const scratch = new FakeEvents();
+      seedJudgeContext(scratch, 7, head);
+      return [head, scratch.appended] as const;
+    }),
+  );
+  const list = events.list.bind(events);
+  events.list = (projectId, issueId) => {
+    const seeded = byHead.get(current.head) ?? [];
+    return [
+      ...seeded
+        .map((event, index) => ({ ...event, seq: index + 1 }))
+        .filter(
+          (e) =>
+            (projectId === undefined || e.projectId === projectId) &&
+            (issueId === undefined || e.issueId === issueId),
+        ),
+      ...list(projectId, issueId).map((e) => ({ ...e, seq: e.seq + seeded.length })),
+    ];
+  };
+}
+
 export type Options = {
+  /** `false` skips `seedJudgeContext`, for tests that do not run the Judge. */
+  context?: boolean;
   results?: RunFinished[];
   state?: string;
   reviewIter?: number;
@@ -85,6 +149,8 @@ export type Options = {
 
 export function setup(o: Options = {}) {
   const events = new FakeEvents();
+  const current = { head: o.heads?.[0] ?? A };
+  if (o.context !== false) withSeededContext(events, o.heads ?? [A], current);
   const issues = new FakeIssueRepository(events);
   issues.row = row(o.state ?? "InReview", o.reviewIter ?? 0);
   const runs = new FakeRunRepository();
@@ -116,7 +182,10 @@ export function setup(o: Options = {}) {
       review: { mode: "env", tokenEnv: "FRIDAY_REVIEW_TOKEN" },
       agents: o.agents ?? agents(),
     },
-    readPrHead: () => Promise.resolve(heads.length > 1 ? (heads.shift() as string) : heads[0]!),
+    readPrHead: () => {
+      current.head = heads.length > 1 ? (heads.shift() as string) : heads[0]!;
+      return Promise.resolve(current.head);
+    },
     reviewerFor: (token) => {
       tokens.push(token);
       return {
