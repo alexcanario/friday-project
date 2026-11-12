@@ -54,6 +54,19 @@ describe("composeDaemon with author_app", () => {
     expect(other.createGitHub).not.toHaveBeenCalled();
   });
 
+  it("author provider is created without permissions", async () => {
+    const t = withApp();
+    (await composeDaemon(t.opts)).release();
+    expect(t.createTokenProvider).toHaveBeenCalledWith(
+      expect.not.objectContaining({ permissions: expect.anything() }),
+    );
+    expect(t.createTokenProvider.mock.calls[0]![0]).toEqual({
+      appId: 1,
+      installationId: 2,
+      privateKeyPath: AUTHOR_KEY,
+    });
+  });
+
   it("composeDaemon gives the git host a token function with author_app", async () => {
     const t = withApp();
     (await composeDaemon(t.opts)).release();

@@ -67,6 +67,7 @@ describe("readReviewCredential", () => {
       appId: 3,
       installationId: 4,
       privateKeyPath: JUDGE_KEY,
+      permissions: { pull_requests: "write" },
     });
     if (cred?.mode === "app") await expect(cred.getToken()).resolves.toBe("x");
 
@@ -84,6 +85,28 @@ describe("readReviewCredential", () => {
     const missing = rootWith();
     rmSync(join(missing, "factory.yaml"));
     expect(readReviewCredential(missing, providerFor)).toBeNull();
+    expect(providerFor).not.toHaveBeenCalled();
+  });
+
+  it("readReviewCredential asks the review App only for pull_requests write", () => {
+    const providerFor = vi.fn(() => ({ getToken: async () => "x" }));
+    const app = rootWith((y) => y.replace("  review_token_env: FRIDAY_REVIEW_TOKEN\n", APP));
+    readReviewCredential(app, providerFor);
+    expect(providerFor).toHaveBeenCalledTimes(1);
+    expect(providerFor).toHaveBeenCalledWith({
+      appId: 3,
+      installationId: 4,
+      privateKeyPath: JUDGE_KEY,
+      permissions: { pull_requests: "write" },
+    });
+  });
+
+  it("readReviewCredential does not create an App provider for review_token_env", () => {
+    const providerFor = vi.fn(() => ({ getToken: async () => "x" }));
+    expect(readReviewCredential(rootWith(), providerFor)).toEqual({
+      mode: "env",
+      tokenEnv: "FRIDAY_REVIEW_TOKEN",
+    });
     expect(providerFor).not.toHaveBeenCalled();
   });
 

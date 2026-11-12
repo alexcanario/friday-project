@@ -39,6 +39,7 @@ interface Call {
   url: string;
   method: string;
   authorization: string;
+  body: string | undefined;
 }
 
 function fakeFetch(respond: (n: number) => Response | Promise<Response>): {
@@ -53,6 +54,7 @@ function fakeFetch(respond: (n: number) => Response | Promise<Response>): {
       url: req ? req.url : String(input),
       method: (req?.method ?? init?.method ?? "GET").toUpperCase(),
       authorization: headers.get("authorization") ?? "",
+      body: typeof init?.body === "string" ? init.body : undefined,
     });
     return respond(calls.length);
   }) as typeof fetch;
@@ -68,8 +70,14 @@ function tokenResponse(n: number, now: number, withExpiry = true): Response {
   });
 }
 
-function setup(path: string, f: typeof fetch, clock: { t: number }) {
+function setup(
+  path: string,
+  f: typeof fetch,
+  clock: { t: number },
+  permissions?: { pull_requests?: "write" | "read" },
+) {
   return createInstallationTokenProvider({
+    ...(permissions === undefined ? {} : { permissions }),
     appId: 1,
     installationId: 2,
     privateKeyPath: path,
@@ -196,6 +204,51 @@ describe("createInstallationTokenProvider", () => {
     expect(err).toBeInstanceOf(Error);
     expect(err?.message).toContain("401");
     expect(err?.cause).toBeUndefined();
+    const jwt = calls[0]?.authorization.replace(/^bearer /i, "") ?? "";
+    expect(jwt.length).toBeGreaterThan(20);
+    expect(err?.message).not.toContain(jwt);
+    for (const line of bodyLines(pkcs8Body)) expect(err?.message).not.toContain(line);
+  });
+
+  it("sends only the requested permissions in the access_tokens body", async () => {
+    const { fetch: f, calls } = fakeFetch((n) => tokenResponse(n, T0));
+    const p = setup(pkcs8Path, f, { t: T0 }, { pull_requests: "write" });
+    expect(await p.getToken()).toBe("tok-1");
+    expect(calls).toHaveLength(1);
+    expect(calls[0]?.url).toBe(URL_TOKENS);
+    expect(calls[0]?.method).toBe("POST");
+    expect(JSON.parse(calls[0]?.body ?? "null")).toEqual({
+      permissions: { pull_requests: "write" },
+    });
+  });
+
+  it("omits permissions from the access_tokens body when none are given", async () => {
+    const { fetch: f, calls } = fakeFetch((n) => tokenResponse(n, T0));
+    expect(await setup(pkcs8Path, f, { t: T0 }).getToken()).toBe("tok-1");
+    expect(calls[0]?.url).toBe(URL_TOKENS);
+    const body = calls[0]?.body;
+    const sent = body === undefined ? {} : JSON.parse(body);
+    expect(sent).not.toHaveProperty("permissions");
+  });
+
+  it("turns a 422 on requested permissions into the pt-BR error with the status", async () => {
+    const { fetch: f, calls } = fakeFetch(
+      () =>
+        new Response(JSON.stringify({ message: "Unprocessable" }), {
+          status: 422,
+          headers: { "content-type": "application/json" },
+        }),
+    );
+    const err = await setup(pkcs8Path, f, { t: T0 }, { pull_requests: "write" })
+      .getToken()
+      .then(
+        () => undefined,
+        (e: unknown) => e as Error,
+      );
+    expect(JSON.parse(calls[0]?.body ?? "null")).toEqual({
+      permissions: { pull_requests: "write" },
+    });
+    expect(err?.message).toBe("Falha ao obter o token de instalação do App (HTTP 422).");
     const jwt = calls[0]?.authorization.replace(/^bearer /i, "") ?? "";
     expect(jwt.length).toBeGreaterThan(20);
     expect(err?.message).not.toContain(jwt);

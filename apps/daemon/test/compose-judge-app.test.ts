@@ -46,6 +46,7 @@ describe("composeDaemon with review_app", () => {
       appId: 3,
       installationId: 4,
       privateKeyPath: JUDGE_KEY,
+      permissions: { pull_requests: "write" },
     });
     expect(t.opts.createGitHub).toHaveBeenCalledWith("ghs_judge", expect.anything());
     expect(t.opts.createGitHub).not.toHaveBeenCalledWith("ghs_author", expect.anything());
