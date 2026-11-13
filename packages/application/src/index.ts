@@ -130,3 +130,10 @@ export {
   type DecideApprovalDeps,
   type RequestApprovalDeps,
 } from "./approval.ts";
+export { plantedIdsOf, type SeedItem } from "./golden-ids.ts";
+export {
+  scoreGolden,
+  type GoldenResult,
+  type GoldenScore,
+  type GoldenVerdict,
+} from "./golden-score.ts";
