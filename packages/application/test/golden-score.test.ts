@@ -12,7 +12,12 @@ describe("scoreGolden", () => {
   it("scores 3 of 4 planted defects caught", () => {
     const score = scoreGolden(
       ["S1", "S2", "S3", "S4"],
-      [r("S1", "changes_requested"), r("S2", "reject"), r("S3", "approve"), r("S4", "changes_requested")],
+      [
+        r("S1", "changes_requested"),
+        r("S2", "reject"),
+        r("S3", "approve"),
+        r("S4", "changes_requested"),
+      ],
     );
     expect(score).toEqual({ total: 4, caught: 3, rate: 0.75, meetsTarget: true, missed: ["S3"] });
   });
