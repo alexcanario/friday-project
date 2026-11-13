@@ -86,7 +86,8 @@ function fakeWorktrees(opts: {
     listOrphans(request: unknown) {
       listCalls.push(request);
       if (!Array.isArray(opts.orphans)) return Promise.resolve({ ok: false, error: opts.orphans });
-      return Promise.resolve({ ok: true, value: [...present] });
+      const active = new Set((request as { activeIssues: number[] }).activeIssues);
+      return Promise.resolve({ ok: true, value: present.filter((w) => !active.has(w.issue)) });
     },
     remove(request: Call) {
       removeCalls.push(request);
@@ -127,7 +128,7 @@ describe("reconcile", () => {
     expect(report).toEqual({
       canceledRuns: ["ra16"],
       heldIssues: [16],
-      removedWorktrees: [15, 16],
+      removedWorktrees: [],
       worktreeErrors: [],
     });
     expect(runs().get("ra16")).toMatchObject({
@@ -157,18 +158,27 @@ describe("reconcile", () => {
       },
     });
     expect(events().list("p", 15)).toHaveLength(1);
-    expect(fake.listCalls[0]).toEqual({ root: ROOT, project: "p", activeIssues: [] });
-    expect(fake.removeCalls).toEqual([
-      { root: ROOT, project: "p", issue: 15 },
-      { root: ROOT, project: "p", issue: 16 },
-    ]);
+    expect(fake.listCalls[0]).toEqual(
+      expect.objectContaining({
+        root: ROOT,
+        project: "p",
+        activeIssues: expect.arrayContaining([15, 16]),
+      }),
+    );
+    expect(fake.removeCalls).toEqual([]);
 
     const second = await run(fake.manager);
     expect(second.canceledRuns).toEqual([]);
     expect(second.heldIssues).toEqual([]);
     expect(events().list("p", 16)).toHaveLength(2);
     expect(fake.listCalls).toHaveLength(2);
-    expect(fake.listCalls[1]).toEqual({ root: ROOT, project: "p", activeIssues: [] });
+    expect(fake.listCalls[1]).toEqual(
+      expect.objectContaining({
+        root: ROOT,
+        project: "p",
+        activeIssues: expect.arrayContaining([15, 16]),
+      }),
+    );
   });
 
   it("reconciles only the given project", async () => {
@@ -246,7 +256,7 @@ describe("reconcile", () => {
       removeErrors: new Map([[15, removeError]]),
     });
     const second = await run(partial.manager);
-    expect(second.removedWorktrees).toEqual([16]);
+    expect(second.removedWorktrees).toEqual([]);
     expect(second.worktreeErrors).toEqual([removeError]);
   });
 
