@@ -13,6 +13,7 @@ import { BASH_DENIED } from "./qa-wiring.ts";
 import type { RunRecorderDeps } from "./run-recorder.ts";
 import type { RunRecordingDeps } from "./run-registration.ts";
 import { runSpecialistForIssue } from "./specialist-dispatch.ts";
+import type { SpecialistHeadDeps } from "./specialist-head.ts";
 import { buildSpecialistRequest, criteriaOf, feedbackOf } from "./specialist-request.ts";
 import { readTickConfig } from "./tick-config.ts";
 import { isInsideRoot } from "./verify-wiring.ts";
@@ -29,8 +30,8 @@ export type SpecialistBranchDeps = {
   root: string;
   worktreesRoot: string;
   compose: SpecialistCompose;
-  github: Pick<GitHubPort, "listIssuesByLabel">;
-  worktrees: Pick<WorktreeManager, "create" | "list">;
+  github: Pick<GitHubPort, "listIssuesByLabel" | "getPrMergeState">;
+  worktrees: Pick<WorktreeManager, "create" | "list" | "isClean">;
   runtime?: AgentRuntime;
   recorder: RunRecorderDeps;
   recording: RunRecordingDeps;
@@ -132,6 +133,19 @@ function targetOf(deps: SpecialistBranchDeps, t: TargetInput, id: number, runId:
   });
 }
 
+/** The head readers of the no-push fallback (D107), over the GitHub port and the worktree manager. */
+function headDepsOf(deps: SpecialistBranchDeps, project: string): SpecialistHeadDeps {
+  return {
+    prHead: async (pr) => (await deps.github.getPrMergeState(pr)).headSha,
+    worktreeHead: async (id) => {
+      const listed = await deps.worktrees.list({ root: deps.worktreesRoot, project });
+      if (!listed.ok) return null;
+      return listed.value.find((w) => w.issue === id)?.head ?? null;
+    },
+    isClean: (path, head) => deps.worktrees.isClean(path, head),
+  };
+}
+
 /** Builds the specialist branch of the dispatcher; config is re-read on every execution. */
 export function createSpecialistBranch(
   deps: SpecialistBranchDeps,
@@ -170,6 +184,7 @@ export function createSpecialistBranch(
         budget: deps.budget,
         caps: { perDayUsd: config.perDayUsd, perIssueUsd: config.perIssueUsd },
         now: deps.now,
+        ...headDepsOf(deps, `${owner}__${name}`),
         ...(deps.log === undefined ? {} : { log: deps.log }),
       },
       issueId,

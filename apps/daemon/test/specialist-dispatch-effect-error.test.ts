@@ -101,6 +101,9 @@ describe("runSpecialistForIssue effect errors", () => {
       budget: { ledger, recorderDeps },
       caps: { perDayUsd: 100, perIssueUsd: 10 },
       now,
+      prHead: () => Promise.reject(new Error("sem PR")),
+      worktreeHead: () => Promise.resolve(null),
+      isClean: () => Promise.resolve(true),
       log,
     };
     await runSpecialistForIssue(deps, 7);

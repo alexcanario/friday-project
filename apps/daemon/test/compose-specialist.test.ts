@@ -57,6 +57,10 @@ function setup(o: Over = {}) {
     body: o.body ?? "B",
     labels: ["friday"],
   });
+  // A issue com PR só roda com a worktree no head do PR (D107): o PR e a worktree dos testes estão em "h".
+  Object.assign(t.github, {
+    getPrMergeState: () => Promise.resolve({ merged: false, headSha: "h" }),
+  });
   const runtime = new FakeAgentRuntime([finished]);
   const worktreesRoot = join(t.root, "worktrees");
   const path = join(worktreesRoot, "wt7");
@@ -187,10 +191,13 @@ describe("composeDaemon with the specialist branch", () => {
   });
 
   it("getPullRequest reads the latest PrOpened", async () => {
-    const t = await run({}, [
-      ["PrOpened", { number: 12 }],
-      ["PrOpened", { number: 15 }],
-    ]);
+    const t = await run(
+      { list: () => ({ ok: true, value: [{ issue: 7, path: "/x", head: "h" }] }) },
+      [
+        ["PrOpened", { number: 12 }],
+        ["PrOpened", { number: 15 }],
+      ],
+    );
     expect(t.runtime.requests[0]!.friday?.effects?.run.getPullRequest()).toBe(15);
     const none = await run();
     expect(none.runtime.requests[0]!.friday?.effects?.run.getPullRequest()).toBeNull();
