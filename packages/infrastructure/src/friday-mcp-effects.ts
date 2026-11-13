@@ -116,7 +116,7 @@ export function makeEffectHandler(name: EffectTool, deps: Deps) {
       try {
         deps.effects.run.onEffectError?.(name, error);
       } catch {
-        // Um gancho com defeito não pode mudar a resposta nem derrubar o handler.
+        // A faulty hook must not change the response or crash the handler.
       }
       return reply(`500: Falha ao executar ${name} (effect_failed).`, true);
     }
