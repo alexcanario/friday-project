@@ -1,4 +1,4 @@
-import { rmSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { beforeEach, describe, expect, it } from "vitest";
 import { GitCliHost } from "../src/git-cli-host.ts";
@@ -8,6 +8,14 @@ import { commitOnDevelop, git, makeFixture, type Fixture } from "./worktree-help
 let fx: Fixture;
 let mgr: GitWorktreeManager;
 let path: string;
+
+/** Installs a `post-checkout` hook that creates `marker` when it runs. */
+function installHook(hooksDir: string, marker: string): void {
+  mkdirSync(hooksDir, { recursive: true });
+  const hook = join(hooksDir, "post-checkout");
+  writeFileSync(hook, `#!/bin/sh\ntouch "${marker.replace(/\\/g, "/")}"\n`);
+  chmodSync(hook, 0o755);
+}
 
 beforeEach(async () => {
   fx = makeFixture();
@@ -63,6 +71,30 @@ describe("GitWorktreeManager.alignTo", { timeout: 30_000 }, () => {
     const result = await mgr.alignTo(path, "c".repeat(40));
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.error.code).toBe("WorktreeCreateFailed");
+  });
+
+  it("recusa worktree cujo .git aponta para outro gitdir e não executa o hook dele", async () => {
+    const sha = commitOnDevelop(fx, "novo.txt");
+    const marker = join(fx.root, "evil-marker");
+    const evil = join(fx.root, "evil");
+    mkdirSync(evil, { recursive: true });
+    git(evil, "init", "-q", "-b", "main");
+    git(evil, "config", "core.fsmonitor", `touch ${JSON.stringify(marker.replace(/\\/g, "/"))}`);
+    installHook(join(evil, ".git", "hooks"), marker);
+    writeFileSync(join(path, ".git"), `gitdir: ${join(evil, ".git")}\n`);
+    const result = await mgr.alignTo(path, sha);
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.error.code).toBe("WorktreeCreateFailed");
+    expect(existsSync(marker)).toBe(false);
+  });
+
+  it("não executa o hook post-checkout do repositório comum num alinhamento bem-sucedido", async () => {
+    const sha = commitOnDevelop(fx, "novo.txt");
+    const marker = join(fx.root, "hook-marker");
+    installHook(join(fx.repoDir, ".git", "hooks"), marker);
+    expect((await mgr.alignTo(path, sha)).ok).toBe(true);
+    expect(git(path, "rev-parse", "HEAD")).toBe(sha);
+    expect(existsSync(marker)).toBe(false);
   });
 
   it("push depois do alinhamento avança a branch do PR", async () => {
