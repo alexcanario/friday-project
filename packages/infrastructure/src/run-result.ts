@@ -12,6 +12,8 @@ export interface RunObservation {
   timedOut: boolean;
   /** Sha of the last `git_push` of the run; it replaces the agent's `headSha` of a workReport. */
   pushedSha: string | null;
+  /** Head of the PR read by the daemon before the run; used as the `headSha` when there was no push (D107). */
+  headFallback: string | null;
 }
 
 type Tokens = NonNullable<RunFinished["tokens"]>;
@@ -76,7 +78,7 @@ export function classify(obs: RunObservation, agent: AgentRunOptions): RunFinish
   };
   if (obs.toolViolation || !obs.initSeen) return { ...finished, status: "misconfigured" };
   if (finished.status === "succeeded" && agent.outputKind != null) {
-    return withOutput(finished, result, agent.outputKind, obs.pushedSha);
+    return withOutput(finished, result, agent.outputKind, obs.pushedSha ?? obs.headFallback);
   }
   return finished;
 }
@@ -85,11 +87,11 @@ function withOutput(
   finished: RunFinished,
   result: ResultMessage,
   kind: NonNullable<AgentRunOptions["outputKind"]>,
-  pushedSha: string | null,
+  knownSha: string | null,
 ): RunFinished {
   let raw = "structured_output" in result ? result.structured_output : undefined;
-  if (kind === "workReport" && pushedSha !== null && typeof raw === "object" && raw !== null) {
-    raw = { ...raw, headSha: pushedSha };
+  if (kind === "workReport" && knownSha !== null && typeof raw === "object" && raw !== null) {
+    raw = { ...raw, headSha: knownSha };
   }
   if (raw === undefined)
     return { ...finished, status: "invalid_output", violations: [MISSING_OUTPUT] };

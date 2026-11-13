@@ -134,6 +134,9 @@ function setup() {
     budget: { ledger, recorderDeps },
     caps: { perDayUsd: 100, perIssueUsd: 10 },
     now,
+    prHead: () => Promise.reject(new Error("sem PR")),
+    worktreeHead: () => Promise.resolve(null),
+    isClean: () => Promise.resolve(true),
   };
   const ofType = (t: string) => events.appended.filter((e) => e.type === t);
   return { deps, issues, prompts, ofType };

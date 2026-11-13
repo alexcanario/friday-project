@@ -75,7 +75,9 @@ async function runWith(o: { push: boolean; headSha: string; headFallback?: strin
     createMcpServer: (input) => (created = createFridayMcpServer(input)),
   });
   const base = request();
-  return runtime.run(o.headFallback === undefined ? base : { ...base, headFallback: o.headFallback });
+  return runtime.run(
+    o.headFallback === undefined ? base : { ...base, headFallback: o.headFallback },
+  );
 }
 
 describe("ClaudeAgentSdkRuntime workReport headSha", () => {

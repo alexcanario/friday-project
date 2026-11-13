@@ -12,8 +12,15 @@ import { passesBudget, type BudgetCaps, type BudgetDeps } from "./budget-gate.ts
 import { snapshotOf, type RunRecorderDeps } from "./run-recorder.ts";
 import { baseRuntimeOf, statusFor, type RunRecordingDeps } from "./run-registration.ts";
 import { applySpecialistOutcome } from "./specialist-apply.ts";
+import { createPrOf } from "./pr-of.ts";
+import {
+  guardNoPush,
+  HELD_BEFORE_RUN,
+  resolveHeadFallback,
+  type SpecialistHeadDeps,
+} from "./specialist-head.ts";
 
-export type SpecialistDispatchDeps = {
+export type SpecialistDispatchDeps = SpecialistHeadDeps & {
   projectId: string;
   targetOf: (issueId: number, runId: string) => AgentRunRequest | null;
   step: Omit<SpecialistStepDeps, "runtime"> & { runtime?: AgentRuntime };
@@ -167,10 +174,11 @@ async function execute(
     const hooked = withRunHooks(request, box, (tool, error) =>
       deps.log?.(`Falha na ferramenta ${tool} da issue ${issueId}: ${String(error)}`),
     );
-    const outcome = await runSpecialistStep(
+    const stepped = await runSpecialistStep(
       { ...deps.step, runtime },
       { request: hooked, snapshot },
     );
+    const outcome = await guardNoPush(deps, request.cwd, request.headFallback, stepped);
     held = outcome.inputs.some((i) => i.type === "RunHeld");
     // Grava o PR antes de aplicar o desfecho: um lançamento no apply não pode perder um PR já aberto.
     if (tracker.last !== null && box.number !== null) appendPrOpened(deps, ctx, box.number);
@@ -216,7 +224,20 @@ export async function runSpecialistForIssue(
       deps.log ?? (() => {}),
     );
     if (!ok) return NOT_APPLIED;
-    return await execute(deps, issueId, runId, request, snapshot);
+    const pr = createPrOf(deps.recorder.events, deps.projectId)(issueId);
+    const fallback = await resolveHeadFallback(deps, issueId, pr);
+    if (!fallback.ok) {
+      deps.log?.(`Especialista da issue ${issueId} não rodou: ${fallback.reason}`);
+      const held = applySpecialistOutcome(deps.recorder, { issueId, runId: null }, HELD_BEFORE_RUN);
+      return { applied: held.applied, feedback: null };
+    }
+    return await execute(
+      deps,
+      issueId,
+      runId,
+      { ...request, headFallback: fallback.head },
+      snapshot,
+    );
   } catch (error) {
     const text = error instanceof Error ? error.message : String(error);
     deps.log?.(`Falha no especialista da issue ${issueId}: ${text}`);

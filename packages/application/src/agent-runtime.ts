@@ -8,6 +8,8 @@ export interface AgentRunRequest {
   prompt: string;
   configRoot: string;
   agent: AgentRunOptions;
+  /** Head of the PR before the run; the runtime reports it as the `headSha` when the run did not push (D107). Absent equals null. */
+  headFallback?: string | null;
   /** Asks the runtime to expose the `friday` MCP server (result tools) to this run. */
   friday?: {
     runId: string;

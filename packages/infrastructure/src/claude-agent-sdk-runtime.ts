@@ -22,7 +22,7 @@ import { classify, emptyFinished, type RunObservation } from "./run-result.ts";
 
 type QueryFn = (params: { prompt: string; options: Options }) => AsyncIterable<SDKMessage>;
 
-function newObservation(): RunObservation {
+function newObservation(headFallback: string | null): RunObservation {
   return {
     model: null,
     initSeen: false,
@@ -30,6 +30,7 @@ function newObservation(): RunObservation {
     result: null,
     timedOut: false,
     pushedSha: null,
+    headFallback,
   };
 }
 
@@ -77,7 +78,7 @@ export class ClaudeAgentSdkRuntime implements AgentRuntime {
     if (isInside(request.cwd, configRoot)) return emptyFinished("misconfigured", null);
     const built = buildToolPolicy(request.agent, request.cwd);
     if (!built.ok) return emptyFinished("misconfigured", null);
-    const obs = newObservation();
+    const obs = newObservation(request.headFallback ?? null);
     const observed = withPushCapture(request, obs);
     const mcpServers = buildFridayMcpServers(observed, {
       runs: this.#deps.runs,
