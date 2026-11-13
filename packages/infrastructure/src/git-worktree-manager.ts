@@ -175,7 +175,11 @@ export class GitWorktreeManager implements WorktreeManager {
         [0, 1],
       );
       const env = stepEnv(request, gitDir, home, filterDrivers(filters));
-      const status = await run(["status", "--porcelain", "--untracked-files=all"], path, env);
+      const status = await run(
+        ["status", "--porcelain", "--untracked-files=all", "--ignore-submodules=all"],
+        path,
+        env,
+      );
       if (status.trim() !== "") return false;
       const current = await run(["rev-parse", "HEAD"], path, env);
       const expected = await run(["rev-parse", "--verify", `${head}^{commit}`], path, env);

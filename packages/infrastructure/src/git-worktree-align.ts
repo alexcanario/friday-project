@@ -30,7 +30,11 @@ export async function alignWorktree(repoDir: string, path: string, sha: string):
       [0, 1],
     );
     const env = stepEnv(request, gitDir, home, filterDrivers(filters));
-    const status = await run(["status", "--porcelain", "--untracked-files=all"], path, env);
+    const status = await run(
+      ["status", "--porcelain", "--untracked-files=all", "--ignore-submodules=all"],
+      path,
+      env,
+    );
     if (status.trim() !== "") throw new Error("a worktree tem alterações.");
     await run(["checkout", "--detach", sha], path, env);
     if ((await run(["rev-parse", "HEAD"], path, env)).trim() !== sha) {
