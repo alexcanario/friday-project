@@ -89,6 +89,25 @@ describe("GitWorktreeManager.alignTo", { timeout: 30_000 }, () => {
     expect(existsSync(marker)).toBe(false);
   });
 
+  it("não executa o comando smudge configurado no repositório comum", async () => {
+    const marker = join(fx.root, "smudge-marker").replace(/\\/g, "/");
+    git(fx.repoDir, "config", "filter.x.smudge", `touch "${marker}"; cat`);
+    git(fx.repoDir, "config", "filter.x.clean", "cat");
+    git(fx.repoDir, "checkout", "develop");
+    writeFileSync(join(fx.repoDir, ".gitattributes"), "*.dat filter=x\n");
+    writeFileSync(join(fx.repoDir, "f.dat"), "dado\n");
+    git(fx.repoDir, "-c", "filter.x.smudge=cat", "add", ".");
+    git(fx.repoDir, "-c", "filter.x.smudge=cat", "commit", "-m", "attrs");
+    git(fx.repoDir, "push", "origin", "develop");
+    const sha = git(fx.repoDir, "rev-parse", "HEAD");
+    git(fx.repoDir, "-c", "filter.x.smudge=cat", "checkout", "main");
+    rmSync(marker, { force: true });
+    const result = await mgr.alignTo(path, sha);
+    expect(result.ok).toBe(true);
+    expect(existsSync(join(path, "f.dat"))).toBe(true);
+    expect(existsSync(marker)).toBe(false);
+  });
+
   it("não executa o hook post-checkout do repositório comum num alinhamento bem-sucedido", async () => {
     const sha = commitOnDevelop(fx, "novo.txt");
     const marker = join(fx.root, "hook-marker");
