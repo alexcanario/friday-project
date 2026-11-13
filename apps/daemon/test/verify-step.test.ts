@@ -48,6 +48,7 @@ function run(command: string, o: Opts = {}): Promise<VerifyStepOutcome> {
   return runVerifyStep(
     {
       registryRoot: o.root ?? registry(command, o.timeoutS),
+      repoDir: "unused",
       env: o.env ?? BASE_ENV,
       readHead: async () => o.head ?? SHA,
     },
@@ -254,6 +255,7 @@ describe("runVerifyStep", () => {
       runVerifyStep(
         {
           registryRoot: registry(cmd),
+          repoDir: "unused",
           env: BASE_ENV,
           readHead: async () => {
             throw new Error("boom");
@@ -272,13 +274,21 @@ describe("runVerifyStep", () => {
       });
     git("init", "-q");
     git("commit", "-q", "--allow-empty", "-m", "one");
-    const first = await gitHead(repo);
-    expect(first).toBe(git("rev-parse", "HEAD").trim());
+    // The protected gitHead only reads linked worktrees of the daemon repository.
+    const linked = join(tmp(), "wt");
+    git("worktree", "add", "-q", "-b", "friday/1", linked);
+    const inLinked = (...args: string[]) =>
+      execFileSync("git", ["-c", "user.name=t", "-c", "user.email=t@t", ...args], {
+        cwd: linked,
+        encoding: "utf8",
+      });
+    const first = await gitHead(linked, repo);
+    expect(first).toBe(inLinked("rev-parse", "HEAD").trim());
     expect(first).toMatch(/^[0-9a-f]{40}$/);
-    git("commit", "-q", "--allow-empty", "-m", "two");
-    const second = await gitHead(repo);
+    inLinked("commit", "-q", "--allow-empty", "-m", "two");
+    const second = await gitHead(linked, repo);
     expect(second).not.toBe(first);
-    expect(second).toBe(git("rev-parse", "HEAD").trim());
+    expect(second).toBe(inLinked("rev-parse", "HEAD").trim());
   });
 
   it("is exported by the package index and stays under 300 lines", () => {

@@ -153,6 +153,7 @@ export async function startDaemon(deps: DaemonDeps): Promise<Result> {
     const worktrees = createWorktrees({ repoDir: paths.repoDir });
     const daemon = await (deps.compose ?? composeDaemon)({
       root: paths.root,
+      repoDir: paths.repoDir,
       worktreesRoot: join(paths.root, "worktrees"),
       dbPath: paths.dbPath,
       projectId: projectIdOf(repository),

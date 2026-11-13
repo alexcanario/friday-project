@@ -1,7 +1,13 @@
 import { realpath } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { execa } from "execa";
-import { assertLinkedWorktree } from "./git-cli-commit.ts";
+import {
+  assertLinkedWorktree,
+  configEnv,
+  GUARD_CONFIG_ARGS,
+  guardsOf,
+  HOOKS_OFF,
+} from "./git-cli-commit.ts";
 import { ALLOWED_KEYS } from "./git-cli-host.ts";
 
 /** Allow-listed environment for a git child process (never the full daemon environment). */
@@ -36,4 +42,29 @@ export async function assertOwnedWorktree(repoDir: string, path: string): Promis
     throw new Error("o worktree não pertence ao repositório do daemon.");
   }
   return gitDir;
+}
+
+/** Config pairs of the daemon-side commands: no hooks, no fsmonitor, no filter drivers, no config-defined hooks. */
+export function pairsOf(drivers: string[], hooks: string[]): [string, string][] {
+  const pairs: [string, string][] = [
+    ["core.hooksPath", HOOKS_OFF],
+    ["core.fsmonitor", "false"],
+  ];
+  for (const d of drivers) {
+    pairs.push(
+      [`filter.${d}.clean`, ""],
+      [`filter.${d}.smudge`, ""],
+      [`filter.${d}.process`, ""],
+      [`filter.${d}.required`, "false"],
+    );
+  }
+  for (const h of hooks) pairs.push([`hook.${h}.enabled`, "false"]);
+  return pairs;
+}
+
+/** Environment of the daemon-side git commands: allow-listed, no hooks, no fsmonitor, no filter drivers or hooks of `repoDir`. */
+export async function protectedEnv(repoDir: string): Promise<Record<string, string>> {
+  const first = { ...baseEnv(), ...configEnv(pairsOf([], [])) };
+  const found = guardsOf(await run(GUARD_CONFIG_ARGS, repoDir, first, [0, 1]));
+  return { ...baseEnv(), ...configEnv(pairsOf(found.drivers, found.hooks)) };
 }

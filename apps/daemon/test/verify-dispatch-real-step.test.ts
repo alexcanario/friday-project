@@ -48,7 +48,11 @@ async function run(command: string) {
     {
       projectId: "p",
       recorder: { projectId: "p", events, issues, now: () => new Date("2026-11-05T03:00:00.000Z") },
-      step: (input) => runVerifyStep({ registryRoot, env: ENV, readHead: async () => SHA }, input),
+      step: (input) =>
+        runVerifyStep(
+          { registryRoot, repoDir: registryRoot, env: ENV, readHead: async () => SHA },
+          input,
+        ),
     },
     7,
   );

@@ -11,6 +11,7 @@ export {
   branchName,
   type GitWorktreeManagerDeps,
 } from "./git-worktree-manager.ts";
+export { readWorktreeHead } from "./git-worktree-head.ts";
 export {
   buildToolPolicy,
   type BuildToolPolicyResult,

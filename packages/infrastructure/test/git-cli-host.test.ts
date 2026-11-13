@@ -160,7 +160,7 @@ describe("GitCliHost", () => {
     expect(res).toEqual({ sha: SHA });
     const all = calls(log);
     expect(all.map((c) => c.argv)).toEqual([
-      ["config", "--get-regexp", "^filter\\."],
+      ["config", "--name-only", "--get-regexp", "^(filter|hook)\\."],
       ["add", "-A"],
       ["diff-index", "--cached", "--quiet", "HEAD"],
       [

@@ -1,5 +1,4 @@
-import { configEnv, filterDrivers, HOOKS_OFF } from "./git-cli-commit.ts";
-import { baseEnv, run } from "./git-worktree-guard.ts";
+import { protectedEnv, run } from "./git-worktree-guard.ts";
 
 const CHECKOUT_CONFIG = [
   "-c",
@@ -9,30 +8,6 @@ const CHECKOUT_CONFIG = [
   "-c",
   "core.eol=lf",
 ];
-
-/** Config pairs shared by the commands below: no hooks, no fsmonitor, plus no filter drivers. */
-function pairsOf(drivers: string[]): [string, string][] {
-  const pairs: [string, string][] = [
-    ["core.hooksPath", HOOKS_OFF],
-    ["core.fsmonitor", "false"],
-  ];
-  for (const d of drivers) {
-    pairs.push(
-      [`filter.${d}.clean`, ""],
-      [`filter.${d}.smudge`, ""],
-      [`filter.${d}.process`, ""],
-      [`filter.${d}.required`, "false"],
-    );
-  }
-  return pairs;
-}
-
-/** Environment of the daemon-side git commands: allow-listed, no hooks, no fsmonitor, no filter drivers of `repoDir`. */
-async function protectedEnv(repoDir: string): Promise<Record<string, string>> {
-  const first = { ...baseEnv(), ...configEnv(pairsOf([])) };
-  const filters = await run(["config", "--get-regexp", "^filter\\."], repoDir, first, [0, 1]);
-  return { ...baseEnv(), ...configEnv(pairsOf(filterDrivers(filters))) };
-}
 
 /**
  * Re-creates the worktree at `path` on the local `branch` when that branch already exists (a worktree

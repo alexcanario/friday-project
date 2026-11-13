@@ -2,11 +2,10 @@ import { mkdir, mkdtemp, realpath, rm } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, relative, resolve, sep } from "node:path";
-import { execa } from "execa";
 import { alignWorktree, isFullSha } from "./git-worktree-align.ts";
 import { addExistingBranch } from "./git-worktree-branch.ts";
 import { filterDrivers, stepEnv } from "./git-cli-commit.ts";
-import { assertOwnedWorktree, baseEnv, run } from "./git-worktree-guard.ts";
+import { assertOwnedWorktree, baseEnv, protectedEnv, run } from "./git-worktree-guard.ts";
 import type { Result } from "@friday/domain";
 import type {
   CreateWorktreeRequest,
@@ -148,7 +147,7 @@ export class GitWorktreeManager implements WorktreeManager {
       // Physical root: git reports real paths, so a link or 8.3 root must be resolved first.
       const root = (await realpathOrNull(resolve(req.root))) ?? req.root;
       const dir = this.projectDir(root, req.project)!;
-      const { stdout } = await this.git("worktree", "list", "--porcelain", "-z");
+      const stdout = await this.git("worktree", "list", "--porcelain", "-z");
       return { ok: true, value: parseWorktrees(stdout, dir) };
     } catch (e) {
       return fail("WorktreeCreateFailed", `Não foi possível listar as worktrees: ${describe(e)}`);
@@ -219,8 +218,9 @@ export class GitWorktreeManager implements WorktreeManager {
     }
   }
 
-  private git(...args: string[]) {
-    return execa("git", args, { cwd: this.repoDir });
+  /** Runs git in `repoDir` with the protected environment (allow-list, no hooks, no fsmonitor, no filters). */
+  private async git(...args: string[]): Promise<string> {
+    return run(args, this.repoDir, await protectedEnv(this.repoDir));
   }
 
   private projectDir(root: string, project: string): string | undefined {

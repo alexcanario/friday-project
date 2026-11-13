@@ -11,6 +11,7 @@ export const FRIDAY_AUTHOR = {
 export const HOOKS_OFF = "/dev/null";
 
 const SHA_RE = /^[0-9a-f]{40}$/;
+const HOOK_KEY_RE = /^hook\.(.*)\.[A-Za-z0-9-]+$/;
 const FILTER_KEY_RE = /^filter\.(.+?)\.(?:clean|smudge|process|required)(?:\s|$)/;
 
 /** Encodes config pairs as `GIT_CONFIG_COUNT/KEY_n/VALUE_n` environment variables. */
@@ -72,12 +73,31 @@ export function filterDrivers(stdout: string): string[] {
   return [...names];
 }
 
+/** Names of the config-defined hooks in the keys printed by `git config --name-only --get-regexp "^hook\."`. */
+export function hookNames(stdout: string): string[] {
+  const names = new Set<string>();
+  for (const line of stdout.split("\n")) {
+    const name = HOOK_KEY_RE.exec(line.replace(/\r$/, ""))?.[1];
+    if (name !== undefined) names.add(name);
+  }
+  return [...names];
+}
+
+/** Arguments of the one `git config` call that lists the filter drivers and the config-defined hooks. */
+export const GUARD_CONFIG_ARGS = ["config", "--name-only", "--get-regexp", "^(filter|hook)\\."];
+
+/** Filter drivers and hook names found in the output of `GUARD_CONFIG_ARGS`. */
+export function guardsOf(stdout: string): { drivers: string[]; hooks: string[] } {
+  return { drivers: filterDrivers(stdout), hooks: hookNames(stdout) };
+}
+
 /** Hardened environment of a git step run in an agent-owned worktree: explicit gitdir, no hooks, no filters. */
 export function stepEnv(
   request: Pick<CommitRequest, "baseEnv" | "worktree">,
   gitDir: string,
   home: string,
   drivers: string[],
+  hooks: string[] = [],
 ): Record<string, string> {
   const pairs: [string, string][] = [
     ["core.hooksPath", HOOKS_OFF],
@@ -98,6 +118,7 @@ export function stepEnv(
       [`filter.${d}.required`, "false"],
     );
   }
+  for (const h of hooks) pairs.push([`hook.${h}.enabled`, "false"]);
   return {
     ...request.baseEnv,
     HOME: home,
@@ -139,12 +160,9 @@ export async function commitWorktree(
       }
       return result;
     };
-    const first = await exec(
-      ["config", "--get-regexp", "^filter\\."],
-      stepEnv(request, gitDir, home, []),
-      [0, 1],
-    );
-    const env = stepEnv(request, gitDir, home, filterDrivers(String(first.stdout ?? "")));
+    const first = await exec(GUARD_CONFIG_ARGS, stepEnv(request, gitDir, home, []), [0, 1]);
+    const guards = guardsOf(String(first.stdout ?? ""));
+    const env = stepEnv(request, gitDir, home, guards.drivers, guards.hooks);
     await exec(["add", "-A"], env);
     const diff = await exec(["diff-index", "--cached", "--quiet", "HEAD"], env, [0, 1]);
     if (diff.exitCode === 1) {

@@ -1,12 +1,14 @@
 import { spawn, execFile } from "node:child_process";
 import type { WorkflowInput } from "@friday/domain";
-import { buildRunEnv, loadFactoryConfig } from "@friday/infrastructure";
+import { buildRunEnv, loadFactoryConfig, readWorktreeHead } from "@friday/infrastructure";
 
 const TAIL_CHARS = 4000;
 const EXIT_GRACE_MS = 200;
 
 export interface VerifyStepDeps {
   registryRoot: string;
+  /** Repository of the daemon: the worktree read by `gitHead` must be a linked worktree of it. */
+  repoDir: string;
   env: Record<string, string | undefined>;
   readHead?: (cwd: string) => Promise<string>;
 }
@@ -23,14 +25,9 @@ export type VerifyStepOutcome =
   | { input: Extract<WorkflowInput, { type: "VerifyHeadChanged" }> }
   | { input: { type: "RunHeld"; reason: "RunMisconfigured" } };
 
-/** Reads the current commit of a worktree. */
-export function gitHead(cwd: string): Promise<string> {
-  return new Promise((resolve, reject) => {
-    execFile("git", ["rev-parse", "HEAD"], { cwd, encoding: "utf8" }, (error, stdout) => {
-      if (error) reject(error);
-      else resolve(stdout.replace(/\r?\n$/, ""));
-    });
-  });
+/** Reads the current commit of a linked worktree of `repoDir` (rejects any other gitdir). */
+export function gitHead(cwd: string, repoDir: string): Promise<string> {
+  return readWorktreeHead(repoDir, cwd);
 }
 
 function verifyEnv(source: Record<string, string | undefined>): Record<string, string> {
@@ -116,7 +113,7 @@ export async function runVerifyStep(
 ): Promise<VerifyStepOutcome> {
   const loaded = loadFactoryConfig(deps.registryRoot);
   if (!loaded.ok) return { input: { type: "RunHeld", reason: "RunMisconfigured" } };
-  const head = await (deps.readHead ?? gitHead)(input.worktreePath);
+  const head = await (deps.readHead ?? ((cwd) => gitHead(cwd, deps.repoDir)))(input.worktreePath);
   if (head !== input.headSha) return { input: { type: "VerifyHeadChanged" } };
   const { command, timeout_s: timeoutS } = loaded.config.verify;
   const end = await runCommand(command, input.worktreePath, verifyEnv(deps.env), timeoutS * 1000);

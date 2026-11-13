@@ -9,6 +9,8 @@ export type VerifyBranchDeps = {
   projectId: string;
   recorder: RunRecorderDeps;
   root: string;
+  /** Repository of the daemon, forwarded to the Verify step. */
+  repoDir: string;
   /** Directory the worktreePath must stay inside; defaults to `root`. */
   worktreesRoot?: string;
   env: Record<string, string | undefined>;
@@ -33,6 +35,7 @@ export function createVerifyBranch(
     return runVerifyStep(
       {
         registryRoot: deps.root,
+        repoDir: deps.repoDir,
         env: deps.env,
         ...(deps.readHead === undefined ? {} : { readHead: deps.readHead }),
       },
