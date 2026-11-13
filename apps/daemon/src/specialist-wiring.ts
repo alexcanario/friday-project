@@ -10,7 +10,7 @@ import { branchName, loadFactoryConfig } from "@friday/infrastructure";
 import type { BudgetDeps } from "./budget-gate.ts";
 import { createPrOf } from "./pr-of.ts";
 import { BASH_DENIED } from "./qa-wiring.ts";
-import type { RunRecorderDeps } from "./run-recorder.ts";
+import { applyInput, type RunRecorderDeps } from "./run-recorder.ts";
 import type { RunRecordingDeps } from "./run-registration.ts";
 import { runSpecialistForIssue } from "./specialist-dispatch.ts";
 import type { SpecialistHeadDeps } from "./specialist-head.ts";
@@ -84,18 +84,25 @@ async function worktreeOf(
   });
   if (created.ok) return created.value.path;
   if (created.error.code !== "WorktreeExists") {
-    deps.log?.(`Falha no especialista da issue ${issueId}: ${created.error.message}`);
+    holdRuntimeFailed(deps, issueId, created.error.message);
     return null;
   }
   const listed = await deps.worktrees.list({ root: deps.worktreesRoot, project });
   const found = listed.ok ? listed.value.find((w) => w.issue === issueId) : undefined;
   if (found === undefined) {
-    deps.log?.(
-      `Falha no especialista da issue ${issueId}: a worktree existente não foi encontrada.`,
-    );
+    holdRuntimeFailed(deps, issueId, "a worktree existente não foi encontrada.");
     return null;
   }
   return found.path;
+}
+
+/** Logs the worktree failure and holds the issue (`RunHeld(RuntimeFailed)`, no run), so it stops retrying every tick. */
+function holdRuntimeFailed(deps: SpecialistBranchDeps, issueId: number, reason: string): void {
+  deps.log?.(`Falha no especialista da issue ${issueId}: ${reason}`);
+  const input = { type: "RunHeld", reason: "RuntimeFailed" } as const;
+  if (!applyInput(deps.recorder, { issueId, runId: null }, input)) {
+    deps.log?.(`RunHeld(RuntimeFailed) da issue ${issueId} não foi aceito.`);
+  }
 }
 
 type McpTools = Parameters<typeof buildSpecialistRequest>[0]["friday"]["agent"]["mcp_tools"];
@@ -172,7 +179,8 @@ export function createSpecialistBranch(
     const path = await worktreeOf(deps, issueId, issue.title, { owner, name, base });
     if (path === null) return NOT_APPLIED;
     if (!isInsideRoot(deps.worktreesRoot, path)) {
-      return fail(`a worktree ${path} está fora da raiz do daemon.`);
+      holdRuntimeFailed(deps, issueId, `a worktree ${path} está fora da raiz do daemon.`);
+      return NOT_APPLIED;
     }
     const target = { issue, path, base, mcpTools };
     return runSpecialistForIssue(

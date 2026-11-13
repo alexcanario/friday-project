@@ -30,6 +30,8 @@ export type ReconcileReport = {
   worktreeErrors: WorktreeError[];
 };
 
+const TERMINAL_STATES: ReadonlySet<string> = new Set(["Done", "Canceled"]);
+
 /** Records `RunHeld(Reconciled)` for the run's issue; false when the issue cannot be held. */
 function holdIssue(deps: ReconcileDeps, run: RunRecord): boolean {
   const { projectId, issues, events, now } = deps;
@@ -63,7 +65,13 @@ async function removeOrphans(deps: ReconcileDeps, report: ReconcileReport): Prom
   const { worktrees, projectId, runs } = deps;
   const root = deps.worktreesRoot ?? deps.root;
   const project = worktreeKeyOf(projectId);
-  const activeIssues = runs.listActive(projectId).map((r) => r.issueId);
+  // Only the worktree of a finished (Done, Canceled) or unknown issue is an orphan: an issue between
+  // phases (Verify, QA, InReview...) has no active run but still needs its worktree.
+  const keep = new Set(runs.listActive(projectId).map((r) => r.issueId));
+  for (const row of deps.issues.list(projectId)) {
+    if (!TERMINAL_STATES.has(row.state)) keep.add(row.issueId);
+  }
+  const activeIssues = [...keep];
   const orphans = await worktrees.listOrphans({ root, project, activeIssues });
   if (!orphans.ok) {
     report.worktreeErrors.push(orphans.error);
