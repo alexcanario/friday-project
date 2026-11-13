@@ -96,7 +96,7 @@ function setup(aligned: boolean) {
   const recorderDeps = { projectId: "p", events, issues, now };
   const recorder = createRunRecorder(recorderDeps);
   const runsBeforeAlign: number[] = [];
-  const align = vi.fn((_path: string, _sha: string) => {
+  const align = vi.fn<SpecialistDispatchDeps["align"]>(() => {
     runsBeforeAlign.push(runtime.requests.length);
     return Promise.resolve(aligned);
   });

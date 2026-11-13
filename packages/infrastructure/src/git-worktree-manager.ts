@@ -39,6 +39,7 @@ const fail = (code: WorktreeErrorCode, message: string): Result<never, WorktreeE
   error: { code, message },
 });
 
+const FULL_SHA = /^[0-9a-f]{40}$/;
 const SAFE_REF = /^[A-Za-z0-9_][A-Za-z0-9._/-]*$/;
 
 /** Conservative subset of `git check-ref-format`: never empty, never starts with `-`. */
@@ -171,6 +172,26 @@ export class GitWorktreeManager implements WorktreeManager {
       return current.stdout.trim() === expected.stdout.trim();
     } catch {
       return false;
+    }
+  }
+
+  async alignTo(path: string, sha: string): Promise<Result<void, WorktreeError>> {
+    if (!FULL_SHA.test(sha))
+      return fail("WorktreeCreateFailed", `O sha ${JSON.stringify(sha)} é inválido.`);
+    try {
+      const status = await execa("git", ["status", "--porcelain", "--untracked-files=all"], {
+        cwd: path,
+      });
+      if (status.stdout.trim() !== "")
+        return fail("WorktreeCreateFailed", "A worktree tem alterações e não foi alinhada.");
+      await execa("git", ["fetch", "origin", sha], { cwd: path });
+      await execa("git", ["checkout", "--detach", sha], { cwd: path });
+      const head = await execa("git", ["rev-parse", "HEAD"], { cwd: path });
+      if (head.stdout.trim() !== sha)
+        return fail("WorktreeCreateFailed", "O HEAD da worktree não ficou no sha pedido.");
+      return { ok: true, value: undefined };
+    } catch (e) {
+      return fail("WorktreeCreateFailed", `Não foi possível alinhar a worktree: ${describe(e)}`);
     }
   }
 

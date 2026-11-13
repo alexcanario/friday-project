@@ -35,4 +35,6 @@ export interface WorktreeManager {
   ): Promise<Result<WorktreeInfo[], WorktreeError>>;
   /** True when the tree has no changes, untracked files included, and `head` resolves to the commit at `HEAD`. */
   isClean(path: string, head: string): Promise<boolean>;
+  /** Moves a clean worktree to the commit `sha` (40 lowercase hex) of the remote, detached; refuses a dirty tree. */
+  alignTo(path: string, sha: string): Promise<Result<void, WorktreeError>>;
 }

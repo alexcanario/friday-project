@@ -31,7 +31,7 @@ export type SpecialistBranchDeps = {
   worktreesRoot: string;
   compose: SpecialistCompose;
   github: Pick<GitHubPort, "listIssuesByLabel" | "getPrMergeState">;
-  worktrees: Pick<WorktreeManager, "create" | "list" | "isClean">;
+  worktrees: Pick<WorktreeManager, "create" | "list" | "isClean" | "alignTo">;
   runtime?: AgentRuntime;
   recorder: RunRecorderDeps;
   recording: RunRecordingDeps;
@@ -143,6 +143,7 @@ function headDepsOf(deps: SpecialistBranchDeps, project: string): SpecialistHead
       return listed.value.find((w) => w.issue === id)?.head ?? null;
     },
     isClean: (path, head) => deps.worktrees.isClean(path, head),
+    align: async (path, sha) => (await deps.worktrees.alignTo(path, sha)).ok,
   };
 }
 

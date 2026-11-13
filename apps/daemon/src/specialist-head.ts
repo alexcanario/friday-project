@@ -8,24 +8,30 @@ export type SpecialistHeadDeps = {
   worktreeHead: (issueId: number) => Promise<string | null>;
   /** True when the worktree has no changes and `head` is its HEAD. */
   isClean: (path: string, head: string) => Promise<boolean>;
+  /** Moves the clean worktree at `path` to the commit `sha`; false when it could not. */
+  align: (path: string, sha: string) => Promise<boolean>;
 };
 
 export type HeadFallback = { ok: true; head: string | null } | { ok: false; reason: string };
 
-/** Without a PR there is no fallback; with one, the worktree must already be at the PR head. */
+/**
+ * Without a PR there is no fallback; with one, the worktree at `cwd` must be at the PR head, and a
+ * stale one is aligned to it before the run (D107, item 3); a failed alignment holds the issue.
+ */
 export async function resolveHeadFallback(
   deps: SpecialistHeadDeps,
   issueId: number,
   pr: number | null,
+  cwd: string,
 ): Promise<HeadFallback> {
   if (pr === null) return { ok: true, head: null };
   try {
     const [remote, local] = await Promise.all([deps.prHead(pr), deps.worktreeHead(issueId)]);
     if (local === null) return { ok: false, reason: "a worktree da issue não foi encontrada" };
-    if (local !== remote) {
+    if (local !== remote && !(await deps.align(cwd, remote))) {
       return {
         ok: false,
-        reason: `a worktree (${local}) não está no head do PR ${pr} (${remote})`,
+        reason: `a worktree (${local}) não está no head do PR ${pr} (${remote}) e não pôde ser alinhada`,
       };
     }
     return { ok: true, head: remote };
