@@ -10,7 +10,7 @@ import {
 import { join } from "node:path";
 import { beforeEach, describe, expect, it } from "vitest";
 import { GitWorktreeManager } from "../src/git-worktree-manager.ts";
-import { git, makeFixture, type Fixture } from "./worktree-helpers.ts";
+import { addEmbeddedFilterRepo, git, makeFixture, type Fixture } from "./worktree-helpers.ts";
 
 let fx: Fixture;
 let mgr: GitWorktreeManager;
@@ -169,5 +169,13 @@ describe("GitWorktreeManager.isClean", { timeout: 30_000 }, () => {
     await mgr.isClean(path, head);
     expect(existsSync(fsMarker)).toBe(false);
     expect(existsSync(hookMarker)).toBe(false);
+  });
+
+  it("submódulo embutido com filtro clean não é executado", async () => {
+    const marker = join(fx.root, "sub-filter-marker");
+    const script = markerScript(join(fx.root, "scripts"), "sub.sh", marker);
+    const head = addEmbeddedFilterRepo(path, script);
+    await mgr.isClean(path, head);
+    expect(existsSync(marker)).toBe(false);
   });
 });
