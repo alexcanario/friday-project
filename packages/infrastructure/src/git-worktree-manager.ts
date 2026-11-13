@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { dirname, join, relative, resolve, sep } from "node:path";
 import { execa } from "execa";
 import { alignWorktree, isFullSha } from "./git-worktree-align.ts";
+import { addExistingBranch } from "./git-worktree-branch.ts";
 import { filterDrivers, stepEnv } from "./git-cli-commit.ts";
 import { assertOwnedWorktree, baseEnv, run } from "./git-worktree-guard.ts";
 import type { Result } from "@friday/domain";
@@ -104,6 +105,8 @@ export class GitWorktreeManager implements WorktreeManager {
         return fail("InvalidPath", "Caminho de worktree inválido.");
       await mkdir(dirname(path), { recursive: true });
       await this.git("fetch", "origin", req.base);
+      const branch = branchName(req.issue, req.title);
+      if (await addExistingBranch(this.repoDir, path, branch)) return { ok: true, value: { path } };
       await this.git(
         "-c",
         "core.autocrlf=false",
@@ -114,7 +117,7 @@ export class GitWorktreeManager implements WorktreeManager {
         "worktree",
         "add",
         "-b",
-        branchName(req.issue, req.title),
+        branch,
         path,
         `origin/${req.base}`,
       );

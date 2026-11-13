@@ -55,10 +55,6 @@ describe("GitWorktreeManager", { timeout: 30_000 }, () => {
     const r2 = await mgr.create(req(16, "Outra"));
     if (!r2.ok) throw new Error("create failed");
     expect(git(r2.value.path, "rev-parse", "HEAD")).toBe(newer);
-    git(fx.repoDir, "branch", "friday/17-existente");
-    const r3 = await mgr.create(req(17, "Existente"));
-    expect(r3.ok).toBe(false);
-    if (!r3.ok) expect(r3.error.code).toBe("WorktreeCreateFailed");
   });
 
   it("list returns only issue worktrees and [] when empty", async () => {
