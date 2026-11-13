@@ -99,8 +99,8 @@ describe("GitWorktreeManager protected git", { timeout: 60_000 }, () => {
     expect(reused.ok).toBe(true);
     expect(existsSync(markers[1]!), "reused branch").toBe(false);
     // Configured only now, so the worktree is clean and the hook can only come from `alignTo`.
-    hook("align", markers[2]!);
     const sha = commitOnDevelop(fx, "novo.txt");
+    hook("align", markers[2]!);
     const aligned = await mgr.alignTo(pathOf(23), sha);
     expect(aligned.ok).toBe(true);
     expect(git(pathOf(23), "rev-parse", "HEAD")).toBe(sha);

@@ -49,6 +49,7 @@ function setup(o: Options = {}) {
   const base = fakeRequest(7);
   const opts: ComposeOptions = {
     root,
+    repoDir: join(root, "repos", "p__r"),
     dbPath: join(root, "friday.db"),
     projectId: "p",
     env: { FRIDAY_AUTHOR_TOKEN: "t0k3n" },

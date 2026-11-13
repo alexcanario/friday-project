@@ -48,6 +48,7 @@ function run(command: string, o: Opts = {}): Promise<VerifyStepOutcome> {
   return runVerifyStep(
     {
       registryRoot: o.root ?? registry(command, o.timeoutS),
+      repoDir: "unused",
       env: o.env ?? BASE_ENV,
       readHead: async () => o.head ?? SHA,
     },
@@ -254,6 +255,7 @@ describe("runVerifyStep", () => {
       runVerifyStep(
         {
           registryRoot: registry(cmd),
+          repoDir: "unused",
           env: BASE_ENV,
           readHead: async () => {
             throw new Error("boom");

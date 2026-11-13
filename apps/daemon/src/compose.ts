@@ -48,6 +48,8 @@ import { createTicker, type Clock, type Ticker } from "./tick.ts";
 
 export interface ComposeOptions {
   root: string;
+  /** Repository of the daemon (the same one the `GitWorktreeManager` works on). */
+  repoDir: string;
   /** Directory the Verify worktreePath must stay inside; defaults to `root`. */
   worktreesRoot?: string;
   dbPath: string;
@@ -142,6 +144,7 @@ function dispatcherOf(opts: ComposeOptions, ctx: DispatcherContext) {
       projectId,
       recorder: recorderDeps,
       root,
+      repoDir: opts.repoDir,
       ...(opts.worktreesRoot === undefined ? {} : { worktreesRoot: opts.worktreesRoot }),
       env: opts.env,
       ...(opts.log === undefined ? {} : { log: opts.log }),

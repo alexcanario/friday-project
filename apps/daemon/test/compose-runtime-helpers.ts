@@ -69,6 +69,7 @@ export function setupCompose(o: SetupOptions = {}) {
   const env = o.env ?? { FRIDAY_AUTHOR_TOKEN: "t0k3n", FRIDAY_HOME: home };
   const opts: ComposeOptions = {
     root,
+    repoDir: join(root, "repos", "p__r"),
     dbPath: join(root, "friday.db"),
     projectId: "p",
     env,
