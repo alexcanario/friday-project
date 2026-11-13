@@ -2,6 +2,7 @@ import { mkdir, realpath, rm } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { dirname, join, relative, resolve, sep } from "node:path";
 import { execa } from "execa";
+import { alignWorktree, isFullSha } from "./git-worktree-align.ts";
 import type { Result } from "@friday/domain";
 import type {
   CreateWorktreeRequest,
@@ -171,6 +172,17 @@ export class GitWorktreeManager implements WorktreeManager {
       return current.stdout.trim() === expected.stdout.trim();
     } catch {
       return false;
+    }
+  }
+
+  async alignTo(path: string, sha: string): Promise<Result<void, WorktreeError>> {
+    if (!isFullSha(sha))
+      return fail("WorktreeCreateFailed", `O sha ${JSON.stringify(sha)} é inválido.`);
+    try {
+      await alignWorktree(this.repoDir, path, sha);
+      return { ok: true, value: undefined };
+    } catch (e) {
+      return fail("WorktreeCreateFailed", `Não foi possível alinhar a worktree: ${describe(e)}`);
     }
   }
 

@@ -23,7 +23,15 @@ export interface GitCliHostOptions {
 type PushRequest = Parameters<GitHost["push"]>[0];
 
 const BRANCH_RE = /^friday\/[0-9]+(-[a-z0-9-]+)?$/;
-const ALLOWED_KEYS = new Set(["PATH", "HOME", "USERPROFILE", "SYSTEMROOT", "TEMP", "TMP", "LANG"]);
+export const ALLOWED_KEYS = new Set([
+  "PATH",
+  "HOME",
+  "USERPROFILE",
+  "SYSTEMROOT",
+  "TEMP",
+  "TMP",
+  "LANG",
+]);
 
 function validateTargetUrl(targetUrl: string): void {
   let url: URL;

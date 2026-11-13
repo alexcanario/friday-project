@@ -33,7 +33,7 @@ export interface CommitRequest {
 }
 
 /** The agent owns the worktree: `.git` must be a gitfile that points at a linked worktree dir. */
-async function assertLinkedWorktree(worktree: string): Promise<string> {
+export async function assertLinkedWorktree(worktree: string): Promise<string> {
   const fail = (reason: string): never => {
     throw new Error(`Falha ao validar o worktree: ${reason}`);
   };
@@ -63,7 +63,7 @@ async function assertLinkedWorktree(worktree: string): Promise<string> {
   return gitDir;
 }
 
-function filterDrivers(stdout: string): string[] {
+export function filterDrivers(stdout: string): string[] {
   const names = new Set<string>();
   for (const line of stdout.split("\n")) {
     const name = FILTER_KEY_RE.exec(line)?.[1];
@@ -72,8 +72,9 @@ function filterDrivers(stdout: string): string[] {
   return [...names];
 }
 
-function stepEnv(
-  request: CommitRequest,
+/** Hardened environment of a git step run in an agent-owned worktree: explicit gitdir, no hooks, no filters. */
+export function stepEnv(
+  request: Pick<CommitRequest, "baseEnv" | "worktree">,
   gitDir: string,
   home: string,
   drivers: string[],
@@ -92,6 +93,7 @@ function stepEnv(
   for (const d of drivers) {
     pairs.push(
       [`filter.${d}.clean`, ""],
+      [`filter.${d}.smudge`, ""],
       [`filter.${d}.process`, ""],
       [`filter.${d}.required`, "false"],
     );

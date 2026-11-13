@@ -108,6 +108,7 @@ function setup(o: Opts = {}) {
     prHead: () => Promise.reject(new Error("sem PR")),
     worktreeHead: () => Promise.resolve(null),
     isClean: () => Promise.resolve(true),
+    align: () => Promise.resolve(false),
     log,
   };
   const ofType = (t: string) => events.appended.filter((e) => e.type === t);

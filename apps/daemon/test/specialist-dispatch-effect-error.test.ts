@@ -104,6 +104,7 @@ describe("runSpecialistForIssue effect errors", () => {
       prHead: () => Promise.reject(new Error("sem PR")),
       worktreeHead: () => Promise.resolve(null),
       isClean: () => Promise.resolve(true),
+      align: () => Promise.resolve(false),
       log,
     };
     await runSpecialistForIssue(deps, 7);

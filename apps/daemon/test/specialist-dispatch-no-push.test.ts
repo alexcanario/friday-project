@@ -108,6 +108,7 @@ function setup(o: Opts = {}) {
     Promise.resolve(o.worktreeHead === undefined ? D : o.worktreeHead),
   );
   const isClean = vi.fn(() => Promise.resolve(o.clean ?? true));
+  const align = vi.fn(() => Promise.resolve(false));
   const deps: SpecialistDispatchDeps = {
     projectId: "p",
     targetOf: (_id, runId) => request(runId),
@@ -120,6 +121,7 @@ function setup(o: Opts = {}) {
     prHead,
     worktreeHead,
     isClean,
+    align,
   };
   const ofType = (t: string) => events.appended.filter((e) => e.type === t);
   return { deps, runtime, runs, record, issues, ofType, prHead, worktreeHead, isClean };

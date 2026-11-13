@@ -137,6 +137,7 @@ function setup() {
     prHead: () => Promise.reject(new Error("sem PR")),
     worktreeHead: () => Promise.resolve(null),
     isClean: () => Promise.resolve(true),
+    align: () => Promise.resolve(false),
   };
   const ofType = (t: string) => events.appended.filter((e) => e.type === t);
   return { deps, issues, prompts, ofType };

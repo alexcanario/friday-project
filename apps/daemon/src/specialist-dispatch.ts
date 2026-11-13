@@ -225,7 +225,7 @@ export async function runSpecialistForIssue(
     );
     if (!ok) return NOT_APPLIED;
     const pr = createPrOf(deps.recorder.events, deps.projectId)(issueId);
-    const fallback = await resolveHeadFallback(deps, issueId, pr);
+    const fallback = await resolveHeadFallback(deps, issueId, pr, request.cwd);
     if (!fallback.ok) {
       deps.log?.(`Especialista da issue ${issueId} não rodou: ${fallback.reason}`);
       const held = applySpecialistOutcome(deps.recorder, { issueId, runId: null }, HELD_BEFORE_RUN);
