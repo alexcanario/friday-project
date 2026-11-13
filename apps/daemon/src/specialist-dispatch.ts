@@ -42,8 +42,8 @@ type Tracker = { last: RunFinished | null };
 
 type PrBox = { number: number | null };
 
-/** Copies the request with `onPrCreated` and `onEffectError` hooks that keeps the last PR number; never mutates the original. */
-function withPrHook(
+/** Copies the request with `onPrCreated` and `onEffectError` hooks; `onPrCreated` keeps the last PR number in `box`; never mutates the original. */
+function withRunHooks(
   request: AgentRunRequest,
   box: PrBox,
   onEffectError: (tool: EffectTool, error: unknown) => void,
@@ -164,7 +164,7 @@ async function execute(
   const box: PrBox = { number: null };
   try {
     const runtime = recordingRuntime(deps, ctx, tracker);
-    const hooked = withPrHook(request, box, (tool, error) =>
+    const hooked = withRunHooks(request, box, (tool, error) =>
       deps.log?.(`Falha na ferramenta ${tool} da issue ${issueId}: ${String(error)}`),
     );
     const outcome = await runSpecialistStep(
