@@ -81,6 +81,7 @@ describe("GitWorktreeManager.alignTo", { timeout: 30_000 }, () => {
     git(evil, "init", "-q", "-b", "main");
     git(evil, "config", "core.fsmonitor", `touch ${JSON.stringify(marker.replace(/\\/g, "/"))}`);
     installHook(join(evil, ".git", "hooks"), marker);
+    rmSync(join(path, ".git"), { force: true });
     writeFileSync(join(path, ".git"), `gitdir: ${join(evil, ".git")}\n`);
     const result = await mgr.alignTo(path, sha);
     expect(result.ok).toBe(false);
