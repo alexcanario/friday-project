@@ -93,6 +93,7 @@ export function stepEnv(
   for (const d of drivers) {
     pairs.push(
       [`filter.${d}.clean`, ""],
+      [`filter.${d}.smudge`, ""],
       [`filter.${d}.process`, ""],
       [`filter.${d}.required`, "false"],
     );
