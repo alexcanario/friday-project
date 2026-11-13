@@ -1,41 +1,12 @@
-import { mkdtemp, realpath, rm } from "node:fs/promises";
+import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { dirname, join } from "node:path";
-import { execa } from "execa";
-import {
-  assertLinkedWorktree,
-  configEnv,
-  filterDrivers,
-  HOOKS_OFF,
-  stepEnv,
-} from "./git-cli-commit.ts";
-import { ALLOWED_KEYS } from "./git-cli-host.ts";
+import { join } from "node:path";
+import { configEnv, filterDrivers, HOOKS_OFF, stepEnv } from "./git-cli-commit.ts";
+import { assertOwnedWorktree, baseEnv, run } from "./git-worktree-guard.ts";
 
 const FULL_SHA = /^[0-9a-f]{40}$/;
 
 export const isFullSha = (sha: string): boolean => FULL_SHA.test(sha);
-
-function baseEnv(): Record<string, string> {
-  const out: Record<string, string> = {};
-  for (const [key, value] of Object.entries(process.env)) {
-    if (value !== undefined && ALLOWED_KEYS.has(key.toUpperCase())) out[key] = value;
-  }
-  out.GIT_TERMINAL_PROMPT = "0";
-  return out;
-}
-
-async function run(
-  args: string[],
-  cwd: string,
-  env: Record<string, string>,
-  okCodes = [0],
-): Promise<string> {
-  const result = await execa("git", args, { cwd, env, extendEnv: false, reject: false });
-  if (!okCodes.includes(result.exitCode ?? -1)) {
-    throw new Error(String(result.stderr ?? "").split("\n")[0]);
-  }
-  return String(result.stdout ?? "");
-}
 
 /**
  * Moves the agent-owned worktree to `sha`. The `.git` of the worktree must be a linked worktree of
@@ -43,11 +14,7 @@ async function run(
  * an explicit gitdir, no hooks, no fsmonitor and no filter drivers.
  */
 export async function alignWorktree(repoDir: string, path: string, sha: string): Promise<void> {
-  const gitDir = await assertLinkedWorktree(path);
-  const common = await realpath(join(repoDir, ".git")).catch(() => "");
-  if (common === "" || dirname(dirname(gitDir)) !== common) {
-    throw new Error("o worktree não pertence ao repositório do daemon.");
-  }
+  const gitDir = await assertOwnedWorktree(repoDir, path);
   const base = baseEnv();
   await run(["fetch", "origin", sha], repoDir, {
     ...base,
@@ -63,7 +30,11 @@ export async function alignWorktree(repoDir: string, path: string, sha: string):
       [0, 1],
     );
     const env = stepEnv(request, gitDir, home, filterDrivers(filters));
-    const status = await run(["status", "--porcelain", "--untracked-files=all"], path, env);
+    const status = await run(
+      ["status", "--porcelain", "--untracked-files=all", "--ignore-submodules=all"],
+      path,
+      env,
+    );
     if (status.trim() !== "") throw new Error("a worktree tem alterações.");
     await run(["checkout", "--detach", sha], path, env);
     if ((await run(["rev-parse", "HEAD"], path, env)).trim() !== sha) {

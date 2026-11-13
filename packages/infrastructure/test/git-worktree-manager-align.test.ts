@@ -3,7 +3,13 @@ import { join } from "node:path";
 import { beforeEach, describe, expect, it } from "vitest";
 import { GitCliHost } from "../src/git-cli-host.ts";
 import { GitWorktreeManager } from "../src/git-worktree-manager.ts";
-import { commitOnDevelop, git, makeFixture, type Fixture } from "./worktree-helpers.ts";
+import {
+  addEmbeddedFilterRepo,
+  commitOnDevelop,
+  git,
+  makeFixture,
+  type Fixture,
+} from "./worktree-helpers.ts";
 
 let fx: Fixture;
 let mgr: GitWorktreeManager;
@@ -138,5 +144,17 @@ describe("GitWorktreeManager.alignTo", { timeout: 30_000 }, () => {
     expect(pushed.sha).not.toBe(sha);
     expect(git(origin, "rev-parse", `${pushed.sha}^`)).toBe(sha);
     rmSync(join(fx.repoDir, "..", "mirror"), { recursive: true, force: true });
+  });
+
+  it("não executa o filtro clean de um submódulo embutido no worktree", async () => {
+    const marker = join(fx.root, "sub-filter-marker");
+    const script = join(fx.root, "sub-filter.sh");
+    const slash = (p: string): string => p.replace(/\\/g, "/");
+    writeFileSync(script, `#!/bin/sh\ntouch "${slash(marker)}"\n`);
+    chmodSync(script, 0o755);
+    addEmbeddedFilterRepo(path, slash(script));
+    const sha = commitOnDevelop(fx, "novo.txt");
+    await mgr.alignTo(path, sha);
+    expect(existsSync(marker)).toBe(false);
   });
 });

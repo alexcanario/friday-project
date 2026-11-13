@@ -1,8 +1,11 @@
-import { mkdir, realpath, rm } from "node:fs/promises";
+import { mkdir, mkdtemp, realpath, rm } from "node:fs/promises";
 import { existsSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { dirname, join, relative, resolve, sep } from "node:path";
 import { execa } from "execa";
 import { alignWorktree, isFullSha } from "./git-worktree-align.ts";
+import { filterDrivers, stepEnv } from "./git-cli-commit.ts";
+import { assertOwnedWorktree, baseEnv, run } from "./git-worktree-guard.ts";
 import type { Result } from "@friday/domain";
 import type {
   CreateWorktreeRequest,
@@ -160,18 +163,31 @@ export class GitWorktreeManager implements WorktreeManager {
 
   async isClean(path: string, head: string): Promise<boolean> {
     if (!/^[0-9a-f]{7,64}$/i.test(head)) return false;
+    let home: string | undefined;
     try {
-      const status = await execa("git", ["status", "--porcelain", "--untracked-files=all"], {
-        cwd: path,
-      });
-      if (status.stdout.trim() !== "") return false;
-      const current = await execa("git", ["rev-parse", "HEAD"], { cwd: path });
-      const expected = await execa("git", ["rev-parse", "--verify", `${head}^{commit}`], {
-        cwd: path,
-      });
-      return current.stdout.trim() === expected.stdout.trim();
+      const gitDir = await assertOwnedWorktree(this.repoDir, path);
+      home = await mkdtemp(join(tmpdir(), "friday-git-home-"));
+      const request = { baseEnv: baseEnv(), worktree: path };
+      const filters = await run(
+        ["config", "--get-regexp", "^filter\\."],
+        path,
+        stepEnv(request, gitDir, home, []),
+        [0, 1],
+      );
+      const env = stepEnv(request, gitDir, home, filterDrivers(filters));
+      const status = await run(
+        ["status", "--porcelain", "--untracked-files=all", "--ignore-submodules=all"],
+        path,
+        env,
+      );
+      if (status.trim() !== "") return false;
+      const current = await run(["rev-parse", "HEAD"], path, env);
+      const expected = await run(["rev-parse", "--verify", `${head}^{commit}`], path, env);
+      return current.trim() === expected.trim();
     } catch {
       return false;
+    } finally {
+      if (home !== undefined) await rm(home, { recursive: true, force: true });
     }
   }
 

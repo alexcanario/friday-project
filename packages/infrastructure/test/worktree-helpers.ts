@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, realpathSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, realpathSync, utimesSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -51,4 +51,31 @@ export function commitOnDevelop(fx: Fixture, name: string): string {
   const sha = git(fx.repoDir, "rev-parse", "HEAD");
   git(fx.repoDir, "checkout", "main");
   return sha;
+}
+
+/**
+ * Creates `sub/` inside the worktree as an embedded repository recorded as a gitlink and committed,
+ * whose own config defines a `clean` filter that creates `marker`; advances the mtime of its file.
+ * Returns the new HEAD of the worktree.
+ */
+export function addEmbeddedFilterRepo(worktree: string, script: string): string {
+  const sub = join(worktree, "sub");
+  mkdirSync(sub);
+  git(sub, "init", "-q", "-b", "main");
+  for (const [k, v] of [
+    ["user.email", "t@t.t"],
+    ["user.name", "t"],
+    ["commit.gpgsign", "false"],
+  ] as const)
+    git(sub, "config", k, v);
+  writeFileSync(join(sub, "f.txt"), "f\n");
+  git(sub, "add", ".");
+  git(sub, "commit", "-q", "-m", "sub");
+  git(worktree, "add", "sub");
+  git(worktree, "commit", "-q", "-m", "gitlink");
+  git(sub, "config", "filter.y.clean", script);
+  writeFileSync(join(sub, ".gitattributes"), "* filter=y\n");
+  const later = new Date(Date.now() + 60_000);
+  utimesSync(join(sub, "f.txt"), later, later);
+  return git(worktree, "rev-parse", "HEAD");
 }
