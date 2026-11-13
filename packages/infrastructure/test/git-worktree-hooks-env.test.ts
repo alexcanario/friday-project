@@ -38,14 +38,19 @@ describe("hook.* handling", { timeout: 30_000 }, () => {
         "hook.x.command\nhook.x.event\nhook.y.enabled\nhook.my hook.command\nhook.Up.Case.event\ncore.bare\n",
       ),
     ).toEqual(["x", "y", "my hook", "Up.Case"]);
+    // An empty subsection (`[hook ""]`) is a hook too; a key without subsection is not.
+    expect(hookNames("hook..command\nhook..event\n")).toEqual([""]);
+    expect(hookNames("hook.command\n")).toEqual([]);
     const fx = makeFixture();
     git(fx.repoDir, "config", "hook.x.command", "true");
     git(fx.repoDir, "config", "hook.y.enabled", "true");
+    git(fx.repoDir, "config", "hook..command", "true");
     const pairs = pairsOfEnv(await protectedEnv(fx.repoDir));
     expect(pairs).toEqual(
       expect.arrayContaining([
         "hook.x.enabled=false",
         "hook.y.enabled=false",
+        "hook..enabled=false",
         "core.hooksPath=/dev/null",
         "core.fsmonitor=false",
       ]),
@@ -55,9 +60,10 @@ describe("hook.* handling", { timeout: 30_000 }, () => {
       fx.repoDir,
       fx.root,
       [],
-      ["x"],
+      ["x", ""],
     );
     expect(pairsOfEnv(step)).toContain("hook.x.enabled=false");
+    expect(pairsOfEnv(step)).toContain("hook..enabled=false");
   });
 
   it("commitWorktree runs no config-defined post-commit hook", async (ctx) => {
@@ -77,6 +83,9 @@ describe("hook.* handling", { timeout: 30_000 }, () => {
     const positive = join(fx.root, "hook-positive");
     git(fx.repoDir, "config", "hook.mark.event", "post-commit");
     git(fx.repoDir, "config", "hook.mark.command", `touch "${posix(marker)}"; :`);
+    const emptyMarker = join(fx.root, "hook-empty-marker");
+    git(fx.repoDir, "config", "hook..event", "post-commit");
+    git(fx.repoDir, "config", "hook..command", `touch "${posix(emptyMarker)}"; :`);
     const before = git(worktree, "rev-parse", "HEAD");
     writeFileSync(join(worktree, "novo.txt"), "novo\n");
     const out = await commitWorktree({
@@ -87,11 +96,13 @@ describe("hook.* handling", { timeout: 30_000 }, () => {
     });
     expect(out.sha).not.toBe(before);
     expect(existsSync(marker)).toBe(false);
-    // Positive check: the same hook does run on a plain commit.
+    expect(existsSync(emptyMarker), "empty-name hook").toBe(false);
+    // Positive check: the same hooks do run on a plain commit.
     git(fx.repoDir, "config", "hook.mark.command", `touch "${posix(positive)}"; :`);
     writeFileSync(join(worktree, "outro.txt"), "outro\n");
     git(worktree, "add", ".");
     git(worktree, "commit", "-q", "-m", "plain");
     expect(existsSync(positive)).toBe(true);
+    expect(existsSync(emptyMarker), "empty-name hook runs on a plain commit").toBe(true);
   });
 });

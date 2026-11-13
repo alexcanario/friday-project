@@ -89,24 +89,31 @@ describe("GitWorktreeManager protected git", { timeout: 60_000 }, () => {
       git(fx.repoDir, "config", `hook.${name}.command`, `touch "${posix(marker)}"; :`);
     };
     const markers = ["fresh", "reused", "align"].map((n) => join(fx.root, `m-${n}`));
+    // Pushed before any hook exists: `commitOnDevelop` runs a plain checkout that would fire them.
+    const sha = commitOnDevelop(fx, "novo.txt");
+    const emptyMarker = join(fx.root, "m-empty");
+    hook("", emptyMarker);
     hook("fresh", markers[0]!);
     const fresh = await mgr.create(req(23, "Hook nova"));
     expect(fresh.ok).toBe(true);
     expect(existsSync(markers[0]!), "new branch").toBe(false);
+    expect(existsSync(emptyMarker), "empty-name hook, new branch").toBe(false);
     hook("reused", markers[1]!);
     rmSync(pathOf(23), { recursive: true, force: true });
     const reused = await mgr.create(req(23, "Hook nova"));
     expect(reused.ok).toBe(true);
     expect(existsSync(markers[1]!), "reused branch").toBe(false);
+    expect(existsSync(emptyMarker), "empty-name hook, reused branch").toBe(false);
     // Configured only now, so the worktree is clean and the hook can only come from `alignTo`.
-    const sha = commitOnDevelop(fx, "novo.txt");
     hook("align", markers[2]!);
     const aligned = await mgr.alignTo(pathOf(23), sha);
     expect(aligned.ok).toBe(true);
     expect(git(pathOf(23), "rev-parse", "HEAD")).toBe(sha);
     expect(existsSync(markers[2]!), "alignTo").toBe(false);
+    expect(existsSync(emptyMarker), "empty-name hook, alignTo").toBe(false);
     // Positive check: a plain `git worktree add` runs the configured hooks.
     git(fx.repoDir, "worktree", "add", "-q", "-b", "plain", join(fx.root, "plain"));
-    expect(markers.some((m) => existsSync(m))).toBe(true);
+    const all = [...markers, emptyMarker];
+    for (const [i, m] of all.entries()) expect(existsSync(m), `positive hook ${i}`).toBe(true);
   });
 });

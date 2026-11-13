@@ -11,7 +11,7 @@ export const FRIDAY_AUTHOR = {
 export const HOOKS_OFF = "/dev/null";
 
 const SHA_RE = /^[0-9a-f]{40}$/;
-const HOOK_KEY_RE = /^hook\.(.+)\.[A-Za-z0-9-]+$/;
+const HOOK_KEY_RE = /^hook\.(.*)\.[A-Za-z0-9-]+$/;
 const FILTER_KEY_RE = /^filter\.(.+?)\.(?:clean|smudge|process|required)(?:\s|$)/;
 
 /** Encodes config pairs as `GIT_CONFIG_COUNT/KEY_n/VALUE_n` environment variables. */
