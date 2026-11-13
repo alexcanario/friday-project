@@ -1,3 +1,4 @@
+import { execFileSync } from "node:child_process";
 import {
   cpSync,
   existsSync,
@@ -5,6 +6,7 @@ import {
   mkdtempSync,
   readFileSync,
   symlinkSync,
+  rmSync,
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
@@ -16,6 +18,22 @@ import { FakeEvents, FakeIssueRepository } from "./fakes.ts";
 const SHA = "a".repeat(40);
 const FIXTURE = join(import.meta.dirname, "../../../packages/infrastructure/test/fixtures/valid");
 const BASE_ENV = { PATH: process.env.PATH, HOME: process.env.HOME };
+
+const git = (cwd: string, ...args: string[]): string =>
+  execFileSync("git", ["-c", "user.name=t", "-c", "user.email=t@t", ...args], {
+    cwd,
+    encoding: "utf8",
+    stdio: "pipe",
+  }).trim();
+
+/** A repository with one commit at `repoDir` and a linked worktree at `worktree`; returns its HEAD. */
+function linkedWorktree(repoDir: string, worktree: string, message: string): string {
+  mkdirSync(repoDir, { recursive: true });
+  git(repoDir, "init", "-q", "-b", "main");
+  git(repoDir, "commit", "-q", "--allow-empty", "-m", message);
+  git(repoDir, "worktree", "add", "-q", "-b", `friday/${message}`, worktree);
+  return git(worktree, "rev-parse", "HEAD");
+}
 
 function tmp(): string {
   return mkdtempSync(join(tmpdir(), "verify-wiring-"));
@@ -39,11 +57,14 @@ async function run(
     worktree?: (root: string) => string;
     env?: Record<string, string | undefined>;
     worktreesRoot?: (root: string) => string;
+    /** Real linked worktree: no `readHead`, so the default reader runs with `repoDir`. */
+    real?: (root: string, worktreePath: string) => string;
   } = {},
 ) {
   const root = registry(command);
   const worktreePath = options.worktree?.(root) ?? join(root, "worktrees", "7");
-  mkdirSync(worktreePath, { recursive: true });
+  const headSha = options.real?.(root, worktreePath) ?? SHA;
+  if (options.real === undefined) mkdirSync(worktreePath, { recursive: true });
   const events = new FakeEvents();
   const issues = new FakeIssueRepository(events, undefined, { projectFromEvents: true });
   issues.rows.set(7, {
@@ -60,7 +81,7 @@ async function run(
     issueId: 7,
     runId: "r0",
     type: "WorkReported",
-    payload: { worktreePath, headSha: SHA, changedFiles: ["src/A.cs"] },
+    payload: { worktreePath, headSha, changedFiles: ["src/A.cs"] },
     actor: "daemon",
     at: "2026-11-05T03:00:00.000Z",
   });
@@ -71,7 +92,8 @@ async function run(
     root,
     ...(options.worktreesRoot === undefined ? {} : { worktreesRoot: options.worktreesRoot(root) }),
     env: options.env ?? BASE_ENV,
-    readHead: async () => SHA,
+    repoDir: join(root, "repos", "r"),
+    ...(options.real === undefined ? { readHead: async () => SHA } : {}),
     log: (m) => logs.push(m),
   });
   const result = await branch(7);
@@ -167,5 +189,34 @@ describe("createVerifyBranch", () => {
       env: { ...BASE_ENV, ANTHROPIC_API_KEY: "x", anthropic_api_key: "y" },
     });
     expect(t.row?.state).toBe("QA");
+  });
+
+  it("the default readHead reads the real HEAD with repoDir", async () => {
+    const marker = `node -e "require('fs').writeFileSync('marker','x')"`;
+    const ok = await run(marker, {
+      worktreesRoot: (root) => join(root, "worktrees"),
+      real: (root, worktree) => linkedWorktree(join(root, "repos", "r"), worktree, "ok"),
+    });
+    expect(ok.row?.state).toBe("QA");
+    expect(existsSync(join(ok.worktreePath, "marker"))).toBe(true);
+
+    const forged = await run(marker, {
+      worktreesRoot: (root) => join(root, "worktrees"),
+      real: (root, worktree) => {
+        const head = linkedWorktree(join(root, "repos", "r"), worktree, "mine");
+        const otherDir = join(root, "outro");
+        linkedWorktree(otherDir, join(root, "outro-wt"), "other");
+        const foreign = join(otherDir, ".git", "worktrees", "outro-wt");
+        rmSync(join(worktree, ".git"));
+        writeFileSync(
+          join(worktree, ".git"),
+          `gitdir: ${foreign}
+`,
+        );
+        return head;
+      },
+    });
+    expect(forged.result.applied).toBe(false);
+    expect(existsSync(join(forged.worktreePath, "marker"))).toBe(false);
   });
 });

@@ -15,26 +15,29 @@ function withCommand(command: string) {
     );
 }
 
-function gitRepo(path: string): string {
-  mkdirSync(path, { recursive: true });
-  execFileSync("git", ["init"], { cwd: path, stdio: "ignore" });
-  execFileSync(
-    "git",
-    ["-c", "user.email=t@t", "-c", "user.name=t", "commit", "--allow-empty", "-m", "init"],
-    {
-      cwd: path,
-      stdio: "ignore",
-    },
-  );
-  return execFileSync("git", ["rev-parse", "HEAD"], { cwd: path, encoding: "utf8" }).trim();
+const git = (cwd: string, ...args: string[]): string =>
+  execFileSync("git", ["-c", "user.email=t@t", "-c", "user.name=t", ...args], {
+    cwd,
+    encoding: "utf8",
+    stdio: "pipe",
+  }).trim();
+
+/** The daemon repository (one commit) at `repoDir` and a linked worktree at `path`; returns its HEAD. */
+function gitRepo(repoDir: string, path: string): string {
+  mkdirSync(repoDir, { recursive: true });
+  git(repoDir, "init", "-q");
+  git(repoDir, "commit", "-q", "--allow-empty", "-m", "init");
+  git(repoDir, "worktree", "add", "-q", "-b", "friday/7", path);
+  return git(path, "rev-parse", "HEAD");
 }
 
 async function scenario(command: string, worktree: (root: string) => string) {
   const t = setup(withCommand(command));
   t.github.issues.push({ number: 7, title: "T", body: "", labels: ["friday"] });
-  const daemon = await composeDaemon(t.opts);
+  const repoDir = join(t.root, "repos", "p__r");
+  const daemon = await composeDaemon({ ...t.opts, repoDir });
   const worktreePath = worktree(t.root);
-  const headSha = gitRepo(worktreePath);
+  const headSha = gitRepo(repoDir, worktreePath);
   const at = NOW.toISOString();
   createEventStore(daemon.db).append({
     projectId: "p",

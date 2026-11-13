@@ -141,6 +141,15 @@ describe("friday daemon", () => {
     });
   });
 
+  it("passes repoDir under FRIDAY_HOME to compose", async () => {
+    const root = validRoot();
+    const s = setup({ FRIDAY_HOME: root });
+    await runUntilSignal(s);
+    expect(s.compose).toHaveBeenCalledWith(
+      expect.objectContaining({ repoDir: join(root, "repos", "alexcanario__friday-sandbox") }),
+    );
+  });
+
   it("passes worktreesRoot under FRIDAY_HOME to compose", async () => {
     const root = validRoot();
     const s = setup({ FRIDAY_HOME: root });
