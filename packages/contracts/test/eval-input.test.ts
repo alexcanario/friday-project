@@ -9,7 +9,8 @@ describe("eval input schemas", () => {
       true,
     );
     expect(evalRunsSchema.safeParse([{ ...ok, status: "merged" }]).success).toBe(false);
-    const { rounds: _rounds, ...noRounds } = ok;
+    const noRounds: Record<string, unknown> = { ...ok };
+    delete noRounds.rounds;
     expect(evalRunsSchema.safeParse([noRounds]).success).toBe(false);
     expect(evalRunsSchema.safeParse([{ ...ok, costUsd: "1" }]).success).toBe(false);
     expect(evalBaselineSchema.safeParse({ doneRate: 0.75 }).success).toBe(true);
