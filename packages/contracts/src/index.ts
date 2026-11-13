@@ -18,3 +18,4 @@ export {
 export { RUN_STATUSES, runFinishedSchema, type RunFinished } from "./run-finished.ts";
 export { nightDigestSchema, type NightDigest } from "./night-digest.ts";
 export { triageAgentConfigSchema, type TriageAgentConfig } from "./triage-agent-config.ts";
+export { evalRunsSchema, evalBaselineSchema } from "./eval-input.ts";

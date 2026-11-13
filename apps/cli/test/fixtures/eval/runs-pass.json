@@ -1,0 +1,6 @@
+[
+  { "itemId": "g1", "status": "done", "costUsd": 1, "rounds": 1 },
+  { "itemId": "g2", "status": "done", "costUsd": 2, "rounds": 1 },
+  { "itemId": "g3", "status": "done", "costUsd": 3, "rounds": 2 },
+  { "itemId": "g4", "status": "failed", "costUsd": 4, "rounds": 4 }
+]

@@ -1,0 +1,4 @@
+[
+  { "itemId": "g1", "status": "done", "costUsd": 1, "rounds": 1 },
+  { "itemId": "g2", "status": "failed", "costUsd": null, "rounds": 3 }
+]

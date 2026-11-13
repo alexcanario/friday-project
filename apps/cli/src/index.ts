@@ -8,6 +8,7 @@ import {
 } from "@friday/infrastructure";
 import { costs } from "./costs.ts";
 import { report } from "./report.ts";
+import { evalCommand } from "./eval.ts";
 import { nightDigest } from "./night-digest.ts";
 import { homedir } from "node:os";
 import { runApprovals } from "./approvals.ts";
@@ -56,6 +57,7 @@ async function run(args: string[]): Promise<{ stdout: string; stderr: string; co
   if (args[0] === "daemon") return runDaemonCommand(args, { env: process.env, homeDir: homedir() });
   if (args[0] === "costs") return costs(args);
   if (args[0] === "report") return report(args);
+  if (args[0] === "eval") return evalCommand(args);
   if (args[0] === "night") return nightDigest(args, { reader: createGhNightReader() });
   return main(args);
 }
