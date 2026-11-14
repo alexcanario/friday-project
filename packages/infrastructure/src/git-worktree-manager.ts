@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { dirname, join, relative, resolve, sep } from "node:path";
 import { alignWorktree, isFullSha } from "./git-worktree-align.ts";
 import { addExistingBranch } from "./git-worktree-branch.ts";
+import { addWorktreeChecked } from "./git-worktree-checkout.ts";
 import { filterDrivers, stepEnv } from "./git-cli-commit.ts";
 import { assertOwnedWorktree, baseEnv, protectedEnv, run } from "./git-worktree-guard.ts";
 import type { Result } from "@friday/domain";
@@ -106,20 +107,7 @@ export class GitWorktreeManager implements WorktreeManager {
       await this.git("fetch", "origin", req.base);
       const branch = branchName(req.issue, req.title);
       if (await addExistingBranch(this.repoDir, path, branch)) return { ok: true, value: { path } };
-      await this.git(
-        "-c",
-        "core.autocrlf=false",
-        "-c",
-        "core.safecrlf=false",
-        "-c",
-        "core.eol=lf",
-        "worktree",
-        "add",
-        "-b",
-        branch,
-        path,
-        `origin/${req.base}`,
-      );
+      await addWorktreeChecked(this.repoDir, path, ["-b", branch, `origin/${req.base}`]);
       return { ok: true, value: { path } };
     } catch (e) {
       return fail("WorktreeCreateFailed", `Não foi possível criar a worktree: ${describe(e)}`);

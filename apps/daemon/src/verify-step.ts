@@ -23,7 +23,10 @@ export type VerifyStepOutcome =
   | { input: Extract<WorkflowInput, { type: "VerifyFailed" }>; feedback: string }
   | { input: Extract<WorkflowInput, { type: "VerifyTimedOut" }> }
   | { input: Extract<WorkflowInput, { type: "VerifyHeadChanged" }> }
-  | { input: { type: "RunHeld"; reason: "RunMisconfigured" } };
+  | {
+      input: { type: "RunHeld"; reason: "RunMisconfigured" | "RuntimeFailed" };
+      detail?: string;
+    };
 
 /** Reads the current commit of a linked worktree of `repoDir` (rejects any other gitdir). */
 export function gitHead(cwd: string, repoDir: string): Promise<string> {
@@ -113,7 +116,17 @@ export async function runVerifyStep(
 ): Promise<VerifyStepOutcome> {
   const loaded = loadFactoryConfig(deps.registryRoot);
   if (!loaded.ok) return { input: { type: "RunHeld", reason: "RunMisconfigured" } };
-  const head = await (deps.readHead ?? ((cwd) => gitHead(cwd, deps.repoDir)))(input.worktreePath);
+  const readHead = deps.readHead ?? ((cwd) => gitHead(cwd, deps.repoDir));
+  let head: string;
+  try {
+    head = await readHead(input.worktreePath);
+  } catch (error) {
+    const text = error instanceof Error ? error.message : String(error);
+    return {
+      input: { type: "RunHeld", reason: "RuntimeFailed" },
+      detail: text.split("\n")[0] ?? "",
+    };
+  }
   if (head !== input.headSha) return { input: { type: "VerifyHeadChanged" } };
   const { command, timeout_s: timeoutS } = loaded.config.verify;
   const end = await runCommand(command, input.worktreePath, verifyEnv(deps.env), timeoutS * 1000);

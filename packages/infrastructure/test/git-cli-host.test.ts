@@ -49,6 +49,11 @@ appendFileSync(${JSON.stringify(log)}, JSON.stringify({ argv, cwd: process.cwd()
 if (argv[0] === "init") mkdirSync(argv[3], { recursive: true });
 const mode = ${JSON.stringify(mode)};
 const sub = argv.find((a) => ["config", "add", "diff-index", "commit", "rev-parse", "fetch", "push"].includes(a));
+if (sub === "config" && argv.includes("--git-dir")) {
+  if (!argv.includes("--list")) process.exit(1);
+  process.stdout.write("core.repositoryformatversion\\ncore.filemode\\ncore.bare\\ncore.symlinks\\ncore.ignorecase\\n");
+  process.exit(0);
+}
 if (sub === "config") {
   if (mode === "filters") process.stdout.write("filter.evil.clean x\\nfilter.evil.process y\\n");
   else process.exit(1);
@@ -159,6 +164,7 @@ describe("GitCliHost", () => {
     const res = await host({ gitBinary: bin }).push({ ...REQ, worktree: wt });
     expect(res).toEqual({ sha: SHA });
     const all = calls(log);
+    const mirrorRead = ["--git-dir", mirror, "config"];
     expect(all.map((c) => c.argv)).toEqual([
       ["config", "--name-only", "--get-regexp", "^(filter|hook)\\."],
       ["add", "-A"],
@@ -181,18 +187,21 @@ describe("GitCliHost", () => {
         ...["commit", "--no-verify", "-m", "feat: x"],
       ],
       ["rev-parse", "HEAD"],
+      [...mirrorRead, "--local", "--name-only", "--list"],
+      [...mirrorRead, "--name-only", "--get-regexp", "^hook\\."],
       [
         "--git-dir",
         mirror,
         "fetch",
         "--no-tags",
         "--quiet",
+        "--upload-pack=git-upload-pack",
         realpathSync(git(wt, "rev-parse", "--absolute-git-dir")),
         SHA,
       ],
       ["--git-dir", mirror, "push", "--no-verify", targetUrl, `${SHA}:refs/heads/friday/345-x`],
     ]);
-    expect(all.map((c) => c.cwd)).toEqual([wt, wt, wt, wt, wt, mirror, mirror]);
+    expect(all.map((c) => c.cwd)).toEqual([wt, wt, wt, wt, wt, mirror, mirror, mirror, mirror]);
     for (const c of all.slice(0, 5)) {
       expect(c.env.GIT_WORK_TREE).toBe(wt);
       expect(c.env.GIT_CONFIG_NOSYSTEM).toBe("1");
@@ -210,10 +219,10 @@ describe("GitCliHost", () => {
         "maintenance.auto": "false",
       });
     }
-    const fetchEnv = all[5]?.env ?? {};
+    const fetchEnv = all.find((c) => c.argv.includes("fetch"))?.env ?? {};
     expect(fetchEnv.GIT_CONFIG_COUNT).toBe("1");
     expect(fetchEnv.GIT_CONFIG_KEY_0).toBe("core.hooksPath");
-    expect(all[6]?.env.GIT_CONFIG_VALUE_0).toBe(HEADER);
+    expect(all.find((c) => c.argv.includes("push"))?.env.GIT_CONFIG_VALUE_0).toBe(HEADER);
   });
 
   it("neutralizes every filter driver reported by the worktree config", async () => {
@@ -258,18 +267,21 @@ describe("GitCliHost", () => {
     const { bin, log } = fakeGit();
     await host({ gitBinary: bin }).push({ ...REQ, worktree: wt });
     const all = calls(log);
-    expect(all).toHaveLength(7);
-    expect(all[5]?.env.GIT_TERMINAL_PROMPT).toBe("0");
-    expect(all[6]?.env.GIT_CONFIG_COUNT).toBe("2");
-    expect(all[6]?.env.GIT_CONFIG_KEY_1).toBe("core.hooksPath");
+    expect(all).toHaveLength(9);
+    const fetch = all.find((c) => c.argv.includes("fetch"));
+    const push = all.find((c) => c.argv.includes("push"));
+    expect(fetch?.env.GIT_TERMINAL_PROMPT).toBe("0");
+    expect(push?.env.GIT_CONFIG_COUNT).toBe("2");
+    expect(push?.env.GIT_CONFIG_KEY_1).toBe("core.hooksPath");
   });
 
   it("initializes a missing mirror", async () => {
     const { bin, log } = fakeGit();
     await host({ gitBinary: bin }).push({ ...REQ, worktree: wt });
     const all = calls(log);
-    expect(all).toHaveLength(8);
-    expect(all[5]?.argv).toEqual(["init", "--bare", "--quiet", mirror]);
+    expect(all).toHaveLength(11);
+    expect(all[5]?.argv).toEqual(["config", "--name-only", "--get-regexp", "^hook\\."]);
+    expect(all[6]?.argv).toEqual(["init", "--bare", "--quiet", mirror]);
   });
 
   it("fails without running git when the token variable is missing", async () => {
@@ -348,7 +360,7 @@ describe("GitCliHost", () => {
       .catch((e: unknown) => e)) as Error;
     expect(err2.message.startsWith("Falha ao buscar o commit no espelho: ")).toBe(true);
     expect(err2.message).not.toContain(TOKEN);
-    expect(calls(fetchFail.log)).toHaveLength(6);
+    expect(calls(fetchFail.log)).toHaveLength(8);
   });
 
   it("ignores the malicious config and hooks of the worktree", async () => {

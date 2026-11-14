@@ -263,7 +263,7 @@ describe("runVerifyStep", () => {
         },
         { worktreePath: w2, headSha: SHA },
       ),
-    ).rejects.toThrow("boom");
+    ).resolves.toEqual({ input: { type: "RunHeld", reason: "RuntimeFailed" }, detail: "boom" });
     expect(existsSync(join(w2, "ran.txt"))).toBe(false);
 
     const repo = tmp();
