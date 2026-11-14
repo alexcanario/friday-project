@@ -1,13 +1,5 @@
-import { realpath } from "node:fs/promises";
-import { dirname, join } from "node:path";
 import { execa } from "execa";
-import {
-  assertLinkedWorktree,
-  configEnv,
-  GUARD_CONFIG_ARGS,
-  guardsOf,
-  HOOKS_OFF,
-} from "./git-cli-commit.ts";
+import { configEnv, GUARD_CONFIG_ARGS, guardsOf, HOOKS_OFF } from "./git-cli-commit.ts";
 import { ALLOWED_KEYS } from "./git-cli-host.ts";
 
 /** Allow-listed environment for a git child process (never the full daemon environment). */
@@ -34,15 +26,7 @@ export async function run(
   return String(result.stdout ?? "");
 }
 
-/** The worktree must be a linked worktree of `repoDir`; returns its real gitdir. */
-export async function assertOwnedWorktree(repoDir: string, path: string): Promise<string> {
-  const gitDir = await assertLinkedWorktree(path);
-  const common = await realpath(join(repoDir, ".git")).catch(() => "");
-  if (common === "" || dirname(dirname(gitDir)) !== common) {
-    throw new Error("o worktree não pertence ao repositório do daemon.");
-  }
-  return gitDir;
-}
+export { assertOwnedWorktree } from "./git-cli-commit.ts";
 
 /** Config pairs of the daemon-side commands: no hooks, no fsmonitor, no filter drivers, no config-defined hooks. */
 export function pairsOf(drivers: string[], hooks: string[]): [string, string][] {

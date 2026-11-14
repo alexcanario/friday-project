@@ -20,6 +20,8 @@ export interface GitCliHostOptions {
   tokenEnv?: string;
   /** Asked for the token on every push; exclusive with `tokenEnv`. */
   token?: () => Promise<string>;
+  /** The daemon repository that owns the worktrees accepted by `push`. */
+  repoDir: string;
   mirrorDir: string;
   targetUrl: string;
   env?: Record<string, string | undefined>;
@@ -73,6 +75,7 @@ function validateTokenSource(tokenEnv: string | undefined, token: unknown): void
 export class GitCliHost implements GitHost {
   private readonly tokenEnv: string | undefined;
   private readonly tokenFn: (() => Promise<string>) | undefined;
+  private readonly repoDir: string;
   private readonly mirrorDir: string;
   private readonly targetUrl: string;
   private readonly env: Record<string, string | undefined>;
@@ -82,6 +85,7 @@ export class GitCliHost implements GitHost {
   constructor({
     tokenEnv,
     token,
+    repoDir,
     mirrorDir,
     targetUrl,
     env = process.env,
@@ -95,6 +99,7 @@ export class GitCliHost implements GitHost {
     validateTargetUrl(targetUrl);
     this.tokenEnv = tokenEnv;
     this.tokenFn = token;
+    this.repoDir = repoDir;
     this.mirrorDir = mirrorDir;
     this.targetUrl = targetUrl;
     this.env = env;
@@ -108,6 +113,7 @@ export class GitCliHost implements GitHost {
     const { worktree, branch, message } = request;
     const { sha: commit, gitDir } = await commitWorktree({
       git: this.git,
+      repoDir: this.repoDir,
       worktree,
       message,
       baseEnv: this.baseEnv(),
