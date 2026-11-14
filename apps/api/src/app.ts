@@ -18,6 +18,7 @@ import { approvalRoutes } from "./routes/approvals.ts";
 import { healthRoutes } from "./routes/health.ts";
 import { issueRoutes } from "./routes/issues.ts";
 import { ledgerRoutes } from "./routes/ledger.ts";
+import { runReviewRoutes } from "./routes/run-review.ts";
 import { runRoutes } from "./routes/runs.ts";
 
 export interface ApiDeps {
@@ -41,6 +42,7 @@ export async function buildApp(deps: ApiDeps): Promise<FastifyInstance> {
   healthRoutes(app);
   issueRoutes(app, deps);
   runRoutes(app, deps);
+  runReviewRoutes(app, deps);
   ledgerRoutes(app, deps);
   approvalRoutes(app, deps);
   app.get("/openapi.json", { schema: { hide: true } }, () => app.swagger());

@@ -61,8 +61,35 @@ describe("runJudgeForIssue", () => {
     expect(t.runtime.requests).toHaveLength(1);
     expect(t.ofType("StateChanged")[0]?.payload).toMatchObject({ to: "RiskCheck" });
     expect(t.ofType("JudgeSkipped")).toEqual([]);
-    expect(t.ofType("JudgeFinished")).toEqual([]);
+    expect(t.ofType("JudgeFinished")).toHaveLength(1);
     noTokenLeak(t);
+  });
+
+  it("records JudgeFinished with outcome approve", async () => {
+    const t = setup();
+    await runJudgeForIssue(t.deps, 7);
+    expect(t.ofType("JudgeFinished")).toHaveLength(1);
+    expect(t.ofType("JudgeFinished")[0]).toMatchObject({ actor: "daemon", runId: "r1" });
+    expect(t.ofType("JudgeFinished")[0]?.payload).toEqual({ outcome: "approve", reviewId: 501 });
+  });
+
+  it("records JudgeFinished with outcome reject", async () => {
+    const t = setup({ results: [finished(verdict({ verdict: "reject", findings: ["x"] }))] });
+    await runJudgeForIssue(t.deps, 7);
+    expect(t.ofType("JudgeFinished")).toHaveLength(1);
+    expect(t.ofType("JudgeFinished")[0]?.payload).toEqual({ outcome: "reject", reviewId: 501 });
+  });
+
+  it("does not record JudgeFinished when the outcome is not applied or held", async () => {
+    const notApplied = setup({ state: "InProgress" });
+    await expect(runJudgeForIssue(notApplied.deps, 7)).resolves.toMatchObject({ applied: false });
+    expect(notApplied.ofType("JudgeFinished")).toEqual([]);
+    const invalid = setup({ results: [finished({})] });
+    await runJudgeForIssue(invalid.deps, 7);
+    expect(invalid.ofType("JudgeFinished")).toEqual([]);
+    const held = setup({ env: {} });
+    await runJudgeForIssue(held.deps, 7);
+    expect(held.ofType("JudgeFinished")).toEqual([]);
   });
 
   it("records JudgeFinished with the feedback on changes requested", async () => {

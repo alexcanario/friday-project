@@ -222,7 +222,18 @@ function record(
   const result = applyJudgeOutcome(deps.recorder, { issueId, runId }, outcome);
   const skip = skipPayload(outcome, head);
   if (skip !== null) appendEvent(deps, issueId, runId, "JudgeSkipped", skip);
-  if (result.applied && result.feedback !== null && outcome.kind === "changes_requested") {
+  if (!result.applied) return result;
+  if (outcome.kind === "approved") {
+    appendEvent(deps, issueId, runId, "JudgeFinished", {
+      outcome: "approve",
+      reviewId: outcome.reviewId,
+    });
+  } else if (outcome.kind === "rejected") {
+    appendEvent(deps, issueId, runId, "JudgeFinished", {
+      outcome: "reject",
+      reviewId: outcome.reviewId,
+    });
+  } else if (outcome.kind === "changes_requested" && result.feedback !== null) {
     appendEvent(deps, issueId, runId, "JudgeFinished", {
       outcome: "changes_requested",
       feedback: result.feedback,

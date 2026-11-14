@@ -13,6 +13,7 @@
   "dependencies": {
     "@fastify/swagger": "9.9.3",
     "@friday/application": "workspace:*",
+    "@friday/contracts": "workspace:*",
     "@friday/infrastructure": "workspace:*",
     "fastify": "5.12.8",
     "fastify-type-provider-zod": "7.0.0",
