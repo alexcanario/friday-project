@@ -3,6 +3,7 @@ import type { AgentRuntime, GitHost, GitHubPort, WorktreeManager } from "@friday
 import {
   GitCliHost,
   createBreakerStateRepository,
+  createProjectEnabledRepository,
   createEventStore,
   createIssueRepository,
   createLedgerRepository,
@@ -192,6 +193,7 @@ function tickerOf(opts: ComposeOptions, ctx: DispatcherContext, breaker: Breaker
     recording,
     budget,
     breaker: { breaker, recorderDeps },
+    enabled: createProjectEnabledRepository(ctx.db),
   });
 }
 

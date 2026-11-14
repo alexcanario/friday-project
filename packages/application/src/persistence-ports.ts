@@ -125,3 +125,11 @@ export interface BreakerStateRepository {
   /** Replaces the project's state; throws for a project that does not exist. */
   save(projectId: string, state: BreakerState): void;
 }
+
+/** Last `enabled` read from `factory.yaml` by the daemon tick (D82). */
+export interface ProjectEnabledRepository {
+  /** `null` when no value was ever saved for the project. */
+  get(projectId: string): boolean | null;
+  /** Replaces the project's value; throws for a project that does not exist. */
+  save(projectId: string, enabled: boolean): void;
+}

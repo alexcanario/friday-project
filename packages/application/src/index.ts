@@ -24,6 +24,7 @@ export type {
 export type {
   BreakerState,
   BreakerStateRepository,
+  ProjectEnabledRepository,
   DaySum,
   EventStore,
   IssueRepository,
