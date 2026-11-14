@@ -1,7 +1,7 @@
-import { mkdtempSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import { FakeGitHost, FakeGitHubPort, FakeResultStore } from "@friday/application";
 import {
   ClaudeAgentSdkRuntime,
@@ -21,12 +21,20 @@ const MESSAGES = [
   { type: "result", subtype: "success", is_error: false, total_cost_usd: 0.1, num_turns: 1 },
 ] as unknown as Message[];
 
+const created: string[] = [];
+
+afterEach(() => {
+  for (const p of created) rmSync(p, { recursive: true, force: true });
+});
+
 /** The real SDK runtime over a fake `query` that captures the options and the created server. */
 function session(o: { dropFriday?: boolean; noPr?: boolean } = {}) {
   const t = setup();
   const configRoot = mkdtempSync(join(tmpdir(), "friday-jms-cfg-"));
+  created.push(configRoot);
   writeFileSync(join(configRoot, "judge.md"), "Você é o Judge.");
   const cwd = mkdtempSync(join(tmpdir(), "friday-jms-wt-"));
+  created.push(cwd);
   const options: Options[] = [];
   const servers: Server[] = [];
   const query: QueryFn = async function* ({ options: o2 }) {
@@ -104,5 +112,11 @@ describe("judge session with the real SDK runtime", () => {
     s.t.issues.row = row("InReview");
     const accepted = await handler(verdict({ headSha: B }));
     expect(text(accepted).startsWith("200:")).toBe(true);
+  });
+
+  it("removes its temporary folders after each test", () => {
+    // The previous tests already ran their afterEach; this one checks what they left.
+    expect(created.length).toBeGreaterThan(0);
+    for (const p of created) expect(existsSync(p)).toBe(false);
   });
 });
