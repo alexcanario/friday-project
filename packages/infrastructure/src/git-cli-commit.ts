@@ -26,6 +26,8 @@ export function configEnv(pairs: [string, string][]): Record<string, string> {
 
 export interface CommitRequest {
   git: string;
+  /** The daemon repository: the worktree must be one of its linked worktrees. */
+  repoDir: string;
   worktree: string;
   message: string;
   baseEnv: Record<string, string>;
@@ -60,6 +62,16 @@ export async function assertLinkedWorktree(worktree: string): Promise<string> {
     (await real(resolve(gitDir, common.trim()))) !== dirname(dirname(gitDir))
   ) {
     fail("o commondir não pertence ao repositório do worktree.");
+  }
+  return gitDir;
+}
+
+/** The worktree must be a linked worktree of `repoDir`; returns its real gitdir. */
+export async function assertOwnedWorktree(repoDir: string, path: string): Promise<string> {
+  const gitDir = await assertLinkedWorktree(path);
+  const common = await realpath(join(repoDir, ".git")).catch(() => "");
+  if (common === "" || dirname(dirname(gitDir)) !== common) {
+    throw new Error("o worktree não pertence ao repositório do daemon.");
   }
   return gitDir;
 }
@@ -144,7 +156,7 @@ const identityArgs = (): string[] =>
 export async function commitWorktree(
   request: CommitRequest,
 ): Promise<{ sha: string; gitDir: string }> {
-  const gitDir = await assertLinkedWorktree(request.worktree);
+  const gitDir = await assertOwnedWorktree(request.repoDir, request.worktree);
   await request.afterValidate?.();
   const home = await mkdtemp(join(tmpdir(), "friday-git-home-"));
   try {

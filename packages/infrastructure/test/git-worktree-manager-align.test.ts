@@ -131,6 +131,7 @@ describe("GitWorktreeManager.alignTo", { timeout: 30_000 }, () => {
     writeFileSync(join(path, "c.txt"), "c\n");
     const host = new GitCliHost({
       tokenEnv: "FRIDAY_TEST_TOKEN",
+      repoDir: fx.repoDir,
       mirrorDir: join(fx.repoDir, "..", "mirror"),
       targetUrl: `file://${origin.replace(/\\/g, "/")}`,
       env: { ...process.env, FRIDAY_TEST_TOKEN: "t" },

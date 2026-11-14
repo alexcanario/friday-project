@@ -26,6 +26,7 @@ interface Call {
 }
 
 let dir: string;
+let repoDir: string;
 let remote: string;
 let wt: string;
 let mirror: string;
@@ -88,6 +89,7 @@ function calls(log: string): Call[] {
 function host(extra: Record<string, unknown> = {}): GitCliHost {
   return new GitCliHost({
     tokenEnv: "FRIDAY_AUTHOR_TOKEN",
+    repoDir,
     mirrorDir: mirror,
     targetUrl,
     env: BASE_ENV,
@@ -96,7 +98,7 @@ function host(extra: Record<string, unknown> = {}): GitCliHost {
 }
 
 beforeEach(() => {
-  ({ dir, remote, wt, mirror, targetUrl } = makeRepoFixture("git-cli-host-"));
+  ({ dir, repoDir, remote, wt, mirror, targetUrl } = makeRepoFixture("git-cli-host-"));
 });
 
 afterEach(() => {
@@ -296,7 +298,12 @@ describe("GitCliHost", () => {
   });
 
   it("rejects an invalid constructor configuration", () => {
-    const base = { tokenEnv: "T", mirrorDir: mirror, targetUrl: "https://github.com/a/b.git" };
+    const base = {
+      tokenEnv: "T",
+      repoDir,
+      mirrorDir: mirror,
+      targetUrl: "https://github.com/a/b.git",
+    };
     expect(() => new GitCliHost({ ...base, tokenEnv: "  " })).toThrow(Error);
     expect(() => new GitCliHost({ ...base, mirrorDir: "relative/dir" })).toThrow(Error);
     for (const url of [

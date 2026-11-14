@@ -251,6 +251,7 @@ export async function composeDaemon(opts: ComposeOptions): Promise<Daemon> {
   const wiring = authWiringOf(opts, author);
   const gitHost = (opts.createGitHost ?? ((o) => new GitCliHost(o)))({
     ...wiring.git,
+    repoDir: opts.repoDir,
     mirrorDir: mirrorDirOf({ env: opts.env, homeDir: opts.homeDir ?? homedir(), repository }),
     targetUrl: targetUrlOf(repository),
     env: opts.env,

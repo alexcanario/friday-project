@@ -22,6 +22,7 @@ interface Call {
 }
 
 let dir: string;
+let repoDir: string;
 let remote: string;
 let wt: string;
 let mirror: string;
@@ -60,6 +61,7 @@ function calls(log: string): Call[] {
 function host(env: Record<string, string | undefined>, gitBinary?: string): GitCliHost {
   return new GitCliHost({
     tokenEnv: "FRIDAY_AUTHOR_TOKEN",
+    repoDir,
     mirrorDir: mirror,
     targetUrl,
     env,
@@ -83,7 +85,7 @@ async function runFakeAll(env: Record<string, string>): Promise<Call[]> {
 }
 
 beforeEach(() => {
-  ({ dir, remote, wt, mirror, targetUrl } = makeRepoFixture("git-cli-host-env-"));
+  ({ dir, repoDir, remote, wt, mirror, targetUrl } = makeRepoFixture("git-cli-host-env-"));
 });
 
 afterEach(() => {
@@ -240,7 +242,7 @@ describe("GitCliHost with a malicious worktree", () => {
 
   it("rejects a tokenEnv that is in the allowlist (PATH, HOME, path)", () => {
     for (const tokenEnv of ["PATH", "HOME", "path"]) {
-      expect(() => new GitCliHost({ tokenEnv, mirrorDir: mirror, targetUrl })).toThrow(
+      expect(() => new GitCliHost({ tokenEnv, repoDir, mirrorDir: mirror, targetUrl })).toThrow(
         new Error(
           "O nome da variável de ambiente do token não pode ser uma variável da lista de permissão do ambiente do git.",
         ),
@@ -250,7 +252,7 @@ describe("GitCliHost with a malicious worktree", () => {
 
   it("accepts a tokenEnv outside the allowlist", () => {
     expect(
-      () => new GitCliHost({ tokenEnv: "GITHUB_TOKEN", mirrorDir: mirror, targetUrl }),
+      () => new GitCliHost({ tokenEnv: "GITHUB_TOKEN", repoDir, mirrorDir: mirror, targetUrl }),
     ).not.toThrow();
   });
 });

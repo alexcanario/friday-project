@@ -36,7 +36,13 @@ describe("runtime wiring", () => {
     const targetUrl = targetUrlOf(repository);
     expect(targetUrl).toBe("https://github.com/alexcanario/friday-sandbox.git");
     expect(
-      () => new GitCliHost({ tokenEnv: "FRIDAY_AUTHOR_TOKEN", mirrorDir: "/tmp/m.git", targetUrl }),
+      () =>
+        new GitCliHost({
+          tokenEnv: "FRIDAY_AUTHOR_TOKEN",
+          repoDir: "/tmp/repo",
+          mirrorDir: "/tmp/m.git",
+          targetUrl,
+        }),
     ).not.toThrow();
   });
 

@@ -77,6 +77,7 @@ describe("hook.* handling", { timeout: 30_000 }, () => {
     writeFileSync(join(worktree, "novo.txt"), "novo\n");
     const out = await commitWorktree({
       git: "git",
+      repoDir: fx.repoDir,
       worktree,
       message: "novo",
       baseEnv: baseEnv(),

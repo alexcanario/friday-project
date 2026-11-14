@@ -10,6 +10,7 @@ const request = () => ({ worktree: fx.wt, branch: "friday/345-x", message: "feat
 function host(afterValidate?: () => Promise<void>): GitCliHost {
   return new GitCliHost({
     tokenEnv: "FRIDAY_AUTHOR_TOKEN",
+    repoDir: fx.repoDir,
     mirrorDir: fx.mirror,
     targetUrl: fx.targetUrl,
     env: { ...process.env, FRIDAY_AUTHOR_TOKEN: "ghs_marker_token" },
@@ -73,6 +74,7 @@ process.exit(r.status ?? 1);
     chmodSync(bin, 0o755);
     const h = new GitCliHost({
       tokenEnv: "FRIDAY_AUTHOR_TOKEN",
+      repoDir: fx.repoDir,
       mirrorDir: fx.mirror,
       targetUrl: fx.targetUrl,
       env: { ...process.env, FRIDAY_AUTHOR_TOKEN: "ghs_marker_token" },

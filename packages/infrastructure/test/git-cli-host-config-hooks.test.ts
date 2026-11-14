@@ -46,6 +46,7 @@ function plain(home: string, ...args: string[]): string {
 function host(home?: string): GitCliHost {
   return new GitCliHost({
     tokenEnv: "FRIDAY_AUTHOR_TOKEN",
+    repoDir: fx.repoDir,
     mirrorDir: fx.mirror,
     targetUrl: fx.targetUrl,
     env: {
