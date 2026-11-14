@@ -127,6 +127,7 @@ describe("validateContract", () => {
         "healthResponse",
         "issueItem",
         "runItem",
+        "statusResponse",
         "transitionItem",
         "factoryConfigSchema",
         "contractJsonSchema",

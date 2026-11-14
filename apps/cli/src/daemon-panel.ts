@@ -2,9 +2,11 @@ import type { ApiDeps, RunningApi, startApi } from "@friday/api";
 import type { Daemon } from "@friday/daemon";
 import {
   createApprovalStore,
+  createBreakerStateRepository,
   createEventStore,
   createIssueRepository,
   createLedgerRepository,
+  createProjectEnabledRepository,
   createRunLedgerReader,
   createRunRepository,
   type FridayDatabase,
@@ -24,6 +26,8 @@ export function apiDepsOf(db: FridayDatabase): ApiDeps {
     ledger: createLedgerRepository(db),
     runLedger: createRunLedgerReader(db),
     approvals: createApprovalStore(db),
+    breaker: createBreakerStateRepository(db),
+    enabled: createProjectEnabledRepository(db),
     now: Date.now,
   };
 }

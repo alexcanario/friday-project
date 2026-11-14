@@ -3,9 +3,11 @@ import { join } from "node:path";
 import swagger from "@fastify/swagger";
 import type {
   ApprovalStore,
+  BreakerStateRepository,
   EventStore,
   IssueRepository,
   LedgerRepository,
+  ProjectEnabledRepository,
   RunLedgerReader,
   RunRepository,
 } from "@friday/application";
@@ -23,6 +25,7 @@ import { issueRoutes } from "./routes/issues.ts";
 import { ledgerRoutes } from "./routes/ledger.ts";
 import { runReviewRoutes } from "./routes/run-review.ts";
 import { runRoutes } from "./routes/runs.ts";
+import { statusRoutes } from "./routes/status.ts";
 
 export interface ApiDeps {
   events: EventStore;
@@ -31,6 +34,8 @@ export interface ApiDeps {
   ledger: LedgerRepository;
   runLedger: RunLedgerReader;
   approvals: ApprovalStore;
+  breaker: BreakerStateRepository;
+  enabled: ProjectEnabledRepository;
   now: () => number;
 }
 
@@ -56,6 +61,7 @@ export async function buildApp(
   runReviewRoutes(app, deps);
   ledgerRoutes(app, deps);
   approvalRoutes(app, deps);
+  statusRoutes(app, deps);
   app.get("/openapi.json", { schema: { hide: true } }, () => app.swagger());
   if (options.webRoot !== undefined && existsSync(join(options.webRoot, "index.html"))) {
     await app.register(fastifyStatic, { root: options.webRoot, schemaHide: true });
