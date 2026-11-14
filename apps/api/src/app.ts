@@ -1,3 +1,5 @@
+import { existsSync } from "node:fs";
+import { join } from "node:path";
 import swagger from "@fastify/swagger";
 import type {
   ApprovalStore,
@@ -7,6 +9,7 @@ import type {
   RunLedgerReader,
   RunRepository,
 } from "@friday/application";
+import fastifyStatic from "@fastify/static";
 import Fastify, { type FastifyInstance } from "fastify";
 import {
   jsonSchemaTransform,
@@ -31,7 +34,15 @@ export interface ApiDeps {
   now: () => number;
 }
 
-export async function buildApp(deps: ApiDeps): Promise<FastifyInstance> {
+export interface BuildAppOptions {
+  /** Folder with the built panel (`index.html` and `assets/`); nothing is served when it has no `index.html`. */
+  webRoot?: string;
+}
+
+export async function buildApp(
+  deps: ApiDeps,
+  options: BuildAppOptions = {},
+): Promise<FastifyInstance> {
   const app = Fastify().withTypeProvider<ZodTypeProvider>();
   app.setValidatorCompiler(validatorCompiler);
   app.setSerializerCompiler(serializerCompiler);
@@ -46,6 +57,9 @@ export async function buildApp(deps: ApiDeps): Promise<FastifyInstance> {
   ledgerRoutes(app, deps);
   approvalRoutes(app, deps);
   app.get("/openapi.json", { schema: { hide: true } }, () => app.swagger());
+  if (options.webRoot !== undefined && existsSync(join(options.webRoot, "index.html"))) {
+    await app.register(fastifyStatic, { root: options.webRoot, schemaHide: true });
+  }
   await app.ready();
   return app;
 }

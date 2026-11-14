@@ -1,7 +1,7 @@
-import { runReview, type RunReview } from "@friday/contracts";
+import { errorResponse, runReview, type RunReview } from "@friday/contracts";
 import type { StoredEvent } from "@friday/application";
 import type { ApiDeps } from "../app.ts";
-import { errorResponse, projectQuery, runParams } from "../schemas.ts";
+import { projectQuery, runParams } from "../schemas.ts";
 import type { App } from "./types.ts";
 
 const OUTCOMES = ["approve", "reject", "changes_requested"] as const;

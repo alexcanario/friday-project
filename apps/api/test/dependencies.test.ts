@@ -28,3 +28,10 @@ describe("api dependencies", () => {
     expect(d["@friday/infrastructure"]).toBe("workspace:*");
   });
 });
+
+describe("api dependencies for the web panel", () => {
+  it("pins @fastify/static and depends on contracts", () => {
+    expect(pkg.dependencies["@fastify/static"]).toBe("10.1.11");
+    expect(pkg.dependencies["@friday/contracts"]).toBe("workspace:*");
+  });
+});

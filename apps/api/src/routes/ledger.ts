@@ -1,5 +1,6 @@
 import type { ApiDeps } from "../app.ts";
-import { daySum, dayParams, issueParams, projectQuery } from "../schemas.ts";
+import { daySum } from "@friday/contracts";
+import { dayParams, issueParams, projectQuery } from "../schemas.ts";
 import type { App } from "./types.ts";
 
 export function ledgerRoutes(app: App, deps: ApiDeps): void {

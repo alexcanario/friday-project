@@ -30,6 +30,7 @@ jobs:
       - run: pnpm -r typecheck
       - run: pnpm -r lint
       - run: pnpm -r test
+      - run: pnpm --filter @friday/web build
       - run: pnpm --dir spikes/agent-sdk --ignore-workspace install --frozen-lockfile
       - run: pnpm --dir spikes/agent-sdk test
       - run: pnpm --dir spikes/isolation --ignore-workspace install --frozen-lockfile
