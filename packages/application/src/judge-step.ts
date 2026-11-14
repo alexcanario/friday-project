@@ -34,6 +34,8 @@ export type JudgeStepInput = {
   projectId: string;
   issue: { id: number; body: string; labels: string[] };
   pr: number;
+  /** The PR head the dispatch read before the run; a verdict for another head is refused. */
+  expectedHeadSha: string;
   cwd: string;
   prompt: string;
   configRoot: string;
@@ -50,7 +52,7 @@ export type JudgeStepOutcome =
       reviewId: number;
     }
   | { kind: "rejected"; input: { type: "ReviewRejected" }; reviewId: number }
-  | { kind: "head_mismatch"; input: ReviewApproved }
+  | { kind: "head_mismatch"; input: ReviewApproved; skipHeadSha?: string }
   | { kind: "stale" }
   | { kind: "invalid"; violations: Violation[] }
   | { kind: "held"; input: { type: "RunHeld"; reason: RunHeldReason } };
@@ -165,6 +167,19 @@ export async function runJudgeStep(
   const verdict = result.verdict;
   const { projectId, issue, pr } = input;
   if (deps.stale.isStale(projectId, issue.id, verdict.headSha)) return { kind: "stale" };
+  // The verdict is for a head other than the one the run started with: refuse without marking
+  // it stale, because that head may still be the current one of the PR.
+  if (verdict.headSha !== input.expectedHeadSha) {
+    return {
+      kind: "head_mismatch",
+      input: {
+        type: "ReviewApproved",
+        headSha: verdict.headSha,
+        prHeadSha: input.expectedHeadSha,
+      },
+      skipHeadSha: input.expectedHeadSha,
+    };
+  }
   const prHeadSha = await deps.readPrHead(pr);
   if (prHeadSha !== verdict.headSha) {
     deps.stale.markStale(projectId, issue.id, verdict.headSha);
