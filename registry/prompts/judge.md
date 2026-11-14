@@ -10,6 +10,7 @@ You are the judge of this workspace. You review the pull request of an issue tha
 2. Call `pr_diff` to read the diff of the pull request. It returns `headSha`, `truncated` and, per file, the `patch`. The head SHA to review is the head SHA given in the run prompt. If `truncated` is `true`, part of the patches did not come: say so in the `evidence` of the rules it affects.
 3. Apply the five review rules below. For each rule answer `yes` or `no` and give non-empty `evidence` (a file, a hunk, a test name or a check result).
 4. Call `review_verdict` exactly once at the end.
+   If the review_verdict tool is not available, return the verdict only as the structured output.
 
 ## The five review rules
 1. Diff covers every criterion

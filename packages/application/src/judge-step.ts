@@ -118,14 +118,24 @@ function outcomeFor(verdict: ReviewVerdict, reviewId: number, prHeadSha: string)
 
 type Validated = { ok: true; verdict: ReviewVerdict } | { ok: false; outcome: JudgeStepOutcome };
 
+const REVIEW_VERDICT_TOOL = `${FRIDAY_PREFIX}review_verdict`;
+
+/** The repeat cannot post a second verdict (409): it only reads the diff. */
+const withoutVerdictTool = (agent: AgentRunOptions): AgentRunOptions => ({
+  ...agent,
+  allowedTools: agent.allowedTools.filter((t) => t !== REVIEW_VERDICT_TOOL),
+});
+
 /** Runs one agent role and validates its output into a verdict or an outcome. */
 async function runAndValidate(
   deps: JudgeStepDeps,
   input: JudgeStepInput,
   role: "judge" | "judge-strong",
+  repeat = false,
 ): Promise<Validated> {
-  const agent = deps.agents[role];
-  if (misconfigured(agent)) return { ok: false, outcome: held("RunMisconfigured") };
+  const configured = deps.agents[role];
+  if (misconfigured(configured)) return { ok: false, outcome: held("RunMisconfigured") };
+  const agent = repeat ? withoutVerdictTool(configured) : configured;
   const finished = await deps.runtime.run({
     cwd: input.cwd,
     prompt: input.prompt,
@@ -161,7 +171,7 @@ export async function runJudgeStep(
   let result = await runAndValidate(deps, input, role);
   // D39: the cheaper judge only runs for declared low risk; any higher risk repeats once.
   if (result.ok && role === "judge" && result.verdict.risk !== "low") {
-    result = await runAndValidate(deps, input, "judge-strong");
+    result = await runAndValidate(deps, input, "judge-strong", true);
   }
   if (!result.ok) return result.outcome;
   const verdict = result.verdict;

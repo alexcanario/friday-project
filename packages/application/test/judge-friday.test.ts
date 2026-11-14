@@ -29,8 +29,10 @@ describe("judge friday MCP server", () => {
     expect(runtime.requests.map((r) => r.agent.model)).toEqual(["sonnet", "opus"]);
     for (const request of runtime.requests) {
       expect(request.friday?.runId).toBe(s.input.friday.runId);
-      expect(request.friday?.agent.mcp_tools).toEqual(["review_verdict", "pr_diff"]);
     }
+    expect(runtime.requests[0]?.friday?.agent.mcp_tools).toEqual(["review_verdict", "pr_diff"]);
+    // The repeat cannot post a second verdict (409): only pr_diff stays.
+    expect(runtime.requests[1]?.friday?.agent.mcp_tools).toEqual(["pr_diff"]);
   });
 
   it("a role outside the allow-list is held and never runs", async () => {
