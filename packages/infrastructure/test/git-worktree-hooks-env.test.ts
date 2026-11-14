@@ -1,10 +1,10 @@
-import { existsSync, mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { commitWorktree, hookNames, stepEnv } from "../src/git-cli-commit.ts";
 import { baseEnv, protectedEnv } from "../src/git-worktree-guard.ts";
 import { GitWorktreeManager } from "../src/git-worktree-manager.ts";
+import { configHooksSupported, requireConfigHooks } from "./config-hooks-support.ts";
 import { git, makeFixture } from "./worktree-helpers.ts";
 
 const posix = (p: string): string => p.split("\\").join("/");
@@ -16,19 +16,6 @@ function pairsOfEnv(env: Record<string, string>): string[] {
     { length: count },
     (_, i) => `${env[`GIT_CONFIG_KEY_${i}`]}=${env[`GIT_CONFIG_VALUE_${i}`]}`,
   );
-}
-
-/** True when this git runs config-defined hooks and lists `name` for `event`. */
-function supportsConfigHooks(event: string, name: string): boolean {
-  try {
-    const dir = mkdtempSync(join(tmpdir(), "friday-hook-probe-"));
-    git(dir, "init", "-q");
-    git(dir, "config", `hook.${name}.event`, event);
-    git(dir, "config", `hook.${name}.command`, "true");
-    return git(dir, "hook", "list", event).includes(name);
-  } catch {
-    return false;
-  }
 }
 
 describe("hook.* handling", { timeout: 30_000 }, () => {
@@ -67,7 +54,7 @@ describe("hook.* handling", { timeout: 30_000 }, () => {
   });
 
   it("commitWorktree runs no config-defined post-commit hook", async (ctx) => {
-    if (!supportsConfigHooks("post-commit", "probe")) ctx.skip();
+    requireConfigHooks(configHooksSupported("post-commit", "probe"), () => ctx.skip());
     const fx = makeFixture();
     const created = await new GitWorktreeManager({ repoDir: fx.repoDir }).create({
       root: fx.root,

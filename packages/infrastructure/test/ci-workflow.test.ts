@@ -8,6 +8,7 @@ const ciPath = resolve(import.meta.dirname, "../../../.github/workflows/ci.yml")
 type Job = {
   "runs-on"?: string;
   strategy?: { matrix?: unknown };
+  env?: Record<string, unknown>;
   steps?: Array<{ run?: string; uses?: string; with?: Record<string, unknown> }>;
 };
 
@@ -23,6 +24,11 @@ function verify(text: string): { check: Job; sqlite: Job; windows: Job } {
   if (windows["runs-on"] !== "windows-latest")
     throw new Error("windows deve rodar em windows-latest");
   if (windows.strategy) throw new Error("windows não pode ter strategy");
+  if (
+    check.env?.FRIDAY_REQUIRE_CONFIG_HOOKS !== "1" ||
+    windows.env?.FRIDAY_REQUIRE_CONFIG_HOOKS !== "1"
+  )
+    throw new Error("check e windows devem definir FRIDAY_REQUIRE_CONFIG_HOOKS=1");
   const steps = windows.steps ?? [];
   if (steps[0]?.run !== "git config --global core.autocrlf false")
     throw new Error("primeiro passo do windows deve desligar o autocrlf");
@@ -88,5 +94,27 @@ describe("ci workflow", () => {
     const bad = text.replace("      - run: git config --global core.autocrlf false\n", "");
     expect(bad).not.toBe(text);
     expect(() => verify(bad)).toThrow();
+  });
+
+  it("sets FRIDAY_REQUIRE_CONFIG_HOOKS on check and windows only", () => {
+    const { check, sqlite, windows } = verify(readFileSync(ciPath, "utf8"));
+    expect(check.env?.FRIDAY_REQUIRE_CONFIG_HOOKS).toBe("1");
+    expect(windows.env?.FRIDAY_REQUIRE_CONFIG_HOOKS).toBe("1");
+    expect(sqlite.env?.FRIDAY_REQUIRE_CONFIG_HOOKS).toBeUndefined();
+  });
+
+  it("logs the git version on check", () => {
+    const { check } = verify(readFileSync(ciPath, "utf8"));
+    expect(check["runs-on"]).toBe("ubuntu-latest");
+    expect(check.strategy).toBeUndefined();
+    expect((check.steps ?? []).some((s) => s.run === "git --version")).toBe(true);
+  });
+
+  it("rejects a windows job without the flag", () => {
+    const text = readFileSync(ciPath, "utf8");
+    const block = '    env:\n      FRIDAY_REQUIRE_CONFIG_HOOKS: "1"\n';
+    const at = text.indexOf(block, text.indexOf("  windows:\n"));
+    expect(at).toBeGreaterThan(-1);
+    expect(() => verify(text.slice(0, at) + text.slice(at + block.length))).toThrow();
   });
 });
