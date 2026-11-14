@@ -79,6 +79,8 @@ describe("judge effect error hook", () => {
     const result = await runJudgeForIssue(t.deps, 7);
     expect(calls.n).toBe(1);
     expect(result.applied).toBe(true);
-    expect(t.types()).toContain("ReviewApproved");
+    expect(
+      t.ofType("JudgeFinished").map((e) => (e.payload as { outcome: string }).outcome),
+    ).toEqual(["approve"]);
   });
 });
