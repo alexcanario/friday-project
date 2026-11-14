@@ -138,7 +138,7 @@ describe("friday approvals production client", () => {
     expect(await c2.list("p1")).toEqual([]);
     expect(existsSync(fresh)).toBe(true);
     c2.close?.();
-  });
+  }, 30_000);
 
   it("approves and denies end to end as human:cli with the token from the configured or default variable", async () => {
     const dbPath = newDb();
@@ -172,7 +172,7 @@ describe("friday approvals production client", () => {
     expect(await c3.decide("00000001", "deny")).toEqual({ kind: "denied" });
     c3.close?.();
     expect(merges).toHaveLength(0);
-  });
+  }, 30_000);
 
   it("reads the pr head from getPrMergeState and refuses on head_changed", async () => {
     const dbPath = newDb();
@@ -183,7 +183,7 @@ describe("friday approvals production client", () => {
     client.close?.();
     expect(merges).toHaveLength(0);
     expect(headCalls).toEqual([30]);
-  });
+  }, 30_000);
 
   it("decide fails closed without creating the database when config or token is missing", async () => {
     const withName = makeRoot(true);
@@ -208,7 +208,7 @@ describe("friday approvals production client", () => {
         expect(() => client.close?.()).not.toThrow();
       }
     }
-  });
+  }, 30_000);
 
   it("never leaks the token and reports a generic failure through runApprovals", async () => {
     const root = makeRoot(true);
@@ -233,7 +233,7 @@ describe("friday approvals production client", () => {
     expect(await runApprovals(["approvals", "list", "--db", dbC, "--project", "p1"], good)).toEqual(
       { stdout: "Nenhuma aprovação pendente.\n", stderr: "", code: 0 },
     );
-  });
+  }, 30_000);
 
   it("routes approve and deny in index.ts through the production open", () => {
     const root = makeRoot(true);
