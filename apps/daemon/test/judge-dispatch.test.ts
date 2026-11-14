@@ -139,6 +139,52 @@ describe("runJudgeForIssue", () => {
     expect(t.posted).toHaveLength(0);
   });
 
+  it("records JudgeSkipped for the dispatched head and does not approve when a push lands during the Judge run", async () => {
+    const t = setup({
+      heads: [A, B],
+      contextHeads: [A],
+      results: [finished(verdict({ headSha: B }))],
+    });
+    await expect(runJudgeForIssue(t.deps, 7)).resolves.toEqual({ applied: false, feedback: null });
+    expect(t.posted).toHaveLength(0);
+    expect(t.types()).not.toContain("ReviewApproved");
+    expect(t.ofType("StateChanged")).toEqual([]);
+    expect(t.ofType("VerdictInvalidated")).toEqual([]);
+    expect(t.issues.row?.state).toBe("InReview");
+    expect(t.stale.isStale("p", 7, B)).toBe(false);
+    expect(t.ofType("JudgeSkipped")).toHaveLength(1);
+    expect(t.ofType("JudgeSkipped")[0]?.payload).toEqual({ reason: "head_mismatch", headSha: A });
+  });
+
+  it("holds with JudgeContextMissing on the next tick after a push during the Judge run", async () => {
+    const t = setup({
+      heads: [A, B],
+      contextHeads: [A],
+      results: [finished(verdict({ headSha: B }))],
+    });
+    await runJudgeForIssue(t.deps, 7);
+    await expect(runJudgeForIssue(t.deps, 7)).resolves.toEqual({ applied: false, feedback: null });
+    expect(t.runtime.requests).toHaveLength(1);
+    const held = t.ofType("StateChanged");
+    expect(held).toHaveLength(1);
+    expect(held[0]?.payload).toMatchObject({
+      trigger: "RunHeld",
+      heldReason: "JudgeContextMissing",
+    });
+    expect(t.issues.row).toMatchObject({ state: "Held", heldReason: "JudgeContextMissing" });
+  });
+
+  it("approves when the head is stable during the Judge run", async () => {
+    const t = setup({ heads: [A] });
+    await expect(runJudgeForIssue(t.deps, 7)).resolves.toEqual({ applied: true, feedback: null });
+    expect(t.posted).toEqual([expect.objectContaining({ commitId: A })]);
+    expect(t.ofType("StateChanged")[0]?.payload).toMatchObject({
+      trigger: "ReviewApproved",
+      to: "RiskCheck",
+    });
+    expect(t.issues.row?.state).toBe("RiskCheck");
+  });
+
   it("does not run the judge again for the same head", async () => {
     const same = setup();
     same.events.append({

@@ -67,6 +67,11 @@ export class MemoryStale implements StaleVerdicts {
 
 export type Posted = [number, { commitId: string; body: string; event: string }];
 
+function verdictHead(output: unknown): string {
+  const head = (output as { headSha?: unknown } | null)?.headSha;
+  return typeof head === "string" ? head : A;
+}
+
 export function setup(
   output: unknown,
   opts: {
@@ -79,6 +84,8 @@ export function setup(
     env?: Record<string, string | undefined>;
     review?: ReviewCredential;
     stale?: MemoryStale;
+    /** The head the dispatch started the run with; defaults to the verdict head, else `A`. */
+    expectedHeadSha?: string;
   } = {},
 ) {
   const runtime = new FakeAgentRuntime([finished(output, opts.status ?? "succeeded")]);
@@ -111,6 +118,7 @@ export function setup(
     projectId: "p",
     issue: { id: 7, body: opts.body ?? "- risco: low — texto", labels: opts.labels ?? ["friday"] },
     pr: 30,
+    expectedHeadSha: opts.expectedHeadSha ?? verdictHead(output),
     cwd: "/tmp/wt",
     prompt: "judge",
     configRoot: "/tmp/cfg",
