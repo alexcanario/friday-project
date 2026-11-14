@@ -9,6 +9,8 @@ import { assertOwnedWorktree, baseEnv, protectedEnv, run } from "./git-worktree-
  * it out, then populates it in the context of the new worktree. A filter driver or a config hook can
  * come from an `includeIf` (`onbranch:` or `gitdir:`) that only matches the new gitdir and branch, so
  * the protections are read there, with the branch already active, and the checkout runs with them.
+ * A `gitdir:` can also match the main gitdir, where `reference-transaction` runs on the add itself;
+ * `protectedEnv` reads those hooks in the repository context and disables them for the add (step a).
  * When a step after the add fails, the folder and its registry in `.git/worktrees` are removed.
  */
 export async function addWorktreeChecked(
