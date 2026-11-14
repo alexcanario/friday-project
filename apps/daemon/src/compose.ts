@@ -1,5 +1,11 @@
 import { homedir } from "node:os";
-import type { AgentRuntime, GitHost, GitHubPort, WorktreeManager } from "@friday/application";
+import {
+  BREAKER_OPEN_MS,
+  type AgentRuntime,
+  type GitHost,
+  type GitHubPort,
+  type WorktreeManager,
+} from "@friday/application";
 import {
   GitCliHost,
   createBreakerStateRepository,
@@ -105,7 +111,7 @@ function buildBreaker(db: FridayDatabase, projectId: string, now: () => Date): B
       now,
       threshold: 3,
       windowMs: 900000,
-      openMs: 1800000,
+      openMs: BREAKER_OPEN_MS,
       persist: { store: createBreakerStateRepository(db), projectId },
     });
   } catch {
