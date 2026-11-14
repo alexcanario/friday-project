@@ -60,6 +60,21 @@ function hookEntries(): [string, string][] {
   ];
 }
 
+/** Unprotected control: a plain `worktree add --no-checkout` of a new branch, as git would run it. */
+function plainAdd(path: string): void {
+  git(
+    fx.repoDir,
+    "worktree",
+    "add",
+    "-q",
+    "--no-checkout",
+    "-b",
+    "friday/ctl",
+    path,
+    "origin/develop",
+  );
+}
+
 describe(
   "GitWorktreeManager.create reads protections in the worktree context",
   {
@@ -152,6 +167,39 @@ describe(
       git(ctl, "checkout", "--force", "HEAD");
       expect(existsSync(marker("probe"))).toBe(true);
       expect(existsSync(marker("rt"))).toBe(true);
+    });
+
+    it("create runs no includeIf gitdir config hook matching the main gitdir (new and reused branch)", async ({
+      skip,
+    }) => {
+      includeIf("gitdir:**/.git", hookEntries());
+      requireConfigHooks(configHooksSupported("post-checkout", "probe"), () => skip());
+      plainAdd(join(fx.root, "ctl"));
+      expect(existsSync(marker("rt"))).toBe(true);
+      rmSync(marker("rt"));
+
+      expect((await mgr.create(req())).ok).toBe(true);
+      rmSync(pathOf(), { recursive: true, force: true });
+      expect((await mgr.create(req())).ok).toBe(true);
+      expect(existsSync(marker("rt"))).toBe(false);
+      expect(existsSync(marker("probe"))).toBe(false);
+    });
+
+    it("create runs no includeIf gitdir config hook matching only the worktree gitdir", async ({
+      skip,
+    }) => {
+      includeIf("gitdir:**/worktrees/", hookEntries());
+      const ctl = join(fx.root, "ctl");
+      plainAdd(ctl);
+      requireConfigHooks(configHooksSupported("post-checkout", "probe"), () => skip());
+
+      const created = await mgr.create(req());
+      expect(created.ok).toBe(true);
+      for (const name of ["probe", "rt"]) expect(existsSync(marker(name))).toBe(false);
+      expect(git(pathOf(), "status", "--porcelain")).toBe("");
+
+      git(ctl, "checkout", "--force", "HEAD");
+      expect(existsSync(marker("probe"))).toBe(true);
     });
 
     it("alignTo runs no includeIf filter on detach (regression guard)", async () => {
