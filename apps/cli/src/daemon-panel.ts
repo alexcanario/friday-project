@@ -5,6 +5,7 @@ import {
   createEventStore,
   createIssueRepository,
   createLedgerRepository,
+  createRunLedgerReader,
   createRunRepository,
   type FridayDatabase,
 } from "@friday/infrastructure";
@@ -21,6 +22,7 @@ export function apiDepsOf(db: FridayDatabase): ApiDeps {
     issues: createIssueRepository(db),
     runs: createRunRepository(db),
     ledger: createLedgerRepository(db),
+    runLedger: createRunLedgerReader(db),
     approvals: createApprovalStore(db),
     now: Date.now,
   };
