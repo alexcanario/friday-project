@@ -28,6 +28,7 @@ export { createRunRepository } from "./sqlite/run-repository.ts";
 export { createRunLookup } from "./sqlite/sqlite-run-lookup.ts";
 export { createResultStore } from "./sqlite/sqlite-result-store.ts";
 export { createLedgerRepository } from "./sqlite/ledger-repository.ts";
+export { createRunLedgerReader } from "./sqlite/run-ledger-reader.ts";
 export { createBreakerStateRepository } from "./sqlite/breaker-state-repository.ts";
 export { createUnitOfWork } from "./sqlite/unit-of-work.ts";
 export { createApprovalStore, generateApprovalId } from "./sqlite/approval-store.ts";

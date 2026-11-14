@@ -4,6 +4,7 @@ import type {
   EventStore,
   IssueRepository,
   LedgerRepository,
+  RunLedgerReader,
   RunRepository,
 } from "@friday/application";
 import Fastify, { type FastifyInstance } from "fastify";
@@ -24,6 +25,7 @@ export interface ApiDeps {
   issues: IssueRepository;
   runs: RunRepository;
   ledger: LedgerRepository;
+  runLedger: RunLedgerReader;
   approvals: ApprovalStore;
   now: () => number;
 }

@@ -32,6 +32,8 @@ export type {
   LedgerEntry,
   LedgerReportReader,
   LedgerRepository,
+  RunLedgerReader,
+  RunSum,
   NewEvent,
   RunRecord,
   RunRecordStatus,

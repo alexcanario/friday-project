@@ -16,16 +16,7 @@ const run = (id: string, projectId: string, startedAt: string | null): RunRecord
   status: "running",
 });
 
-const KEYS = [
-  "id",
-  "issueId",
-  "phase",
-  "status",
-  "startedAt",
-  "finishedAt",
-  "costUsd",
-  "numTurns",
-];
+const KEYS = ["id", "issueId", "phase", "status", "startedAt", "finishedAt", "costUsd", "numTurns"];
 
 const ledgerEntry = (
   runId: string,

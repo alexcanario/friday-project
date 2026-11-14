@@ -32,6 +32,8 @@ export const runItem = z.object({
   status: z.enum(["running", "succeeded", "failed", "canceled_by_reconciliation"]),
   startedAt: z.string().nullable(),
   finishedAt: z.string().nullable(),
+  costUsd: z.number().nullable(),
+  numTurns: z.number().int().nullable(),
 });
 
 export const daySum = z.object({
