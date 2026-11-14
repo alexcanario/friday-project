@@ -279,8 +279,9 @@ describe("GitCliHost", () => {
     const { bin, log } = fakeGit();
     await host({ gitBinary: bin }).push({ ...REQ, worktree: wt });
     const all = calls(log);
-    expect(all).toHaveLength(10);
-    expect(all[5]?.argv).toEqual(["init", "--bare", "--quiet", mirror]);
+    expect(all).toHaveLength(11);
+    expect(all[5]?.argv).toEqual(["config", "--name-only", "--get-regexp", "^hook\\."]);
+    expect(all[6]?.argv).toEqual(["init", "--bare", "--quiet", mirror]);
   });
 
   it("fails without running git when the token variable is missing", async () => {

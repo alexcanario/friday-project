@@ -1,9 +1,16 @@
 import { existsSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { isAbsolute, join, resolve } from "node:path";
 import { execa } from "execa";
 import type { GitHost } from "@friday/application";
 import { isInside } from "./config-root-guard.ts";
-import { commitWorktree, configEnv, FRIDAY_AUTHOR, HOOKS_OFF } from "./git-cli-commit.ts";
+import {
+  commitWorktree,
+  configEnv,
+  FRIDAY_AUTHOR,
+  HOOKS_OFF,
+  hookNames,
+} from "./git-cli-commit.ts";
 import { guardMirror } from "./git-mirror-guard.ts";
 
 export { FRIDAY_AUTHOR };
@@ -138,7 +145,14 @@ export class GitCliHost implements GitHost {
   ): Promise<string[]> {
     const mirror = this.mirrorDir;
     if (!existsSync(join(mirror, "HEAD"))) {
-      await this.run(["init", "--bare", "--quiet", mirror], this.baseEnv(), undefined, "init");
+      // `init` writes HEAD through a ref transaction, so config hooks of the global config must be off too.
+      const global = await this.capture(
+        ["config", "--name-only", "--get-regexp", "^hook\\."],
+        [0, 1],
+        tmpdir(),
+      );
+      const env = { ...this.baseEnv(), ...hooksConfig([], hookNames(global)) };
+      await this.run(["init", "--bare", "--quiet", mirror], env, undefined, "init");
     }
     const hooks = await guardMirror((args, ok) => this.capture(args, ok), mirror);
     const args = ["--git-dir", mirror, "fetch", "--no-tags", "--quiet"];
@@ -184,10 +198,10 @@ export class GitCliHost implements GitHost {
     return out;
   }
 
-  private async capture(args: string[], okCodes: number[]): Promise<string> {
+  private async capture(args: string[], okCodes: number[], cwd = this.mirrorDir): Promise<string> {
     const env = this.baseEnv();
     const result = await execa(this.git, args, {
-      cwd: this.mirrorDir,
+      cwd,
       env,
       extendEnv: false,
       reject: false,

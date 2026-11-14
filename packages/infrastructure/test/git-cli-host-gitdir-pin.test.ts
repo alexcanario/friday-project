@@ -87,7 +87,11 @@ process.exit(r.status ?? 1);
     expect(net).toHaveLength(2);
     for (const c of net) expect("GIT_DIR" in c.env).toBe(false);
     const commitSteps = calls.filter(
-      (c) => !net.includes(c) && !c.argv.includes("init") && !c.argv.includes("--git-dir"),
+      (c) =>
+        !net.includes(c) &&
+        !c.argv.includes("init") &&
+        !c.argv.includes("--git-dir") &&
+        !c.argv.includes("^hook\\."),
     );
     for (const c of commitSteps) expect(c.env.GIT_DIR).toBeTruthy();
   });
