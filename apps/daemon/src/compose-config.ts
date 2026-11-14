@@ -90,8 +90,8 @@ export function readAuthor(opts: ComposeOptions): Author {
 
 /** Fails at startup when an App private key file is unreadable (author and, if set, review). */
 export function assertAppKeysReadable(root: string, author: Author): void {
-  if (author.mode !== "app") return;
-  assertPrivateKeyReadable(author.app.privateKeyPath, "pull_requests.author_app");
+  if (author.mode === "app")
+    assertPrivateKeyReadable(author.app.privateKeyPath, "pull_requests.author_app");
   const loaded = loadFactoryConfig(root);
   const review = loaded.ok ? loaded.config.pull_requests.review_app : undefined;
   if (review !== undefined)
