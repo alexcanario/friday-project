@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { beforeEach, describe, expect, it } from "vitest";
 import { GitCliHost } from "../src/index.ts";
+import { configHooksSupported, requireConfigHooks } from "./config-hooks-support.ts";
 import { git, makeRepoFixture, type RepoFixture } from "./git-cli-host-fixture.ts";
 
 const posix = (p: string): string => p.split("\\").join("/");
@@ -63,18 +64,6 @@ const request = (branch = "friday/345-x") => ({
 
 const remoteBranches = (): string => git(fx.remote, "branch", "--list", "friday/*");
 
-function supportsConfigHooks(): boolean {
-  try {
-    const dir = mkdtempSync(join(tmpdir(), "friday-hook-probe-"));
-    git(dir, "init", "-q");
-    git(dir, "config", "hook.probe.event", "reference-transaction");
-    git(dir, "config", "hook.probe.command", "true");
-    return git(dir, "hook", "list", "reference-transaction").includes("probe");
-  } catch {
-    return false;
-  }
-}
-
 async function rejection(promise: Promise<unknown>): Promise<string> {
   try {
     await promise;
@@ -102,7 +91,7 @@ describe("GitCliHost mirror guards", { timeout: 60_000 }, () => {
     expect(existsSync(marker("pp"))).toBe(false);
     expect(remoteBranches()).toBe("");
 
-    if (!supportsConfigHooks()) ctx.skip();
+    requireConfigHooks(configHooksSupported("reference-transaction", "probe"), () => ctx.skip());
     git(fx.dir, "--git-dir", fx.mirror, "fetch", "--no-tags", gitDir, sha);
     expect(existsSync(marker("rt"))).toBe(true);
     git(fx.dir, "--git-dir", fx.mirror, "push", fx.targetUrl, `${sha}:refs/heads/ctl`);
@@ -110,7 +99,7 @@ describe("GitCliHost mirror guards", { timeout: 60_000 }, () => {
   });
 
   it("push runs no reference-transaction hook from the HOME config", async (ctx) => {
-    if (!supportsConfigHooks()) ctx.skip();
+    requireConfigHooks(configHooksSupported("reference-transaction", "probe"), () => ctx.skip());
     const entries: [string, string][] = [
       ["hook.rt.event", "reference-transaction"],
       ["hook.rt.command", touch("rt")],

@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { beforeEach, describe, expect, it } from "vitest";
 import { GitWorktreeManager } from "../src/git-worktree-manager.ts";
+import { configHooksSupported, requireConfigHooks } from "./config-hooks-support.ts";
 import { git, makeFixture, type Fixture } from "./worktree-helpers.ts";
 
 let fx: Fixture;
@@ -57,15 +58,6 @@ function hookEntries(): [string, string][] {
     ["hook.rt.event", "reference-transaction"],
     ["hook.rt.command", touch("rt")],
   ];
-}
-
-/** True when this git runs config-defined hooks and lists `name` for `event` in `cwd`. */
-function listsHook(cwd: string, event: string, name: string): boolean {
-  try {
-    return git(cwd, "hook", "list", event).includes(name);
-  } catch {
-    return false;
-  }
 }
 
 describe(
@@ -148,7 +140,7 @@ describe(
         "friday/ctl",
         "origin/develop",
       );
-      if (!listsHook(ctl, "post-checkout", "probe")) skip();
+      requireConfigHooks(configHooksSupported("post-checkout", "probe"), () => skip());
       for (const name of ["probe", "rt"]) rmSync(marker(name), { force: true });
 
       expect((await mgr.create(req())).ok).toBe(true);

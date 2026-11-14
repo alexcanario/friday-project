@@ -1,8 +1,8 @@
-import { chmodSync, existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { chmodSync, existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { beforeEach, describe, expect, it } from "vitest";
 import { GitWorktreeManager } from "../src/git-worktree-manager.ts";
+import { configHooksSupported, requireConfigHooks } from "./config-hooks-support.ts";
 import { commitOnDevelop, git, makeFixture, type Fixture } from "./worktree-helpers.ts";
 
 let fx: Fixture;
@@ -28,19 +28,6 @@ function installPostCheckout(hooksDir: string, marker: string): void {
   const hook = join(hooksDir, "post-checkout");
   writeFileSync(hook, `#!/bin/sh\ntouch "${posix(marker)}"\n`);
   chmodSync(hook, 0o755);
-}
-
-/** True when this git runs config-defined hooks and lists `name` for `event`. */
-function supportsConfigHooks(event: string, name: string): boolean {
-  try {
-    const dir = mkdtempSync(join(tmpdir(), "friday-hook-probe-"));
-    git(dir, "init", "-q");
-    git(dir, "config", `hook.${name}.event`, event);
-    git(dir, "config", `hook.${name}.command`, "true");
-    return git(dir, "hook", "list", event).includes(name);
-  } catch {
-    return false;
-  }
 }
 
 describe("GitWorktreeManager protected git", { timeout: 60_000 }, () => {
@@ -83,7 +70,7 @@ describe("GitWorktreeManager protected git", { timeout: 60_000 }, () => {
   });
 
   it("create and alignTo run no config-defined hook (hook.<name>.command)", async (ctx) => {
-    if (!supportsConfigHooks("post-checkout", "probe")) ctx.skip();
+    requireConfigHooks(configHooksSupported("post-checkout", "probe"), () => ctx.skip());
     const hook = (name: string, marker: string): void => {
       git(fx.repoDir, "config", `hook.${name}.event`, "post-checkout");
       git(fx.repoDir, "config", `hook.${name}.command`, `touch "${posix(marker)}"; :`);
