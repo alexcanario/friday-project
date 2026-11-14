@@ -13,7 +13,9 @@ function twoRuns(first: unknown, second: unknown, opts: Parameters<typeof setup>
 const FRIDAY = "mcp__friday__";
 
 /** The tool names the request offers in both places the runtime compares. */
-function toolsOf(r: { agent: { allowedTools: string[] }; friday?: { agent: { mcp_tools: string[] } } } | undefined) {
+function toolsOf(
+  r: { agent: { allowedTools: string[] }; friday?: { agent: { mcp_tools: string[] } } } | undefined,
+) {
   const allowed = (r?.agent.allowedTools ?? [])
     .filter((t) => t.startsWith(FRIDAY))
     .map((t) => t.slice(FRIDAY.length))
