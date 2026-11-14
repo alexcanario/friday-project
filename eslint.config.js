@@ -123,6 +123,27 @@ export default tseslint.config(
     ),
   },
   {
+    files: ["apps/web/**/*.{ts,tsx}"],
+    rules: restrict(
+      [
+        "@friday/domain",
+        "@friday/application",
+        "@friday/infrastructure",
+        "@friday/daemon",
+        "@friday/cli",
+        "@friday/api",
+      ],
+      [
+        "@friday/domain/*",
+        "@friday/application/*",
+        "@friday/infrastructure/*",
+        "@friday/daemon/*",
+        "@friday/cli/*",
+        "@friday/api/*",
+      ],
+    ),
+  },
+  {
     files: [
       "apps/daemon/test/breaker-dispatch.test.ts",
       "apps/daemon/test/breaker-end-to-end.test.ts",
@@ -139,7 +160,7 @@ export default tseslint.config(
     rules: { "max-lines-per-function": ["error", 50] },
   },
   {
-    files: ["apps/*/src/**/*.ts", "packages/*/src/**/*.ts"],
+    files: ["apps/*/src/**/*.{ts,tsx}", "packages/*/src/**/*.ts"],
     rules: {
       "max-lines-per-function": ["error", { max: 50, skipBlankLines: true, skipComments: true }],
       "max-lines": ["error", { max: 300, skipBlankLines: true, skipComments: true }],

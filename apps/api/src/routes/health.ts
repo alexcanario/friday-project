@@ -1,4 +1,4 @@
-import { healthResponse } from "../schemas.ts";
+import { healthResponse } from "@friday/contracts";
 import type { App } from "./types.ts";
 
 export function healthRoutes(app: App): void {

@@ -1,7 +1,8 @@
 import type { StateChangedPayload } from "@friday/application";
 import { z } from "zod";
 import type { ApiDeps } from "../app.ts";
-import { errorResponse, issueItem, issueParams, projectQuery, transitionItem } from "../schemas.ts";
+import { errorResponse, issueItem, transitionItem } from "@friday/contracts";
+import { issueParams, projectQuery } from "../schemas.ts";
 import type { App } from "./types.ts";
 
 export function issueRoutes(app: App, deps: ApiDeps): void {

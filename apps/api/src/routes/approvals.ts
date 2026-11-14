@@ -1,6 +1,7 @@
 import { z } from "zod";
 import type { ApiDeps } from "../app.ts";
-import { approvalItem, projectQuery } from "../schemas.ts";
+import { approvalItem } from "@friday/contracts";
+import { projectQuery } from "../schemas.ts";
 import type { App } from "./types.ts";
 
 export function approvalRoutes(app: App, deps: ApiDeps): void {

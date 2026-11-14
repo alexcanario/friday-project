@@ -19,4 +19,21 @@ export { RUN_STATUSES, runFinishedSchema, type RunFinished } from "./run-finishe
 export { nightDigestSchema, type NightDigest } from "./night-digest.ts";
 export { triageAgentConfigSchema, type TriageAgentConfig } from "./triage-agent-config.ts";
 export { evalRunsSchema, evalBaselineSchema } from "./eval-input.ts";
-export { runReview, type RunReview } from "./api.ts";
+export {
+  runReview,
+  healthResponse,
+  issueItem,
+  transitionItem,
+  runItem,
+  daySum,
+  errorResponse,
+  approvalItem,
+  type RunReview,
+  type HealthResponse,
+  type IssueItem,
+  type TransitionItem,
+  type RunItem,
+  type DaySum,
+  type ErrorResponse,
+  type ApprovalItem,
+} from "./api.ts";

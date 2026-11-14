@@ -1,7 +1,8 @@
 import type { RunRecord } from "@friday/application";
 import { z } from "zod";
 import type { ApiDeps } from "../app.ts";
-import { errorResponse, projectQuery, runItem, runParams } from "../schemas.ts";
+import { errorResponse, runItem } from "@friday/contracts";
+import { projectQuery, runParams } from "../schemas.ts";
 import type { App } from "./types.ts";
 
 const toItem = (deps: ApiDeps, r: RunRecord) => ({

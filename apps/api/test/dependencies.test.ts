@@ -35,4 +35,3 @@ describe("api dependencies for the web panel", () => {
     expect(pkg.dependencies["@friday/contracts"]).toBe("workspace:*");
   });
 });
-
