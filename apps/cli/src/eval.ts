@@ -13,17 +13,27 @@ type Result = { stdout: string; stderr: string; code: 0 | 1 | 2 };
 const fail = (reason: string): Result => ({ stdout: "", stderr: `${reason}\n`, code: 2 });
 const pct = (rate: number): string => `${Math.round(rate * 100)}%`;
 
-function parseFlags(args: string[]): { input: string; baseline: string } | null {
+const KNOWN_FLAGS = new Set(["--input", "--baseline"]);
+
+type Flags = { ok: true; input: string; baseline: string } | { ok: false; unknown: string | null };
+
+function parseFlags(args: string[]): Flags {
+  for (let i = 1; i < args.length; i += 2) {
+    const key = args[i];
+    if (key !== undefined && !KNOWN_FLAGS.has(key)) return { ok: false, unknown: key };
+  }
   const values = new Map<string, string>();
   for (let i = 1; i < args.length; i += 2) {
     const key = args[i];
     const value = args[i + 1];
-    if (key === undefined || value === undefined || value === "") return null;
+    if (key === undefined || value === undefined || value === "")
+      return { ok: false, unknown: null };
     values.set(key, value);
   }
   const input = values.get("--input");
   const baseline = values.get("--baseline");
-  return input === undefined || baseline === undefined ? null : { input, baseline };
+  if (input === undefined || baseline === undefined) return { ok: false, unknown: null };
+  return { ok: true, input, baseline };
 }
 
 function readJson(file: string): { ok: true; value: unknown } | { ok: false; reason: string } {
@@ -36,7 +46,10 @@ function readJson(file: string): { ok: true; value: unknown } | { ok: false; rea
 
 export function evalCommand(args: string[]): Result {
   const flags = parseFlags(args);
-  if (flags === null) return { stdout: "", stderr: USAGE, code: 2 };
+  if (!flags.ok) {
+    if (flags.unknown !== null) return fail(`Erro: flag desconhecida: ${flags.unknown}`);
+    return { stdout: "", stderr: USAGE, code: 2 };
+  }
   const rawRuns = readJson(flags.input);
   if (!rawRuns.ok) return fail(rawRuns.reason);
   const rawBaseline = readJson(flags.baseline);
