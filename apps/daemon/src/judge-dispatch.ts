@@ -93,7 +93,7 @@ function appendEvent(
 
 function skipPayload(outcome: JudgeStepOutcome, head: string) {
   if (outcome.kind === "head_mismatch") {
-    return { reason: "head_mismatch", headSha: outcome.input.headSha };
+    return { reason: "head_mismatch", headSha: outcome.skipHeadSha ?? outcome.input.headSha };
   }
   if (outcome.kind === "stale" || outcome.kind === "invalid") {
     return { reason: outcome.kind, headSha: head };
@@ -195,6 +195,7 @@ async function execute(
         projectId: deps.projectId,
         issue: { id: issueId, ...issue },
         pr,
+        expectedHeadSha: head,
         ...stepTarget(deps, { issueId, pr, runId, head, context }),
       },
     );

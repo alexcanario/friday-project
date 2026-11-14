@@ -143,6 +143,8 @@ export type Options = {
   pr?: number | null;
   env?: Record<string, string | undefined>;
   heads?: string[];
+  /** Heads whose Judge context is seeded; defaults to `heads`. */
+  contextHeads?: string[];
   postFail?: Error;
   agents?: Record<"judge" | "judge-strong", AgentRunOptions>;
 };
@@ -150,7 +152,9 @@ export type Options = {
 export function setup(o: Options = {}) {
   const events = new FakeEvents();
   const current = { head: o.heads?.[0] ?? A };
-  if (o.context !== false) withSeededContext(events, o.heads ?? [A], current);
+  if (o.context !== false) {
+    withSeededContext(events, o.contextHeads ?? o.heads ?? [A], current);
+  }
   const issues = new FakeIssueRepository(events);
   issues.row = row(o.state ?? "InReview", o.reviewIter ?? 0);
   const runs = new FakeRunRepository();

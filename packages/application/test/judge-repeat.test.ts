@@ -42,7 +42,10 @@ describe("judge repeat (D39)", () => {
       findings: ["f1"],
       risk: "medium",
     });
-    const s = twoRuns(verdict({ risk: "medium", headSha: B }), second, { stale });
+    const s = twoRuns(verdict({ risk: "medium", headSha: B }), second, {
+      stale,
+      expectedHeadSha: A,
+    });
     const out = await runJudgeStep(s.deps, s.input);
     expect(out).toMatchObject({ kind: "changes_requested", feedback: "1. f1" });
     expect(s.posted[0]?.[1].event).toBe("REQUEST_CHANGES");

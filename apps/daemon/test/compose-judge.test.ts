@@ -46,7 +46,10 @@ describe("composeDaemon with the Judge", () => {
     expect(stateOf(daemon, 7)).toBe("InReview");
     const skipped = eventsOf(daemon, "JudgeSkipped");
     expect(skipped).toHaveLength(1);
-    expect(skipped[0]!.payload).toMatchObject({ reason: "head_mismatch", headSha: A });
+    expect(skipped[0]!.payload).toMatchObject({
+      reason: "head_mismatch",
+      headSha: "b".repeat(40),
+    });
   });
 
   it.each([
