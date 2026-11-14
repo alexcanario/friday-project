@@ -3,8 +3,8 @@ import { z } from "zod";
 export const evalRunSchema = z.object({
   itemId: z.string(),
   status: z.enum(["done", "failed"]),
-  costUsd: z.number().nullable(),
-  rounds: z.number(),
+  costUsd: z.number().nonnegative().nullable(),
+  rounds: z.number().int().nonnegative(),
 });
 
 export const evalRunsSchema = z.array(evalRunSchema);
