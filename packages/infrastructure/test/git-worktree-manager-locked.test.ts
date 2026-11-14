@@ -17,7 +17,7 @@ beforeEach(() => {
 });
 
 describe("locked directory", () => {
-  it("remove retries a locked directory, fails after exhausting retries and treats ENOENT as removed", async () => {
+  it("remove retries a locked directory until it succeeds", async () => {
     for (const code of ["EBUSY", "EPERM", "ENOTEMPTY"]) {
       fx = makeFixture();
       let calls = 0;
@@ -27,26 +27,28 @@ describe("locked directory", () => {
       expect(await m.remove(rm())).toEqual({ ok: true, value: undefined });
       expect(calls).toBe(3);
     }
+  }, 30_000);
 
-    fx = makeFixture();
+  it("remove fails with WorktreeRemoveFailed after exhausting retries", async () => {
     const always = vi.fn(async () => {
       throw fail("EBUSY");
     });
-    const m2 = await setup(always);
-    const r = await m2.remove(rm());
+    const m = await setup(always);
+    const r = await m.remove(rm());
     expect(r.ok).toBe(false);
     if (!r.ok) {
       expect(r.error.code).toBe("WorktreeRemoveFailed");
       expect(r.error.message).toMatch(/worktree|diretório/i);
     }
     expect(always).toHaveBeenCalledTimes(3);
+  }, 30_000);
 
-    fx = makeFixture();
+  it("remove treats ENOENT as already removed", async () => {
     const enoent = vi.fn(async () => {
       throw fail("ENOENT");
     });
-    const m3 = await setup(enoent);
-    expect((await m3.remove(rm())).ok).toBe(true);
+    const m = await setup(enoent);
+    expect((await m.remove(rm())).ok).toBe(true);
     expect(enoent).toHaveBeenCalledTimes(1);
   }, 30_000);
 });
