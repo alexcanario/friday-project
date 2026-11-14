@@ -18,6 +18,7 @@ describe("composeDaemon runtime wiring", () => {
     expect(options).toEqual(
       expect.objectContaining({
         tokenEnv: "FRIDAY_AUTHOR_TOKEN",
+        repoDir: t.opts.repoDir,
         mirrorDir: join(t.home, "mirrors", "alexcanario__friday-sandbox.git"),
         targetUrl: "https://github.com/alexcanario/friday-sandbox.git",
       }),

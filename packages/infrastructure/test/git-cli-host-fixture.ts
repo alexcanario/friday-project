@@ -20,6 +20,7 @@ export function git(cwd: string, ...args: string[]): string {
 
 export interface RepoFixture {
   dir: string;
+  repoDir: string;
   remote: string;
   wt: string;
   mirror: string;
@@ -38,7 +39,14 @@ export function makeRepoFixture(prefix: string): RepoFixture {
   git(base, "add", "-A");
   git(base, "commit", "-q", "-m", "base");
   git(base, "worktree", "add", "-q", "-b", "friday/345-x", wt);
-  return { dir, remote, wt, mirror: join(dir, "mirror"), targetUrl: `file://${remote}` };
+  return {
+    dir,
+    repoDir: base,
+    remote,
+    wt,
+    mirror: join(dir, "mirror"),
+    targetUrl: `file://${remote}`,
+  };
 }
 
 /** Writes an executable sh script (chmod keeps it runnable on CI) that appends `body` output to a marker. */

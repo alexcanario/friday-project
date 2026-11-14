@@ -7,6 +7,7 @@ import { makeRepoFixture } from "./git-cli-host-fixture.ts";
 const SHA = "a".repeat(40);
 
 let dir: string;
+let repoDir: string;
 let wt: string;
 let mirror: string;
 let targetUrl: string;
@@ -53,7 +54,7 @@ function pushedToken(env: Record<string, string>): string {
 }
 
 beforeEach(() => {
-  ({ dir, wt, mirror, targetUrl } = makeRepoFixture("git-cli-host-token-"));
+  ({ dir, repoDir, wt, mirror, targetUrl } = makeRepoFixture("git-cli-host-token-"));
   mkdirSync(mirror);
   writeFileSync(join(mirror, "HEAD"), "ref: refs/heads/main\n");
 });
@@ -70,6 +71,7 @@ describe("GitCliHost with a token provider", () => {
     let n = 0;
     const host = new GitCliHost({
       token: async () => `ghs_tok${++n}`,
+      repoDir,
       mirrorDir: mirror,
       targetUrl,
       env: { PATH: process.env.PATH },
@@ -84,7 +86,7 @@ describe("GitCliHost with a token provider", () => {
   });
 
   it("rejects token with tokenEnv, neither, or an empty token", async () => {
-    const base = { mirrorDir: mirror, targetUrl };
+    const base = { repoDir, mirrorDir: mirror, targetUrl };
     expect(
       () => new GitCliHost({ ...base, token: async () => "x", tokenEnv: "FRIDAY_AUTHOR_TOKEN" }),
     ).toThrow(Error);

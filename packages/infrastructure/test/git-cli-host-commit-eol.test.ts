@@ -12,6 +12,7 @@ let worktree: string;
 const commit = () =>
   commitWorktree({
     git: "git",
+    repoDir,
     worktree,
     message: "fix: x",
     baseEnv: { PATH: process.env.PATH ?? "" },

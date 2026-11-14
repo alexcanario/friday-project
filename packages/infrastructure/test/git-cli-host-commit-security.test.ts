@@ -11,6 +11,7 @@ let script: string;
 function host(): GitCliHost {
   return new GitCliHost({
     tokenEnv: "FRIDAY_AUTHOR_TOKEN",
+    repoDir: fx.repoDir,
     mirrorDir: fx.mirror,
     targetUrl: fx.targetUrl,
     env: { ...process.env, FRIDAY_AUTHOR_TOKEN: "ghs_marker_token" },
