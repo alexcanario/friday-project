@@ -62,6 +62,17 @@ export const approvalItem = z.object({
   expiresAt: z.number().int(),
 });
 
+/** Response of `GET /status`: the saved `enabled` flag (null when never saved) and the breaker state. */
+export const statusResponse = z.object({
+  enabled: z.boolean().nullable(),
+  breaker: z.object({
+    open: z.boolean(),
+    openedAt: z.string().nullable(),
+    failures: z.array(z.string()),
+  }),
+});
+
+export type StatusResponse = z.infer<typeof statusResponse>;
 export type HealthResponse = z.infer<typeof healthResponse>;
 export type IssueItem = z.infer<typeof issueItem>;
 export type TransitionItem = z.infer<typeof transitionItem>;
