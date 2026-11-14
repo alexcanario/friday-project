@@ -12,6 +12,7 @@ import {
   hookNames,
 } from "./git-cli-commit.ts";
 import { guardMirror } from "./git-mirror-guard.ts";
+import { receivePackArgs } from "./git-receive-pack-args.ts";
 
 export { FRIDAY_AUTHOR };
 
@@ -133,7 +134,7 @@ export class GitCliHost implements GitHost {
         mirror,
         "push",
         "--no-verify",
-        ...this.receivePackArgs(hooks),
+        ...receivePackArgs(this.git, this.targetUrl, hooks),
         this.targetUrl,
         `${commit}:refs/heads/${branch}`,
       ],
@@ -167,18 +168,6 @@ export class GitCliHost implements GitHost {
     const env = { ...this.baseEnv(), ...hooksConfig([], hooks) };
     await this.run(args, env, secrets, "Falha ao buscar o commit no espelho: ");
     return hooks;
-  }
-
-  /**
-   * A `file://` target runs `receive-pack` as a child that does not inherit the config of the
-   * environment (git unsets `GIT_CONFIG_COUNT` for it), so it would read the config-defined hooks of the
-   * global config and run `reference-transaction` while updating the target. Switch each one off there.
-   */
-  private receivePackArgs(hooks: string[]): string[] {
-    if (hooks.length === 0 || !this.targetUrl.startsWith("file://")) return [];
-    const quote = (text: string): string => `'${text.split("'").join(`'\\''`)}'`;
-    const off = hooks.flatMap((name) => ["-c", quote(`hook.${name}.enabled=false`)]);
-    return [`--receive-pack=${[quote(this.git), ...off, "receive-pack"].join(" ")}`];
   }
 
   private async resolveToken(): Promise<string> {
