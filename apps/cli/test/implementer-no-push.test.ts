@@ -42,10 +42,14 @@ function leaksPush(body: string): boolean {
   return forbiddenInBody.some((re) => re.test(rest));
 }
 
+function hasRule(body: string): boolean {
+  return body.includes(rulePhrase);
+}
+
 describe("implementer never pushes nor opens the PR", () => {
   it("implementer body forbids push and gh and has no other push or gh text", () => {
     const body = bodyOf(implementer());
-    expect(body).toContain(rulePhrase);
+    expect(hasRule(body)).toBe(true);
     const rest = body.replace(rulePhrase, "");
     for (const re of forbiddenInBody) expect(rest, String(re)).not.toMatch(re);
   });
@@ -83,7 +87,10 @@ describe("implementer never pushes nor opens the PR", () => {
   it("night common rules say the implementer only commits and the session pushes after each fix", () => {
     const common = section(night(), "## Regras comuns (todas as fases)").split("\n");
     expect(common).toContain(
-      "- O `implementer` só comita; `git push` e a abertura do PR são da sessão principal (D99). Depois de cada correção, a sessão compara o `head_sha` devolvido com `git rev-parse HEAD` e roda `git push origin <branch>`.",
+      "- O `implementer` só comita; `git push` e a abertura do PR são da sessão principal (D99). Depois de cada correção, a sessão confere que `git rev-parse HEAD` é igual ao `head_sha` devolvido e roda `git push origin <head_sha>:refs/heads/<branch>` (sem force; funciona em HEAD destacado).",
+    );
+    expect(common).toContain(
+      "- A sessão passa ao `implementer`, no prompt, o corpo e as labels da issue e, numa correção da fase C, o nome da branch e o motivo (falha do CI, `issues` do QA ou `must_fix` do Judge), com o checkout no head do PR (`git fetch origin && git checkout --detach <head_sha>`), porque ele não roda `gh`.",
     );
     expect(common.some((l) => l.startsWith("- A sessão principal lê com `gh api` e passa"))).toBe(
       true,
@@ -123,7 +130,11 @@ describe("implementer never pushes nor opens the PR", () => {
     expect(leaksPush(`${rulePhrase}\nRun git push origin x.`)).toBe(true);
     expect(leaksPush(`${rulePhrase}\nreturn pr-opened`)).toBe(true);
     expect(leaksPush(rulePhrase)).toBe(false);
-    expect("body without the rule").not.toContain(rulePhrase);
+    expect(hasRule("body without the rule")).toBe(false);
+    expect(
+      hasRule(`intro
+${rulePhrase}`),
+    ).toBe(true);
     const files = [
       ".claude/agents/implementer.md",
       "docs/night.md",
