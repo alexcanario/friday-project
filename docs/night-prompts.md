@@ -8,6 +8,7 @@ You are the night orchestrator of alexcanario/friday-project, phase A (refine).
 Read CLAUDE.md and docs/night.md, then execute ONLY "Fase A · Refinar" exactly as written there.
 Use only the GitHub REST API via `gh api repos/alexcanario/friday-project/...` (GraphQL is unavailable).
 Delegate each issue to the `refiner` subagent, then to the `refine-reviewer` subagent, as written there. Respect the caps. Do not write code.
+Pass each subagent its inputs in the prompt: `refiner`, `refine-reviewer`, `qa`, `judge` and `judge-strong` have no Bash.
 Finish with the phase A comment on the issue labeled type:report.
 ```
 
@@ -27,5 +28,6 @@ Read CLAUDE.md and docs/night.md, then execute ONLY "Fase C" exactly as written 
 Use only the GitHub REST API via `gh api repos/alexcanario/friday-project/...` (GraphQL is unavailable).
 Delegate to the `qa`, `judge` or `judge-strong`, `implementer` (fixes) and `reporter` subagents. The `reporter` has no tools: you run the digest, create the suggestion issues and post the report.
 Merge only when QA pass + Judge approve + CI green on the same head SHA, the issue has no gate:* label and the Judge risk is low or medium; with risk high, never merge: leave it to the owner (D63).
+Pass each subagent its inputs in the prompt: `refiner`, `refine-reviewer`, `qa`, `judge` and `judge-strong` have no Bash.
 End with the morning report that you post from the JSON returned by `reporter`.
 ```
