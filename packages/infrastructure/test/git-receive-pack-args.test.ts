@@ -31,7 +31,7 @@ describe("receivePackArgs", () => {
 
   it("quotes single quotes and spaces in POSIX style", () => {
     expect(receivePackArgs("git", FILE_URL, ["x'y"])).toEqual([
-      "--receive-pack='git' -c 'hook.x'\''y.enabled=false' receive-pack",
+      "--receive-pack='git' -c 'hook.x'\\''y.enabled=false' receive-pack",
     ]);
     const [arg] = receivePackArgs("C:/Program Files/git/bin/git", FILE_URL, ["a"]);
     expect(arg?.startsWith("--receive-pack='C:/Program Files/git/bin/git' -c ")).toBe(true);
@@ -42,6 +42,11 @@ describe("receivePackArgs", () => {
     const text = (arg ?? "").slice("--receive-pack=".length);
     const script = `set -- ${text}; printf '%s\n' "$@"`;
     const out = execFileSync("sh", ["-c", script], { encoding: "utf8" });
-    expect(out.trimEnd().split("\n")).toEqual(["g it", "-c", "hook.x'y.enabled=false", "receive-pack"]);
+    expect(out.trimEnd().split("\n")).toEqual([
+      "g it",
+      "-c",
+      "hook.x'y.enabled=false",
+      "receive-pack",
+    ]);
   });
 });
