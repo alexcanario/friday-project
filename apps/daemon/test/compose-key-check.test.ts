@@ -39,6 +39,17 @@ function withKeys(author: string, review?: string) {
   return { ...t, opts, createTokenProvider };
 }
 
+function withEnvAuthor(review: string) {
+  const t = setup((y) => y.replace("  review_token_env: FRIDAY_REVIEW_TOKEN\n", reviewApp(review)));
+  const opts: ComposeOptions = {
+    ...t.opts,
+    createTokenProvider: () => ({ getToken: async () => "tok" }),
+    createGitHubWithAuth: () => new FakeGitHub() as unknown as GitHubPort,
+    createGitHost: () => ({ push: vi.fn() }) as unknown as GitHost,
+  };
+  return { ...t, opts };
+}
+
 const lockPath = (root: string) => join(root, ".friday", "daemon.lock");
 
 describe("composeDaemon private key check", () => {
@@ -77,5 +88,28 @@ describe("composeDaemon private key check", () => {
     const env = setup();
     (await composeDaemon(env.opts)).release();
     expect(env.createGitHub).toHaveBeenCalledTimes(1);
+  });
+
+  it("composeDaemon rejects a missing review_app key with author_token_env before lock and database", async () => {
+    const t = withEnvAuthor(missing);
+    await expect(composeDaemon(t.opts)).rejects.toThrow(
+      new Error(`Não foi possível ler a chave privada de pull_requests.review_app em ${missing}.`),
+    );
+    expect(existsSync(t.opts.dbPath)).toBe(false);
+    expect(existsSync(lockPath(t.root))).toBe(false);
+  });
+
+  it("composeDaemon accepts a readable review_app key with author_token_env", async () => {
+    const t = withEnvAuthor(reviewKey);
+    const daemon = await composeDaemon(t.opts);
+    daemon.release();
+    expect(t.createGitHub).toHaveBeenCalledTimes(1);
+  });
+
+  it("composeDaemon rejects a review_app key that is a directory with author_token_env", async () => {
+    const t = withEnvAuthor(keyDir);
+    await expect(composeDaemon(t.opts)).rejects.toThrow(
+      new Error(`Não foi possível ler a chave privada de pull_requests.review_app em ${keyDir}.`),
+    );
   });
 });
