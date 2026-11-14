@@ -47,4 +47,29 @@ describe("judge run", () => {
     await ok.run();
     expect(ok.runtime.requests).toHaveLength(1);
   });
+
+  const heldMisconfigured = {
+    kind: "held",
+    input: { type: "RunHeld", reason: "RunMisconfigured" },
+  };
+
+  it("refuses a judge whose states are not exactly InReview before AgentRuntime.run", async () => {
+    const s = setup(verdict(), { agents: makeAgents({ states: ["QA"] }) });
+    expect(await s.run()).toEqual(heldMisconfigured);
+    expect(s.runtime.requests).toHaveLength(0);
+  });
+
+  it("refuses states [], two states, and a judge-strong with QA after a medium-risk judge verdict", async () => {
+    for (const states of [[], ["InReview", "QA"]]) {
+      const s = setup(verdict(), { agents: makeAgents({ states } as never) });
+      expect(await s.run()).toEqual(heldMisconfigured);
+      expect(s.runtime.requests).toHaveLength(0);
+    }
+    const agents = makeAgents();
+    const strongQa = { ...agents, "judge-strong": { ...agents["judge-strong"], states: ["QA"] } };
+    const s = setup(verdict({ risk: "medium" }), { agents: strongQa as never });
+    expect(await s.run()).toEqual(heldMisconfigured);
+    expect(s.runtime.requests).toHaveLength(1);
+    expect(s.posted).toHaveLength(0);
+  });
 });

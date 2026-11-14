@@ -75,12 +75,16 @@ async function readToken(deps: JudgeStepDeps): Promise<string> {
 function misconfigured(agent: AgentRunOptions): boolean {
   const tools = new Set<string>(JUDGE_ALLOWED_TOOLS);
   const mcp = new Set<string>(JUDGE_ALLOWED_MCP);
-  return agent.tools.some((t) => !tools.has(t)) || agent.allowedTools.some((t) => !mcp.has(t));
+  const statesOk = agent.states.length === 1 && agent.states[0] === "InReview";
+  return (
+    !statesOk ||
+    agent.tools.some((t) => !tools.has(t)) ||
+    agent.allowedTools.some((t) => !mcp.has(t))
+  );
 }
 
 const FRIDAY_PREFIX = "mcp__friday__";
 
-/** The card's MCP tool names without the server prefix, in card order. */
 type McpTool = NonNullable<AgentRunRequest["friday"]>["agent"]["mcp_tools"][number];
 
 /** The card's MCP tool names without the server prefix, in card order. Safe cast: `misconfigured` limits them to JUDGE_ALLOWED_MCP. */
