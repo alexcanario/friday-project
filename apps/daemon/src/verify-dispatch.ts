@@ -43,6 +43,9 @@ async function execute(deps: VerifyDispatchDeps, issueId: number): Promise<Verif
   }
   const outcome = await deps.step(target);
   const result = applyVerifyOutcome(recorder, { issueId, runId: null }, outcome);
+  if (result.applied && outcome.input.type === "RunHeld" && "detail" in outcome) {
+    deps.log?.(`A issue ${issueId} foi retida em Verify: ${outcome.detail}`);
+  }
   if (result.applied && outcome.input.type === "VerifyFailed") {
     recorder.events.append({
       projectId: deps.projectId,

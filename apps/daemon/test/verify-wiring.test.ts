@@ -216,7 +216,10 @@ describe("createVerifyBranch", () => {
         return head;
       },
     });
-    expect(forged.result.applied).toBe(false);
+    // A head that cannot be read holds the issue (RuntimeFailed) instead of retrying every tick.
+    expect(forged.result.applied).toBe(true);
+    expect(forged.row?.state).toBe("Held");
+    expect(forged.row?.heldReason).toBe("RuntimeFailed");
     expect(existsSync(join(forged.worktreePath, "marker"))).toBe(false);
   });
 });

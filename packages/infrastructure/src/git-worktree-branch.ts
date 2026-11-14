@@ -1,20 +1,11 @@
+import { addWorktreeChecked } from "./git-worktree-checkout.ts";
 import { protectedEnv, run } from "./git-worktree-guard.ts";
-
-const CHECKOUT_CONFIG = [
-  "-c",
-  "core.autocrlf=false",
-  "-c",
-  "core.safecrlf=false",
-  "-c",
-  "core.eol=lf",
-];
 
 /**
  * Re-creates the worktree at `path` on the local `branch` when that branch already exists (a worktree
  * folder deleted by hand, or removed on restart): no `-b`, no `origin/<base>`, the branch commits stay.
  * Returns false, running nothing else, when the branch does not exist (`rev-parse` exits 1).
- * The checkout writes a tree the agent authored, so every command runs in `repoDir` with the
- * protected environment of `protectedEnv`.
+ * The checkout writes a tree the agent authored: see `addWorktreeChecked`.
  */
 export async function addExistingBranch(
   repoDir: string,
@@ -31,6 +22,6 @@ export async function addExistingBranch(
   if (found.trim() === "") return false;
   // Clears the registry of a folder deleted by hand; without it `worktree add` exits 128.
   await run(["worktree", "prune"], repoDir, env);
-  await run([...CHECKOUT_CONFIG, "worktree", "add", path, branch], repoDir, env);
+  await addWorktreeChecked(repoDir, path, [branch]);
   return true;
 }

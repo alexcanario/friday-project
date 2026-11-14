@@ -4,6 +4,7 @@ import { execa } from "execa";
 import type { GitHost } from "@friday/application";
 import { isInside } from "./config-root-guard.ts";
 import { commitWorktree, configEnv, FRIDAY_AUTHOR, HOOKS_OFF } from "./git-cli-commit.ts";
+import { guardMirror } from "./git-mirror-guard.ts";
 
 export { FRIDAY_AUTHOR };
 
@@ -106,21 +107,12 @@ export class GitCliHost implements GitHost {
       ...(this.afterValidate === undefined ? {} : { afterValidate: this.afterValidate }),
     });
     const mirror = this.mirrorDir;
-    if (!existsSync(join(mirror, "HEAD"))) {
-      await this.run(["init", "--bare", "--quiet", mirror], this.baseEnv(), undefined, "init");
-    }
     const b64 = Buffer.from(`x-access-token:${token}`).toString("base64");
-    const fetchEnv = { ...this.baseEnv(), ...hooksConfig([]) };
-    await this.run(
-      ["--git-dir", mirror, "fetch", "--no-tags", "--quiet", gitDir, commit],
-      fetchEnv,
-      [token, b64],
-      "Falha ao buscar o commit no espelho: ",
-    );
+    const hooks = await this.fetchIntoMirror(gitDir, commit, [token, b64]);
     const header = `Authorization: basic ${b64}`;
     const pushEnv = {
       ...this.baseEnv(),
-      ...hooksConfig([["http.https://github.com/.extraheader", header]]),
+      ...hooksConfig([["http.https://github.com/.extraheader", header]], hooks),
     };
     await this.run(
       [
@@ -136,6 +128,24 @@ export class GitCliHost implements GitHost {
       "Falha no git push: ",
     );
     return { sha: commit };
+  }
+
+  /** Creates the mirror when missing, refuses an unsafe config and fetches `commit` with no hook or upload-pack of config. */
+  private async fetchIntoMirror(
+    gitDir: string,
+    commit: string,
+    secrets: string[],
+  ): Promise<string[]> {
+    const mirror = this.mirrorDir;
+    if (!existsSync(join(mirror, "HEAD"))) {
+      await this.run(["init", "--bare", "--quiet", mirror], this.baseEnv(), undefined, "init");
+    }
+    const hooks = await guardMirror((args, ok) => this.capture(args, ok), mirror);
+    const args = ["--git-dir", mirror, "fetch", "--no-tags", "--quiet"];
+    args.push("--upload-pack=git-upload-pack", gitDir, commit);
+    const env = { ...this.baseEnv(), ...hooksConfig([], hooks) };
+    await this.run(args, env, secrets, "Falha ao buscar o commit no espelho: ");
+    return hooks;
   }
 
   private async resolveToken(): Promise<string> {
@@ -174,6 +184,18 @@ export class GitCliHost implements GitHost {
     return out;
   }
 
+  private async capture(args: string[], okCodes: number[]): Promise<string> {
+    const env = this.baseEnv();
+    const result = await execa(this.git, args, {
+      cwd: this.mirrorDir,
+      env,
+      extendEnv: false,
+      reject: false,
+    });
+    if (!okCodes.includes(result.exitCode ?? -1)) throw new Error(String(result.stderr ?? ""));
+    return String(result.stdout ?? "");
+  }
+
   private async run(
     args: string[],
     env: Record<string, string>,
@@ -190,6 +212,7 @@ export class GitCliHost implements GitHost {
   }
 }
 
-function hooksConfig(extra: [string, string][]): Record<string, string> {
-  return configEnv([...extra, ["core.hooksPath", HOOKS_OFF]]);
+function hooksConfig(extra: [string, string][], hooks: string[]): Record<string, string> {
+  const disabled = hooks.map((name): [string, string] => [`hook.${name}.enabled`, "false"]);
+  return configEnv([...extra, ["core.hooksPath", HOOKS_OFF], ...disabled]);
 }

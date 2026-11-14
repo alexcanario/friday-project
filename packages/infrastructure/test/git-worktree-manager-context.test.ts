@@ -83,7 +83,16 @@ describe(
       expect(git(pathOf(), "rev-parse", "HEAD")).toBe(
         git(fx.repoDir, "rev-parse", "origin/develop"),
       );
-      git(fx.repoDir, "worktree", "add", "-q", "-b", "friday/ctl", join(fx.root, "ctl"));
+      git(
+        fx.repoDir,
+        "worktree",
+        "add",
+        "-q",
+        "-b",
+        "friday/ctl",
+        join(fx.root, "ctl"),
+        "origin/develop",
+      );
       expect(existsSync(marker("smudge"))).toBe(true);
     });
 
@@ -93,7 +102,16 @@ describe(
       expect(created.ok).toBe(true);
       expect(existsSync(marker("smudge"))).toBe(false);
       expectCleanWorktree(pathOf());
-      git(fx.repoDir, "worktree", "add", "-q", "-b", "friday/ctl", join(fx.root, "ctl"));
+      git(
+        fx.repoDir,
+        "worktree",
+        "add",
+        "-q",
+        "-b",
+        "friday/ctl",
+        join(fx.root, "ctl"),
+        "origin/develop",
+      );
       expect(existsSync(marker("smudge"))).toBe(true);
     });
 
