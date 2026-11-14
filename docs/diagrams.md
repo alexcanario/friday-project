@@ -79,8 +79,8 @@ sequenceDiagram
     GH-->>ACT: evento labeled
     ACT->>ACT: Estado = Ready no Project
     O->>IM: implementa #n
-    IM->>GH: branch, testes, código, PR "Closes #n"
-    IM-->>O: pr-opened, head_sha
+    IM-->>O: committed, head_sha
+    O->>GH: git push, PR "Closes #n"
     O->>GH: status:review
     O->>GH: espera o CI do head_sha
     O->>QA: revisa o PR
