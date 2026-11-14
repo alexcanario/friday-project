@@ -1,4 +1,9 @@
-import type { AgentRunRequest, AgentRuntime, EventStore } from "@friday/application";
+import type {
+  AgentRunRequest,
+  AgentRuntime,
+  EventStore,
+  ProjectEnabledRepository,
+} from "@friday/application";
 import type { RunRecorderDeps } from "./run-recorder.ts";
 import type { BudgetDeps } from "./budget-gate.ts";
 import type { RunRecordingDeps } from "./run-registration.ts";
@@ -28,6 +33,7 @@ type TickerBaseDeps = {
   buildRequest: RunRequestBuilder;
   runtime?: AgentRuntime;
   events: EventStore;
+  enabled?: ProjectEnabledRepository;
   log?: (message: string) => void;
   breaker?: {
     breaker: { isOpen(): boolean; recordFailure(): void };
@@ -53,6 +59,7 @@ export function createTicker(deps: TickerDeps): Ticker {
 
   async function tick(): Promise<void> {
     const config = deps.readConfig();
+    if (config !== null) deps.enabled?.save(deps.projectId, config.enabled);
     if (config === null || !config.enabled) return;
     const ready = await deps.issues.listReady({
       active: active.size,

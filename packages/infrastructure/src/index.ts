@@ -30,6 +30,7 @@ export { createResultStore } from "./sqlite/sqlite-result-store.ts";
 export { createLedgerRepository } from "./sqlite/ledger-repository.ts";
 export { createRunLedgerReader } from "./sqlite/run-ledger-reader.ts";
 export { createBreakerStateRepository } from "./sqlite/breaker-state-repository.ts";
+export { createProjectEnabledRepository } from "./sqlite/project-enabled-repository.ts";
 export { createUnitOfWork } from "./sqlite/unit-of-work.ts";
 export { createApprovalStore, generateApprovalId } from "./sqlite/approval-store.ts";
 export {

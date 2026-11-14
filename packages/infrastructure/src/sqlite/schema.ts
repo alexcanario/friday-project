@@ -114,3 +114,10 @@ export const approvals = sqliteTable("approvals", {
   decidedAt: integer("decided_at"),
   decidedBy: text("decided_by"),
 });
+
+export const projectEnabled = sqliteTable("project_enabled", {
+  projectId: text("project_id")
+    .primaryKey()
+    .references(() => projects.id),
+  enabled: integer("enabled", { mode: "boolean" }).notNull(),
+});
