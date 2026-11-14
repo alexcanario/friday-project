@@ -13,6 +13,13 @@ import {
   loadTriageAgent,
   type GitWorktreeManagerDeps,
 } from "@friday/infrastructure";
+import { startApi as realStartApi, type RunningApi } from "@friday/api";
+import {
+  closePanelQuietly,
+  DEFAULT_PANEL_PORT,
+  startPanel,
+  type StartApi,
+} from "./daemon-panel.ts";
 import { qaComposeOf } from "./daemon-qa.ts";
 import { daemonPaths, judgeInputOf, projectIdOf } from "./daemon-values.ts";
 
@@ -27,6 +34,7 @@ export type DaemonDeps = {
   onSignal?: (handler: () => void) => void;
   exit?: (code: number) => void;
   log?: (message: string) => void;
+  startApi?: StartApi;
 };
 
 const USAGE = "Uso: friday daemon\n";
@@ -45,6 +53,10 @@ function defaultOnSignal(handler: () => void): void {
 }
 
 const fail = (stderr: string): Result => ({ stdout: "", stderr, code: 1 });
+
+const failOf = (error: unknown, redact: (text: string) => string): Result =>
+  fail(`${redact(error instanceof Error ? error.message : String(error))}
+`);
 
 function rootRefusal(env: DaemonDeps["env"]): boolean {
   const home = env.FRIDAY_HOME;
@@ -82,19 +94,33 @@ function logOf(deps: DaemonDeps): (message: string) => void {
   return deps.log ?? ((message: string) => void process.stderr.write(`${message}\n`));
 }
 
-/** Starts the ticker; if it throws, releases the lock and database before rethrowing. */
-function startOrRelease(daemon: Daemon): () => void {
+/** Starts the ticker; if it throws, closes the panel API, releases the lock and database, and rethrows. */
+async function startOrRelease(daemon: Daemon, api: RunningApi): Promise<() => void> {
   try {
     return daemon.ticker.start();
   } catch (error) {
+    await closePanelQuietly(api);
     daemon.release();
     throw error;
   }
 }
 
+/** Stops accepting requests, then drains the ticker; reports the close error after the drain. */
+async function drain(daemon: Daemon, api: RunningApi): Promise<unknown> {
+  let closeError: unknown;
+  try {
+    await api.close();
+  } catch (error) {
+    closeError = error;
+  }
+  await daemon.ticker.idle();
+  return closeError;
+}
+
 /** Waits for the stop signal, then stops the ticker, drains it and releases the daemon. A second signal forces exit 130. */
 function untilSignal(
   daemon: Daemon,
+  api: RunningApi,
   stop: () => void,
   onSignal: (handler: () => void) => void,
   exit: (code: number) => void,
@@ -113,12 +139,15 @@ function untilSignal(
       }
       if (signals > 2) return;
       stop();
-      void daemon.ticker
-        .idle()
-        .then(() => {
+      void drain(daemon, api)
+        .then((closeError) => {
           if (forced) return;
           daemon.release();
-          resolve({ stdout: "", stderr: "", code: 0 });
+          resolve(
+            closeError === undefined
+              ? { stdout: "", stderr: "", code: 0 }
+              : failOf(closeError, redact),
+          );
         })
         .catch((error: unknown) => {
           if (forced) return;
@@ -127,6 +156,42 @@ function untilSignal(
         });
     });
   });
+}
+
+type ComposeInput = {
+  deps: DaemonDeps;
+  paths: ReturnType<typeof daemonPaths>;
+  repository: { owner: string; name: string; base: string };
+  worktrees: WorktreeManager;
+  triage: Extract<ReturnType<typeof loadTriageAgent>, { ok: true }>["agent"];
+  qa: NonNullable<ReturnType<typeof qaComposeOf>>;
+  specialist: SpecialistCompose;
+  judgeAgents: Record<"judge" | "judge-strong", AgentRunOptions>;
+};
+
+/** The options that wire the daemon: paths, clock, agents and the judge input. */
+function composeOptionsOf(c: ComposeInput): Parameters<typeof composeDaemon>[0] {
+  const { deps, paths, repository } = c;
+  return {
+    root: paths.root,
+    repoDir: paths.repoDir,
+    worktreesRoot: join(paths.root, "worktrees"),
+    dbPath: paths.dbPath,
+    projectId: projectIdOf(repository),
+    env: deps.env,
+    homeDir: deps.homeDir,
+    worktrees: c.worktrees,
+    clock: deps.clock ?? realClock,
+    triage: c.triage,
+    qa: c.qa,
+    specialist: c.specialist,
+    log: logOf(deps),
+    judge: {
+      base: repository.base,
+      agents: c.judgeAgents,
+      input: (issueId, headSha) => judgeInputOf({ root: paths.root, repository, issueId, headSha }),
+    },
+  };
 }
 
 export async function startDaemon(deps: DaemonDeps): Promise<Result> {
@@ -151,30 +216,23 @@ export async function startDaemon(deps: DaemonDeps): Promise<Result> {
     const createWorktrees =
       deps.createWorktrees ?? ((d: GitWorktreeManagerDeps) => new GitWorktreeManager(d));
     const worktrees = createWorktrees({ repoDir: paths.repoDir });
-    const daemon = await (deps.compose ?? composeDaemon)({
-      root: paths.root,
-      repoDir: paths.repoDir,
-      worktreesRoot: join(paths.root, "worktrees"),
-      dbPath: paths.dbPath,
-      projectId: projectIdOf(repository),
-      env,
-      homeDir,
-      worktrees,
-      clock: deps.clock ?? realClock,
-      triage: triage.agent,
-      qa,
-      specialist,
-      log: logOf(deps),
-      judge: {
-        base: repository.base,
-        agents: judgeAgents,
-        input: (issueId, headSha) =>
-          judgeInputOf({ root: paths.root, repository, issueId, headSha }),
-      },
-    });
-    const stop = startOrRelease(daemon);
+    const daemon = await (deps.compose ?? composeDaemon)(
+      composeOptionsOf({
+        deps,
+        paths,
+        repository,
+        worktrees,
+        triage: triage.agent,
+        qa,
+        specialist,
+        judgeAgents,
+      }),
+    );
+    const port = loaded.config.panel?.port ?? DEFAULT_PANEL_PORT;
+    const api = await startPanel(daemon, deps.startApi ?? realStartApi, port, logOf(deps));
+    const stop = await startOrRelease(daemon, api);
     const exit = deps.exit ?? ((code: number) => process.exit(code));
-    return await untilSignal(daemon, stop, deps.onSignal ?? defaultOnSignal, exit, redact);
+    return await untilSignal(daemon, api, stop, deps.onSignal ?? defaultOnSignal, exit, redact);
   } catch (error) {
     return fail(`${redact(error instanceof Error ? error.message : String(error))}\n`);
   }

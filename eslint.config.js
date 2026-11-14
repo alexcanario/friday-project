@@ -113,10 +113,7 @@ export default tseslint.config(
   },
   {
     files: ["apps/cli/**/*.ts"],
-    rules: restrict(
-      ["@friday/api"],
-      ["@friday/api/*", "**/apps/api/**"],
-    ),
+    rules: restrict([], ["@friday/api/*", "**/apps/api/**"]),
   },
   {
     files: ["apps/api/**/*.ts"],

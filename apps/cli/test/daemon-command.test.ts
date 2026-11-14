@@ -101,7 +101,7 @@ describe("friday daemon", () => {
     const out = await p;
     expect(out.code).toBe(0);
     expect(s.start).toHaveBeenCalledTimes(1);
-    expect(s.order).toEqual(["stop", "idle", "release"]);
+    expect(s.order).toEqual(["stop", "api-close", "idle", "release"]);
     expect(s.release).toHaveBeenCalledTimes(1);
   });
 
@@ -124,6 +124,8 @@ describe("friday daemon", () => {
     expect(await startDaemon(s.deps)).toEqual({ stdout: "", stderr: "falhou\n", code: 1 });
     expect(s.release).toHaveBeenCalledTimes(1);
     expect(s.idle).not.toHaveBeenCalled();
+    expect(s.apiClose).toHaveBeenCalledTimes(1);
+    expect(s.order).toEqual(["api-close", "release"]);
   });
 
   it("returns the error when release also throws after start fails", async () => {

@@ -1,4 +1,4 @@
-import { cpSync, mkdtempSync, writeFileSync } from "node:fs";
+import { appendFileSync, cpSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { expect, vi } from "vitest";
@@ -23,6 +23,18 @@ export function validRoot(): string {
   return dir;
 }
 
+/** A valid root whose factory.yaml also sets panel.port. */
+export function panelRoot(port: number): string {
+  const dir = validRoot();
+  appendFileSync(
+    join(dir, "factory.yaml"),
+    `panel:
+  port: ${port}
+`,
+  );
+  return dir;
+}
+
 export function setup(
   env: Record<string, string | undefined>,
   over: Partial<DaemonDeps> = {},
@@ -37,6 +49,10 @@ export function setup(
     order.push("release");
   });
   stop.mockImplementation(() => order.push("stop"));
+  const apiClose = vi.fn(async () => {
+    order.push("api-close");
+  });
+  const startApi = vi.fn(async () => ({ address: "127.0.0.1", port: 7777, close: apiClose }));
   const start = vi.fn(() => stop);
   const daemon = { ticker: { start, idle }, db: {}, report: {}, release } as unknown as Daemon;
   const compose = vi.fn(async () => daemon);
@@ -54,10 +70,14 @@ export function setup(
     createWorktrees,
     clock,
     onSignal,
+    startApi,
     ...over,
   } as unknown as DaemonDeps;
   return {
     deps,
+    daemon,
+    startApi,
+    apiClose,
     compose,
     createWorktrees,
     clock,

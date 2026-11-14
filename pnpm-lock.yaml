@@ -217,6 +217,9 @@ importers:
 
   apps/cli:
     dependencies:
+      '@friday/api':
+        specifier: workspace:*
+        version: link:../api
       '@friday/application':
         specifier: workspace:*
         version: link:../../packages/application

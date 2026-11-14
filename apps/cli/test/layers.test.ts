@@ -43,7 +43,7 @@ const rejected: Array<[string, string[]]> = [
     ["@friday/daemon", "@friday/cli", "../../../apps/cli/src/index.ts"],
   ],
   ["apps/daemon/src/x.ts", ["@friday/cli"]],
-  ["apps/cli/src/x.ts", ["@friday/api"]],
+  ["apps/cli/src/x.ts", ["@friday/api/src/listen.ts", "../../../apps/api/src/index.ts"]],
 ];
 
 const accepted: Array<[string, string[]]> = [
@@ -53,7 +53,13 @@ const accepted: Array<[string, string[]]> = [
   ["apps/daemon/src/x.ts", ["@friday/domain", "@friday/application", "@friday/infrastructure"]],
   [
     "apps/cli/src/x.ts",
-    ["@friday/domain", "@friday/application", "@friday/infrastructure", "@friday/daemon"],
+    [
+      "@friday/domain",
+      "@friday/application",
+      "@friday/infrastructure",
+      "@friday/daemon",
+      "@friday/api",
+    ],
   ],
 ];
 
@@ -96,6 +102,7 @@ describe("layer boundaries", () => {
         "@friday/application",
         "@friday/infrastructure",
         "@friday/daemon",
+        "@friday/api",
       ],
     };
     for (const [name, dir] of Object.entries(requiredPackages)) {
