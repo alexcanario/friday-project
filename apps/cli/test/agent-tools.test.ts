@@ -123,7 +123,8 @@ describe("reader agents without Bash", () => {
   });
 
   it("each reader body states how it verifies without commands", () => {
-    for (const name of ["qa", "judge"]) expect(bodyOf(agentText(name)), name).toContain(verifyCheckRuns);
+    for (const name of ["qa", "judge"])
+      expect(bodyOf(agentText(name)), name).toContain(verifyCheckRuns);
     const refiner = bodyOf(agentText("refiner"));
     expect(refiner).toContain(verifyReading);
     expect(refiner).toContain(
@@ -136,7 +137,7 @@ describe("reader agents without Bash", () => {
 });
 
 const commonRule =
-  "- A sessão principal lê com `gh api` e passa no prompt do subagente tudo o que ele precisa: `refiner` e `refine-reviewer` recebem o corpo e as labels da issue, os corpos e o estado (aberta ou fechada) das issues que ela cita, com o checkout em `origin/develop` (`git fetch origin && git checkout --detach origin/develop`); `qa`, `judge` e `judge-strong` recebem o corpo da issue, o diff do PR, os check runs do `head_sha` e todos os comentários de revisão inline do PR, de qualquer commit, com o checkout nesse `head_sha` (`git fetch origin && git checkout --detach <head_sha>`); o `judge` e o `judge-strong` recebem também o JSON do QA e as labels do PR. Os comentários inline vêm de `gh api \"repos/alexcanario/friday-project/pulls/<pr>/comments?per_page=100&page=<p>\"`, repetido com `<p>` = 1, 2, ... enquanto a página trouxer 100 itens; nunca `--paginate`. Esses cinco agentes não têm `Bash` e não rodam testes: verificam pelos check runs e lendo o checkout.";
+  '- A sessão principal lê com `gh api` e passa no prompt do subagente tudo o que ele precisa: `refiner` e `refine-reviewer` recebem o corpo e as labels da issue, os corpos e o estado (aberta ou fechada) das issues que ela cita, com o checkout em `origin/develop` (`git fetch origin && git checkout --detach origin/develop`); `qa`, `judge` e `judge-strong` recebem o corpo da issue, o diff do PR, os check runs do `head_sha` e todos os comentários de revisão inline do PR, de qualquer commit, com o checkout nesse `head_sha` (`git fetch origin && git checkout --detach <head_sha>`); o `judge` e o `judge-strong` recebem também o JSON do QA e as labels do PR. Os comentários inline vêm de `gh api "repos/alexcanario/friday-project/pulls/<pr>/comments?per_page=100&page=<p>"`, repetido com `<p>` = 1, 2, ... enquanto a página trouxer 100 itens; nunca `--paginate`. Esses cinco agentes não têm `Bash` e não rodam testes: verificam pelos check runs e lendo o checkout.';
 
 function section(text: string, heading: string): string {
   const lines = text.split(/\r?\n/);
@@ -159,7 +160,9 @@ describe("night docs for the reader agents", () => {
     expect(night).toContain(
       "A sessão principal só orquestra: não analisa código nem diff, só os repassa ao subagente.",
     );
-    expect(night).not.toContain("A sessão principal só orquestra: não lê código nem diff ela mesma.");
+    expect(night).not.toContain(
+      "A sessão principal só orquestra: não lê código nem diff ela mesma.",
+    );
     expect(night).not.toContain(
       "- Cada subagente recebe só o número da issue/PR; ele lê o que a issue lista. Nada de explorar o repositório inteiro.",
     );
