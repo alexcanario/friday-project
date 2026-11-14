@@ -77,6 +77,7 @@ export const factoryConfigSchema = z.strictObject({
     max_concurrent_runs: positiveInt.optional(),
   }),
   secrets: z.array(z.string().regex(/^[A-Z][A-Z0-9_]*$/)),
+  panel: z.strictObject({ port: z.number().int().min(1).max(65535) }).optional(),
 });
 
 export type FactoryConfig = z.infer<typeof factoryConfigSchema>;

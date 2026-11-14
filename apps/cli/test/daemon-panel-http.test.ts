@@ -56,7 +56,7 @@ async function started(s: ReturnType<typeof setup>, seen: RunningApi[]) {
   const p = startDaemon(s.deps);
   await vi.waitFor(() => expect(seen).toHaveLength(1));
   await vi.waitFor(() => expect(s.start).toHaveBeenCalled());
-  return p;
+  return { p };
 }
 
 describe("daemon panel over http", () => {
@@ -64,7 +64,7 @@ describe("daemon panel over http", () => {
     const seen: RunningApi[] = [];
     const s = setup({ FRIDAY_HOME: validRoot() }, { startApi: forced(0, seen) as never });
     s.compose.mockResolvedValue({ ...s.daemon, db: openTemp() } as never);
-    const p = await started(s, seen);
+    const { p } = await started(s, seen);
     const base = `http://127.0.0.1:${seen[0]?.port}`;
     expect((await fetch(`${base}/health`)).status).toBe(200);
     const res = await fetch(`${base}/issues?project=p1`);
@@ -94,7 +94,7 @@ describe("daemon panel over http", () => {
     const seen: RunningApi[] = [];
     const s = setup({ FRIDAY_HOME: validRoot() }, { startApi: forced(0, seen) as never });
     s.compose.mockResolvedValue({ ...s.daemon, db: openTemp() } as never);
-    const p = await started(s, seen);
+    const { p } = await started(s, seen);
     const url = `http://127.0.0.1:${seen[0]?.port}/health`;
     s.fire();
     expect((await p).code).toBe(0);
