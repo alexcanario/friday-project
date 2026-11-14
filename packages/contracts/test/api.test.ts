@@ -6,6 +6,7 @@ import {
   healthResponse,
   issueItem,
   runItem,
+  statusResponse,
   transitionItem,
 } from "../src/index.ts";
 
@@ -44,5 +45,12 @@ describe("api response schemas", () => {
     expect(approvalItem.safeParse({ ...approval, tier: "mid" }).success).toBe(false);
     expect(issueItem.safeParse({ issueId: 14, state: "ready" }).success).toBe(false);
     expect(errorResponse.safeParse({}).success).toBe(false);
+  });
+
+  it("accepts a null enabled status and rejects a malformed one", () => {
+    const breaker = { open: false, openedAt: null, failures: [] };
+    expect(statusResponse.safeParse({ enabled: null, breaker }).success).toBe(true);
+    expect(statusResponse.safeParse({ enabled: "yes", breaker }).success).toBe(false);
+    expect(statusResponse.safeParse({ enabled: true }).success).toBe(false);
   });
 });

@@ -3,9 +3,11 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
   createApprovalStore,
+  createBreakerStateRepository,
   createEventStore,
   createIssueRepository,
   createLedgerRepository,
+  createProjectEnabledRepository,
   createRunLedgerReader,
   createRunRepository,
   openDatabase,
@@ -31,6 +33,8 @@ export function openFixture(): Fixture {
     ledger: createLedgerRepository(db),
     runLedger: createRunLedgerReader(db),
     approvals: createApprovalStore(db),
+    breaker: createBreakerStateRepository(db),
+    enabled: createProjectEnabledRepository(db),
     now: () => clock.now,
   };
   return { db, deps, clock };
