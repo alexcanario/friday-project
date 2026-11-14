@@ -161,6 +161,11 @@ function stepTarget(
     base: deps.base,
     cwd: target.cwd,
     issues: deps.recorder.issues,
+    onEffectError: (tool, error) => {
+      deps.log?.(
+        redact(deps, `Falha na ferramenta ${tool} da issue ${t.issueId}: ${String(error)}`),
+      );
+    },
   });
   return { ...target, friday };
 }
