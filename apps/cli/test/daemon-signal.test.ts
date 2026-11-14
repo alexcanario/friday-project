@@ -85,6 +85,18 @@ describe("daemon signals", () => {
     expect(t.s.release).toHaveBeenCalledTimes(1);
   });
 
+  it("releases and returns the error when api.close rejects", async () => {
+    const t = await start({ pending: false });
+    t.s.apiClose.mockImplementation(async () => {
+      t.s.order.push("api-close");
+      throw new Error("fecha");
+    });
+    t.s.fire();
+    expect(await t.p).toEqual({ stdout: "", stderr: "fecha\n", code: 1 });
+    expect(t.s.order).toEqual(["stop", "api-close", "idle", "release"]);
+    expect(t.s.release).toHaveBeenCalledTimes(1);
+  });
+
   it("keeps waiting on a single signal while idle is pending", async () => {
     const t = await start();
     t.s.fire();
@@ -108,7 +120,7 @@ describe("daemon signals", () => {
     const t = await start({ pending: false });
     t.s.fire();
     expect(await t.p).toEqual({ stdout: "", stderr: "", code: 0 });
-    expect(t.s.order).toEqual(["stop", "idle", "release"]);
+    expect(t.s.order).toEqual(["stop", "api-close", "idle", "release"]);
     expect(t.exit).not.toHaveBeenCalled();
   });
 });

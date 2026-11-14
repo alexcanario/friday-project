@@ -13,7 +13,6 @@ async function restrictedErrors(file: string, pkg: string): Promise<number> {
 
 const blocked: Array<[string, string]> = [
   ["apps/daemon/src/x.ts", "@friday/api"],
-  ["apps/cli/src/x.ts", "@friday/api"],
   ["apps/api/src/x.ts", "@friday/daemon"],
   ["apps/api/src/x.ts", "@friday/cli"],
   ["packages/domain/src/x.ts", "@friday/api"],
@@ -22,10 +21,11 @@ const blocked: Array<[string, string]> = [
 ];
 
 describe("api layers", () => {
-  it("blocks daemon, cli, domain, application and infrastructure importing api and api importing daemon or cli, and allows api importing application and infrastructure", async () => {
+  it("blocks daemon, domain, application and infrastructure importing api and api importing daemon or cli, and allows api importing application and infrastructure", async () => {
     for (const [file, pkg] of blocked) {
       expect(await restrictedErrors(file, pkg), `${file} -> ${pkg}`).toBe(1);
     }
+    expect(await restrictedErrors("apps/cli/src/x.ts", "@friday/api")).toBe(0);
     for (const pkg of ["@friday/application", "@friday/infrastructure"]) {
       expect(await restrictedErrors("apps/api/src/x.ts", pkg), pkg).toBe(0);
     }

@@ -17,6 +17,7 @@
     "@friday/domain": "workspace:*",
     "@friday/application": "workspace:*",
     "@friday/infrastructure": "workspace:*",
-    "@friday/daemon": "workspace:*"
+    "@friday/daemon": "workspace:*",
+    "@friday/api": "workspace:*"
   }
 }
