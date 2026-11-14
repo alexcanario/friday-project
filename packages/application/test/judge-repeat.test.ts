@@ -10,6 +10,17 @@ function twoRuns(first: unknown, second: unknown, opts: Parameters<typeof setup>
   return { ...s, runtime, deps };
 }
 
+const FRIDAY = "mcp__friday__";
+
+/** The tool names the request offers in both places the runtime compares. */
+function toolsOf(r: { agent: { allowedTools: string[] }; friday?: { agent: { mcp_tools: string[] } } } | undefined) {
+  const allowed = (r?.agent.allowedTools ?? [])
+    .filter((t) => t.startsWith(FRIDAY))
+    .map((t) => t.slice(FRIDAY.length))
+    .sort();
+  return { allowed, mcp: [...(r?.friday?.agent.mcp_tools ?? [])].sort() };
+}
+
 describe("judge repeat (D39)", () => {
   it("does not repeat when the judge reports low risk", async () => {
     const s = setup(verdict({ risk: "low" }));
@@ -17,6 +28,10 @@ describe("judge repeat (D39)", () => {
     expect(s.runtime.requests).toHaveLength(1);
     expect(s.posted).toHaveLength(1);
     expect(out.kind).toBe("approved");
+    expect(toolsOf(s.runtime.requests[0])).toEqual({
+      allowed: ["pr_diff", "review_verdict"],
+      mcp: ["pr_diff", "review_verdict"],
+    });
   });
 
   it("repeats once with judge-strong when the judge reports higher risk", async () => {
@@ -27,6 +42,12 @@ describe("judge repeat (D39)", () => {
       expect(s.runtime.requests).toHaveLength(2);
       expect(r0?.agent.model).toBe("sonnet");
       expect(r1?.agent.model).toBe("opus");
+      expect(toolsOf(r0)).toEqual({
+        allowed: ["pr_diff", "review_verdict"],
+        mcp: ["pr_diff", "review_verdict"],
+      });
+      // The repeat cannot send a second review_verdict (409): both lists drop it together.
+      expect(toolsOf(r1)).toEqual({ allowed: ["pr_diff"], mcp: ["pr_diff"] });
       expect([r1?.cwd, r1?.prompt, r1?.configRoot]).toEqual([r0?.cwd, r0?.prompt, r0?.configRoot]);
       expect(out.kind).toBe("approved");
       expect(s.posted).toHaveLength(1);
@@ -67,6 +88,10 @@ describe("judge repeat (D39)", () => {
         await s.run();
         expect(s.runtime.requests).toHaveLength(1);
         expect(s.runtime.requests[0]?.agent.model).toBe("opus");
+        expect(toolsOf(s.runtime.requests[0])).toEqual({
+          allowed: ["pr_diff", "review_verdict"],
+          mcp: ["pr_diff", "review_verdict"],
+        });
       }
     }
     const s = setup(verdict({ risk: "low" }), { body: "- risco: medium — x" });

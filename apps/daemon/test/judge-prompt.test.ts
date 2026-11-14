@@ -17,4 +17,10 @@ describe("judge.md", () => {
     expect(prompt).toContain("Answer rule 2 from the QA report in the run prompt");
     expect(prompt).not.toContain("Read the issue criteria and the QA report given in the input");
   });
+
+  it("judge.md tells the Judge to use the structured output when review_verdict is missing", () => {
+    expect(prompt).toContain(
+      "If the review_verdict tool is not available, return the verdict only as the structured output.",
+    );
+  });
 });

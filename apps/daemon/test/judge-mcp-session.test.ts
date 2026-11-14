@@ -28,8 +28,8 @@ afterEach(() => {
 });
 
 /** The real SDK runtime over a fake `query` that captures the options and the created server. */
-function session(o: { dropFriday?: boolean; noPr?: boolean } = {}) {
-  const t = setup();
+function session(o: { dropFriday?: boolean; noPr?: boolean; pr?: number } = {}) {
+  const t = setup(o.pr === undefined ? {} : { pr: o.pr });
   const configRoot = mkdtempSync(join(tmpdir(), "friday-jms-cfg-"));
   created.push(configRoot);
   writeFileSync(join(configRoot, "judge.md"), "Você é o Judge.");
@@ -41,13 +41,14 @@ function session(o: { dropFriday?: boolean; noPr?: boolean } = {}) {
     options.push(o2);
     for (const m of MESSAGES) yield m;
   };
+  const github = new FakeGitHubPort({
+    prReviewDiff: { headSha: B, truncated: false, files: [] },
+  });
   const sdk = new ClaudeAgentSdkRuntime({
     query,
     runs: { isActive: () => true },
     results: new FakeResultStore(),
-    github: new FakeGitHubPort({
-      prReviewDiff: { headSha: B, truncated: false, files: [] },
-    }),
+    github,
     gitHost: new FakeGitHost(),
     createMcpServer: (input) => {
       const created = createFridayMcpServer(input);
@@ -70,7 +71,7 @@ function session(o: { dropFriday?: boolean; noPr?: boolean } = {}) {
     judgeInput: () => ({ cwd, prompt: "judge", configRoot }),
     step: { ...t.deps.step, runtime },
   };
-  return { t, options, servers, start: () => runJudgeForIssue(deps, 7) };
+  return { t, options, servers, github, start: () => runJudgeForIssue(deps, 7) };
 }
 
 const text = (r: unknown): string => (r as { content: Array<{ text: string }> }).content[0]!.text;
@@ -91,14 +92,17 @@ describe("judge session with the real SDK runtime", () => {
   });
 
   it("pr_diff returns the patch of the pull request head or 404 without a pull request", async () => {
-    const s = session();
+    const s = session({ pr: 14 });
     await s.start();
     const ok = await s.servers[0]!.handlers.pr_diff!({});
     expect((JSON.parse(text(ok)) as { headSha: string }).headSha).toBe(B);
+    const diffCalls = s.github.calls.filter((c) => c.method === "getPrReviewDiff");
+    expect(diffCalls.map((c) => c.args)).toEqual([[14]]);
     const none = session({ noPr: true });
     await none.start();
     const missing = await none.servers[0]!.handlers.pr_diff!({});
     expect(text(missing)).toBe("404: A run ainda não tem PR.");
+    expect(none.github.calls.some((c) => c.method === "getPrReviewDiff")).toBe(false);
   });
 
   it("review_verdict is accepted in InReview and denied in QA", async () => {
