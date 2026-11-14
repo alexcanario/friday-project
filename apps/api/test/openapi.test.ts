@@ -11,12 +11,13 @@ const PATHS = [
   "/issues/{issueId}/transitions",
   "/runs",
   "/runs/{runId}",
+  "/runs/{runId}/review",
   "/ledger/days/{day}",
   "/ledger/issues/{issueId}",
 ];
 
 describe("GET /openapi.json", () => {
-  it("documents get 200 on the seven read paths and no write method", async () => {
+  it("documents get 200 on the eight read paths and no write method", async () => {
     f = openFixture();
     const app = await buildApp(f.deps);
     const res = await app.inject({ method: "GET", url: "/openapi.json" });

@@ -115,6 +115,15 @@ describe("feedbackOf", () => {
     expect(feedbackOf([ev(1, "QaFinished", { feedback: 3 })])).toBeNull();
     expect(feedbackOf([])).toBeNull();
   });
+
+  it("feedbackOf ignores a JudgeFinished without feedback", () => {
+    const approved = ev(1, "JudgeFinished", { outcome: "approve", reviewId: 501 });
+    expect(feedbackOf([approved])).toBeNull();
+    expect(
+      feedbackOf([ev(1, "JudgeFinished", { feedback: "1. x", reviewId: 501 }), approved]),
+    ).toBe("1. x");
+    expect(feedbackOf([ev(1, "JudgeFinished", { feedback: "1. x" })])).toBe("1. x");
+  });
 });
 
 describe("criteriaOf", () => {
