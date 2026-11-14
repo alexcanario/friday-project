@@ -91,6 +91,14 @@ export interface LedgerRepository {
   sumByIssue(projectId: string, issueId: number): DaySum;
 }
 
+export type RunSum = { costUsd: number | null; numTurns: number | null };
+
+/** Read-only per-run view of the ledger. `null` means no data for that field. */
+export interface RunLedgerReader {
+  /** `costUsd` is `null` without rows or with any unknown-cost row; `numTurns` is `null` without non-null values. */
+  sumByRun(projectId: string, runId: string): RunSum;
+}
+
 export interface IssueCostSum {
   issueId: number;
   costUsd: number;

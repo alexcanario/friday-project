@@ -19,6 +19,7 @@ describe("read-only API", () => {
       "/runs?project=p1",
       "/runs/nope?project=p1",
       "/ledger/days/2026-11-05?project=p1",
+      "/ledger/issues/14?project=p1",
       "/openapi.json",
     ]) {
       await app.inject({ method: "GET", url });

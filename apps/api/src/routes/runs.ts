@@ -4,20 +4,21 @@ import type { ApiDeps } from "../app.ts";
 import { errorResponse, projectQuery, runItem, runParams } from "../schemas.ts";
 import type { App } from "./types.ts";
 
-const toItem = (r: RunRecord) => ({
+const toItem = (deps: ApiDeps, r: RunRecord) => ({
   id: r.id,
   issueId: r.issueId,
   phase: r.phase,
   status: r.status,
   startedAt: r.startedAt,
   finishedAt: r.finishedAt,
+  ...deps.runLedger.sumByRun(r.projectId, r.id),
 });
 
 export function runRoutes(app: App, deps: ApiDeps): void {
   app.get(
     "/runs",
     { schema: { querystring: projectQuery, response: { 200: z.array(runItem) } } },
-    (req) => deps.runs.list(req.query.project).map(toItem),
+    (req) => deps.runs.list(req.query.project).map((r) => toItem(deps, r)),
   );
 
   app.get(
@@ -34,7 +35,7 @@ export function runRoutes(app: App, deps: ApiDeps): void {
       if (run === null || run.projectId !== req.query.project) {
         return reply.code(404).send({ message: "Run não encontrada." });
       }
-      return toItem(run);
+      return toItem(deps, run);
     },
   );
 }

@@ -6,6 +6,7 @@ import {
   createEventStore,
   createIssueRepository,
   createLedgerRepository,
+  createRunLedgerReader,
   createRunRepository,
   openDatabase,
   type FridayDatabase,
@@ -28,6 +29,7 @@ export function openFixture(): Fixture {
     issues: createIssueRepository(db),
     runs: createRunRepository(db),
     ledger: createLedgerRepository(db),
+    runLedger: createRunLedgerReader(db),
     approvals: createApprovalStore(db),
     now: () => clock.now,
   };
