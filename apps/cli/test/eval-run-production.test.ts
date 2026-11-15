@@ -237,8 +237,7 @@ it("logs each denied tool with the tokens masked, even after close", async () =>
     const g = fakes(ws.tmpRoot);
     const second = await createProductionRunner(inputOf(ws), g.seams);
     g.seams.createRuntime.mock.calls[0]![0].sink!.record({ toolName: "Edit", toolUseId: "t4" });
-    expect(write).toHaveBeenCalledWith("Ferramenta negada: Edit (t4)
-");
+    expect(write).toHaveBeenCalledWith("Ferramenta negada: Edit (t4)\n");
     second.close();
   } finally {
     write.mockRestore();

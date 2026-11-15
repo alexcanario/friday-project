@@ -2,10 +2,7 @@ import { join } from "node:path";
 import { readdirSync } from "node:fs";
 import { afterEach, expect, it, vi } from "vitest";
 import { openDatabase } from "@friday/infrastructure";
-import {
-  createProductionRunner,
-  type ProductionInput,
-} from "../src/eval-run-production.ts";
+import { createProductionRunner, type ProductionInput } from "../src/eval-run-production.ts";
 import { CLAIMS, fakes, removeWorkspaces, workspace } from "./eval-run-fakes.ts";
 
 vi.mock("@friday/infrastructure", async (importOriginal) => {

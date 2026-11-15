@@ -25,6 +25,32 @@ export type JudgeRunnerDeps = {
 
 type JudgeResult = Awaited<ReturnType<JudgeStepRunner>>;
 
+const SHORT_ESCAPES: Record<string, string> = { "\n": "\\n", "\r": "\\r", "\t": "\\t" };
+
+/** C0, DEL, C1, U+2028, U+2029 and the zero-width and bidi format characters (as the daemon's). */
+function isControl(code: number): boolean {
+  return (
+    code <= 0x1f ||
+    (code >= 0x7f && code <= 0x9f) ||
+    (code >= 0x200b && code <= 0x200d) ||
+    (code >= 0x2028 && code <= 0x202e && code !== 0x202f) ||
+    code === 0x2060 ||
+    (code >= 0x2066 && code <= 0x2069) ||
+    code === 0xfeff
+  );
+}
+
+/** Turns line breaks and other control characters into visible escape sequences. */
+export function escapeControl(text: string): string {
+  let out = "";
+  for (const ch of text) {
+    const code = ch.charCodeAt(0);
+    if (!isControl(code)) out += ch;
+    else out += SHORT_ESCAPES[ch] ?? `\\u${code.toString(16).padStart(4, "0")}`;
+  }
+  return out;
+}
+
 /**
  * The Judge prompt of an experiment run: the daemon's `judgeInputOf` prompt plus the criteria,
  * without the QA report (D115 item 2), so the three variants get the same prompt.
@@ -37,7 +63,7 @@ export function judgePromptOf(input: {
   const head = `Review the pull request of issue #${input.issue.number}. The head SHA of the pull request is ${input.headSha}. Read the diff with pr_diff and finish by calling review_verdict once, with that value in headSha.`;
   const lines = input.criteria.map((c) => {
     const proof = c.proof.kind === "command" ? c.proof.command : c.proof.step;
-    return `${c.index}. ${c.claim} [${c.proof.kind}: ${proof}]`;
+    return `${c.index}. ${escapeControl(c.claim)} [${c.proof.kind}: ${escapeControl(proof)}]`;
   });
   return [head, "", "Critérios de aceite:", ...lines].join("\n");
 }

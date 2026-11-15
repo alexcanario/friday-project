@@ -125,15 +125,13 @@ describe("judgePromptOf", () => {
     });
     const lines = prompt.split("\n");
     expect(lines).toHaveLength(4);
-    expect(lines.at(-1)).toBe(
-      String.raw`1. a\nb\r\tc\u001bd\u0005e\u2028f\u007fg [command: x\ny]`,
-    );
+    expect(lines.at(-1)).toBe(String.raw`1. a\nb\r\tc\u001bd\u0005e\u2028f\u007fg [command: x\ny]`);
     const bidi = judgePromptOf({
       issue: ISSUE,
       headSha: H1,
-      criteria: [{ index: 1, claim: "a\u202eb", proof: { kind: "step" as const, step: "s" } }],
+      criteria: [{ index: 1, claim: "a\u202eb", proof: { kind: "browser" as const, step: "s" } }],
     });
-    expect(bidi.split("\n").at(-1)).toBe(String.raw`1. a\u202eb [step: s]`);
+    expect(bidi.split("\n").at(-1)).toBe(String.raw`1. a\u202eb [browser: s]`);
     expect(escapeControl("plano ção ✓ \\")).toBe("plano ção ✓ \\");
   });
 });
