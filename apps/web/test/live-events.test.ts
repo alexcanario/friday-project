@@ -8,7 +8,10 @@ class FakeSource implements LiveSource {
   readyState = 1;
   closed = 0;
   readonly listeners = new Map<string, Listener[]>();
-  constructor(readonly url: string) {}
+  readonly url: string;
+  constructor(url: string) {
+    this.url = url;
+  }
   addEventListener(type: string, listener: Listener): void {
     this.listeners.set(type, [...(this.listeners.get(type) ?? []), listener]);
   }

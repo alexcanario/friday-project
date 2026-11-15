@@ -4,6 +4,7 @@ const LABELS: Record<ConnectionState, string> = {
   loading: "Carregando…",
   connected: "Conectado",
   offline: "Sem conexão",
+  reconnecting: "Reconectando…",
 };
 
 export function ConnectionStatus({ state }: { state: ConnectionState }) {
