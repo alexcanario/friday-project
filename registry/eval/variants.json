@@ -1,0 +1,17 @@
+[
+  {
+    "id": "generic",
+    "title": "Implementador genérico",
+    "description": "O implementador genérico do produto, sem pacote de contexto: um único agente implementa qualquer tipo de issue."
+  },
+  {
+    "id": "generic-context",
+    "title": "Implementador genérico com contexto",
+    "description": "O mesmo implementador genérico do produto, mas recebe o pacote de contexto do tipo da issue (backend ou frontend) antes de começar; mede se o ganho vem do contexto e não do papel."
+  },
+  {
+    "id": "specialists",
+    "title": "Especialistas",
+    "description": "Os agentes especialistas backend e frontend: cada issue vai para o especialista do seu tipo, e as issues que cruzam os dois passam de um para o outro."
+  }
+]

@@ -1,0 +1,116 @@
+[
+  {
+    "id": "E1",
+    "kind": "backend",
+    "title": "GET /health com status e hora do servidor",
+    "body": "Expor na API mínima o endpoint GET /health, que responde 200 com JSON contendo o campo status igual a \"ok\" e o campo serverTime em formato ISO 8601 UTC. A hora vem de uma abstração TimeProvider injetada, para o teste xUnit fixar o relógio. Sem pacote novo.",
+    "criteria": [
+      "GET /health responde 200",
+      "O corpo contém status igual a \"ok\"",
+      "O corpo contém serverTime em ISO 8601 UTC vindo do TimeProvider injetado",
+      "Um teste xUnit fixa o relógio e confere o valor de serverTime"
+    ]
+  },
+  {
+    "id": "E2",
+    "kind": "backend",
+    "title": "Validar o CPF em ValidateCpf",
+    "body": "Criar a classe estática CpfValidator com o método ValidateCpf(string value), que devolve true só para um CPF com 11 dígitos, dígitos verificadores corretos e não composto por um único dígito repetido. Aceita pontos e traço na entrada e ignora-os. Sem pacote novo.",
+    "criteria": [
+      "ValidateCpf aceita \"529.982.247-25\" e \"52998224725\"",
+      "ValidateCpf rejeita um CPF com dígito verificador errado",
+      "ValidateCpf rejeita \"111.111.111-11\" e qualquer sequência de um único dígito",
+      "ValidateCpf rejeita texto nulo, vazio ou com letras",
+      "Os casos acima estão cobertos por testes xUnit"
+    ]
+  },
+  {
+    "id": "E3",
+    "kind": "backend",
+    "title": "POST /orders com validação e total calculado",
+    "body": "Expor na API mínima o endpoint POST /orders. O corpo traz a lista items, cada item com sku, quantity e unitPrice. O endpoint responde 201 com o campo total (soma de quantity vezes unitPrice, arredondada para 2 casas) e 400 com a lista de erros quando items está vazio, quantity é menor que 1 ou unitPrice é negativo. Sem persistência e sem pacote novo.",
+    "criteria": [
+      "POST /orders com itens válidos responde 201 e o total correto com 2 casas",
+      "POST /orders com items vazio responde 400",
+      "POST /orders com quantity menor que 1 responde 400 e nomeia o item inválido",
+      "POST /orders com unitPrice negativo responde 400",
+      "Os casos acima estão cobertos por testes xUnit"
+    ]
+  },
+  {
+    "id": "E4",
+    "kind": "frontend",
+    "title": "Página Blazor com contador de caracteres",
+    "body": "Criar a página Blazor /counter-text com um campo de texto e, abaixo, a quantidade de caracteres digitados. A lógica fica na classe C# TextCounter (método Count(string? value), que trata nulo como zero), testável por xUnit sem biblioteca de teste de componentes. A página só liga o campo à classe. Sem pacote novo.",
+    "criteria": [
+      "A página /counter-text existe e mostra o campo e a contagem",
+      "TextCounter.Count devolve o número de caracteres do texto",
+      "TextCounter.Count trata nulo como zero",
+      "Testes xUnit cobrem a classe TextCounter"
+    ]
+  },
+  {
+    "id": "E5",
+    "kind": "frontend",
+    "title": "Componente Blazor de mensagem de alerta com níveis",
+    "body": "Criar o componente Blazor AlertMessage com os parâmetros Level (info, warning ou error) e Text. A classe C# AlertStyle (método CssClassFor(level)) devolve a classe CSS de cada nível e lança ArgumentOutOfRangeException para um nível desconhecido. O componente usa a classe e mostra o texto. A lógica é testada por xUnit. Sem pacote novo.",
+    "criteria": [
+      "AlertMessage mostra o texto recebido em Text",
+      "AlertStyle.CssClassFor devolve uma classe diferente para info, warning e error",
+      "AlertStyle.CssClassFor lança ArgumentOutOfRangeException para nível desconhecido",
+      "Testes xUnit cobrem a classe AlertStyle"
+    ]
+  },
+  {
+    "id": "E6",
+    "kind": "frontend",
+    "title": "Página Blazor com formulário de cadastro validado",
+    "body": "Criar a página Blazor /signup com os campos nome e e-mail e o botão Enviar. A classe C# SignupForm (método Validate()) devolve a lista de erros em pt-BR: nome vazio, e-mail vazio ou e-mail sem arroba. A página mostra os erros e só considera o envio válido quando a lista está vazia. A lógica é testada por xUnit. Sem pacote novo.",
+    "criteria": [
+      "A página /signup existe com os campos nome e e-mail e o botão Enviar",
+      "SignupForm.Validate devolve erro quando o nome está vazio",
+      "SignupForm.Validate devolve erro quando o e-mail está vazio ou não contém arroba",
+      "SignupForm.Validate devolve lista vazia para dados válidos",
+      "Testes xUnit cobrem a classe SignupForm"
+    ]
+  },
+  {
+    "id": "E7",
+    "kind": "cross",
+    "title": "Lista de produtos: API e página Blazor",
+    "body": "Expor na API mínima o endpoint GET /products, que devolve a lista fixa de produtos (id, name, price) em memória, com filtro opcional ?name= que ignora maiúsculas. Criar a página Blazor /products que chama o endpoint e mostra a lista em uma tabela, com a lógica de formatar o preço em pt-BR na classe C# PriceFormatter, testável por xUnit. Sem pacote novo.",
+    "criteria": [
+      "GET /products responde 200 com a lista de produtos",
+      "GET /products?name=x filtra por nome sem diferenciar maiúsculas",
+      "PriceFormatter formata o preço em pt-BR com 2 casas",
+      "A página /products mostra a lista em uma tabela",
+      "Testes xUnit cobrem o endpoint e a classe PriceFormatter"
+    ]
+  },
+  {
+    "id": "E8",
+    "kind": "cross",
+    "title": "Cadastro de tarefa: endpoint POST e formulário Blazor",
+    "body": "Expor na API mínima o endpoint POST /tasks, que recebe title (obrigatório, até 80 caracteres) e responde 201 com id e title, ou 400 com o motivo. Criar a página Blazor /tasks/new com o campo de título e o botão Salvar; a classe C# TaskForm (método Validate()) aplica as mesmas regras de título antes de chamar o endpoint, e a página mostra o motivo do erro. A lógica é testada por xUnit. Sem pacote novo.",
+    "criteria": [
+      "POST /tasks com título válido responde 201 com id e title",
+      "POST /tasks sem título ou com mais de 80 caracteres responde 400 com o motivo",
+      "TaskForm.Validate aplica as mesmas regras de título do endpoint",
+      "A página /tasks/new mostra o motivo do erro quando a validação falha",
+      "Testes xUnit cobrem o endpoint e a classe TaskForm"
+    ]
+  },
+  {
+    "id": "E9",
+    "kind": "cross",
+    "title": "Contagem de visitas: endpoint e indicador na página",
+    "body": "Expor na API mínima o endpoint POST /visits, que incrementa um contador em memória e responde 200 com o campo count, e GET /visits, que devolve o valor atual sem incrementar. Criar o componente Blazor VisitBadge, que chama o POST uma vez ao carregar e mostra o valor; a classe C# VisitLabel (método For(int count)) devolve o texto em pt-BR, no singular para 1 (\"1 visita\") e no plural para os demais (\"N visitas\"). A lógica é testada por xUnit. Sem pacote novo.",
+    "criteria": [
+      "POST /visits incrementa o contador e responde 200 com count",
+      "GET /visits devolve o valor atual sem incrementar",
+      "VisitLabel.For devolve \"1 visita\" para 1 e \"N visitas\" para os demais",
+      "O componente VisitBadge mostra o texto de VisitLabel com o valor devolvido pelo POST",
+      "Testes xUnit cobrem os dois endpoints e a classe VisitLabel"
+    ]
+  }
+]

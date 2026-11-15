@@ -1,0 +1,68 @@
+[
+  {
+    "itemId": "E1",
+    "kind": "backend",
+    "variant": "generic",
+    "status": "done",
+    "costUsd": 1,
+    "rounds": 1,
+    "judgeFirstRound": true,
+    "durationS": 100,
+    "peakContextTokens": 10000
+  },
+  {
+    "itemId": "E2",
+    "kind": "backend",
+    "variant": "generic",
+    "status": "done",
+    "costUsd": 2,
+    "rounds": 1,
+    "judgeFirstRound": true,
+    "durationS": 200,
+    "peakContextTokens": 30000
+  },
+  {
+    "itemId": "E3",
+    "kind": "backend",
+    "variant": "generic",
+    "status": "done",
+    "costUsd": 3,
+    "rounds": 2,
+    "judgeFirstRound": false,
+    "durationS": 300,
+    "peakContextTokens": 50000
+  },
+  {
+    "itemId": "E7",
+    "kind": "cross",
+    "variant": "generic",
+    "status": "failed",
+    "costUsd": 4,
+    "rounds": 4,
+    "judgeFirstRound": false,
+    "durationS": 400,
+    "peakContextTokens": 70000
+  },
+  {
+    "itemId": "E1",
+    "kind": "backend",
+    "variant": "specialists",
+    "status": "done",
+    "costUsd": null,
+    "rounds": 0,
+    "judgeFirstRound": true,
+    "durationS": 100,
+    "peakContextTokens": null
+  },
+  {
+    "itemId": "E7",
+    "kind": "cross",
+    "variant": "specialists",
+    "status": "failed",
+    "costUsd": 2,
+    "rounds": 3,
+    "judgeFirstRound": false,
+    "durationS": 300,
+    "peakContextTokens": 20000
+  }
+]

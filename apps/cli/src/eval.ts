@@ -1,21 +1,23 @@
-import { readFileSync } from "node:fs";
 import {
   compareToBaseline,
   evalBaselineSchema,
   evalRunsSchema,
   evalSummary,
 } from "@friday/application";
+import {
+  compareVariants,
+  fail,
+  pct,
+  readJson,
+  variantsUsage,
+  type Result,
+} from "./eval-variants.ts";
 
 const USAGE = "Uso: friday eval --input <arquivo> --baseline <arquivo>\n";
 
-type Result = { stdout: string; stderr: string; code: 0 | 1 | 2 };
+const KNOWN_FLAGS = new Set(["--input", "--baseline", "--compare", "--kind"]);
 
-const fail = (reason: string): Result => ({ stdout: "", stderr: `${reason}\n`, code: 2 });
-const pct = (rate: number): string => `${Math.round(rate * 100)}%`;
-
-const KNOWN_FLAGS = new Set(["--input", "--baseline"]);
-
-type Flags = { ok: true; input: string; baseline: string } | { ok: false; unknown: string | null };
+type Flags = { ok: true; values: Map<string, string> } | { ok: false; unknown: string | null };
 
 function parseFlags(args: string[]): Flags {
   for (let i = 1; i < args.length; i += 2) {
@@ -30,34 +32,18 @@ function parseFlags(args: string[]): Flags {
       return { ok: false, unknown: null };
     values.set(key, value);
   }
-  const input = values.get("--input");
-  const baseline = values.get("--baseline");
-  if (input === undefined || baseline === undefined) return { ok: false, unknown: null };
-  return { ok: true, input, baseline };
+  return { ok: true, values };
 }
 
-function readJson(file: string): { ok: true; value: unknown } | { ok: false; reason: string } {
-  try {
-    return { ok: true, value: JSON.parse(readFileSync(file, "utf8")) };
-  } catch {
-    return { ok: false, reason: `Erro: não foi possível ler o JSON de ${file}` };
-  }
-}
-
-export function evalCommand(args: string[]): Result {
-  const flags = parseFlags(args);
-  if (!flags.ok) {
-    if (flags.unknown !== null) return fail(`Erro: flag desconhecida: ${flags.unknown}`);
-    return { stdout: "", stderr: USAGE, code: 2 };
-  }
-  const rawRuns = readJson(flags.input);
+function compareBaseline(input: string, baselineFile: string): Result {
+  const rawRuns = readJson(input);
   if (!rawRuns.ok) return fail(rawRuns.reason);
-  const rawBaseline = readJson(flags.baseline);
+  const rawBaseline = readJson(baselineFile);
   if (!rawBaseline.ok) return fail(rawBaseline.reason);
   const runs = evalRunsSchema.safeParse(rawRuns.value);
-  if (!runs.success) return fail(`Erro: arquivo de entrada inválido: ${flags.input}`);
+  if (!runs.success) return fail(`Erro: arquivo de entrada inválido: ${input}`);
   const baseline = evalBaselineSchema.safeParse(rawBaseline.value);
-  if (!baseline.success) return fail(`Erro: arquivo de linha de base inválido: ${flags.baseline}`);
+  if (!baseline.success) return fail(`Erro: arquivo de linha de base inválido: ${baselineFile}`);
   const summary = evalSummary(runs.data);
   const cmp = compareToBaseline(summary, baseline.data, 0);
   const lines = [
@@ -72,4 +58,19 @@ export function evalCommand(args: string[]): Result {
     );
   }
   return { stdout: lines.join("\n") + "\n", stderr: "", code: cmp.regressed ? 1 : 0 };
+}
+
+export function evalCommand(args: string[]): Result {
+  const flags = parseFlags(args);
+  if (!flags.ok) {
+    if (flags.unknown !== null) return fail(`Erro: flag desconhecida: ${flags.unknown}`);
+    return args.includes("--compare") ? variantsUsage() : { stdout: "", stderr: USAGE, code: 2 };
+  }
+  const { values } = flags;
+  if (values.has("--compare")) return compareVariants(values);
+  if (values.has("--kind")) return fail("Erro: --kind exige --compare variants");
+  const input = values.get("--input");
+  const baseline = values.get("--baseline");
+  if (input === undefined || baseline === undefined) return { stdout: "", stderr: USAGE, code: 2 };
+  return compareBaseline(input, baseline);
 }
