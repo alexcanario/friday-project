@@ -8,6 +8,7 @@ import { git } from "./worktree-helpers.ts";
 
 let repoDir: string;
 let worktree: string;
+let cleanup: (() => void) | undefined;
 
 const commit = () =>
   commitWorktree({
@@ -22,9 +23,15 @@ const blob = (path: string): string =>
 const changedFiles = () => git(worktree, "show", "--name-only", "--format=", "HEAD");
 
 beforeEach(async () => {
-  ({ repoDir, worktree } = await makeEolScenario());
+  const scenario = await makeEolScenario();
+  cleanup = scenario.cleanup;
+  ({ repoDir, worktree } = scenario);
 });
-afterEach(() => vi.unstubAllEnvs());
+afterEach(() => {
+  vi.unstubAllEnvs();
+  cleanup?.();
+  cleanup = undefined;
+});
 
 describe("commitWorktree end-of-line handling", () => {
   it("commit adds nothing for an untouched file in a worktree made by the manager", async () => {

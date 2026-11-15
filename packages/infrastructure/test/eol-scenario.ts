@@ -1,4 +1,4 @@
-import { mkdtempSync, writeFileSync } from "node:fs";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { vi } from "vitest";
@@ -6,7 +6,13 @@ import { GitWorktreeManager } from "../src/index.ts";
 import { git, makeFixture } from "./worktree-helpers.ts";
 
 /** Repo whose develop holds eol.txt (LF) and changed.txt, with global autocrlf=true, plus a manager-made worktree. */
-export async function makeEolScenario(): Promise<{ repoDir: string; worktree: string }> {
+export async function makeEolScenario(): Promise<{
+  repoDir: string;
+  worktree: string;
+  base: string;
+  cfgDir: string;
+  cleanup: () => void;
+}> {
   const fx = makeFixture();
   const cfgDir = mkdtempSync(join(tmpdir(), "friday-eol-cfg-"));
   const cfg = join(cfgDir, "gitconfig");
@@ -27,5 +33,9 @@ export async function makeEolScenario(): Promise<{ repoDir: string; worktree: st
     base: "develop",
   });
   if (!res.ok) throw new Error(res.error.message);
-  return { repoDir: fx.repoDir, worktree: res.value.path };
+  const cleanup = (): void => {
+    rmSync(fx.base, { recursive: true, force: true });
+    rmSync(cfgDir, { recursive: true, force: true });
+  };
+  return { repoDir: fx.repoDir, worktree: res.value.path, base: fx.base, cfgDir, cleanup };
 }

@@ -7,6 +7,8 @@ export const git = (cwd: string, ...args: string[]): string =>
   execFileSync("git", args, { cwd, encoding: "utf8", stdio: "pipe" }).trim();
 
 export interface Fixture {
+  /** `friday-wt-*` directory, parent of `repoDir`, `origin.git` and `root`. */
+  base: string;
   repoDir: string;
   root: string;
   project: string;
@@ -39,7 +41,7 @@ export function makeFixture(): Fixture {
   git(repoDir, "commit", "-m", "develop");
   git(repoDir, "push", "origin", "develop");
   git(repoDir, "checkout", "main");
-  return { repoDir, root: join(base, "wt"), project: "proj" };
+  return { base, repoDir, root: join(base, "wt"), project: "proj" };
 }
 
 export function commitOnDevelop(fx: Fixture, name: string): string {
