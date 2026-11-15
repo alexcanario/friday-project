@@ -5,6 +5,8 @@ export type GhExec = (args: string[]) => Promise<string>;
 
 export const GH_MAX_BUFFER = 64 * 1024 * 1024;
 
+const MAX_PAGES = 10;
+
 const REPO = "repos/alexcanario/friday-project";
 
 const defaultExec: GhExec = (args) =>
@@ -61,29 +63,31 @@ export function createGhNightReader(deps: { exec?: GhExec } = {}): NightReader {
   const get = async (args: string[]): Promise<RawItem[]> => parsePages(await exec(args));
   // Manual paging: `gh --paginate` breaks behind the cloud proxy past 100 items.
   // Stops at the first page with fewer than 100 raw items (before any filtering).
-  const getAllPages = async (path: string): Promise<RawItem[]> => {
+  // Ceiling of MAX_PAGES pages (D100): a still-full last page is an error, never a silent cut.
+  const getAllPages = async (method: string, path: string): Promise<RawItem[]> => {
     const raw: RawItem[] = [];
-    for (let page = 1; ; page++) {
+    for (let page = 1; page <= MAX_PAGES; page++) {
       const items = await get(["api", `${path}&page=${page}`]);
       raw.push(...items);
       if (items.length < 100) return raw;
     }
+    throw new Error(
+      `${method}: teto de ${MAX_PAGES} páginas (${MAX_PAGES * 100} itens) atingido e a ${MAX_PAGES}ª página ainda veio cheia`,
+    );
   };
   return {
     async listComments(issue): Promise<NightComment[]> {
-      const raw: RawItem[] = [];
-      for (let page = 1; ; page++) {
-        const items = await get([
-          "api",
-          `${REPO}/issues/${issue}/comments?per_page=100&page=${page}`,
-        ]);
-        raw.push(...items);
-        if (items.length < 100) break;
-      }
+      const raw = await getAllPages(
+        "listComments",
+        `${REPO}/issues/${issue}/comments?per_page=100`,
+      );
       return raw.map((r) => ({ body: r.body ?? "", createdAt: r.created_at }));
     },
     async listOpenIssues(label): Promise<NightIssue[]> {
-      const raw = await getAllPages(`${REPO}/issues?state=open&per_page=100&labels=${label}`);
+      const raw = await getAllPages(
+        "listOpenIssues",
+        `${REPO}/issues?state=open&per_page=100&labels=${label}`,
+      );
       return raw
         .filter((r) => r.pull_request === undefined)
         .map((r) => ({ number: r.number, title: r.title, labels: r.labels.map((l) => l.name) }));
@@ -93,7 +97,9 @@ export function createGhNightReader(deps: { exec?: GhExec } = {}): NightReader {
       return (await get(["api", path])).map(toPull);
     },
     async listOpenPulls() {
-      return (await getAllPages(`${REPO}/pulls?state=open&per_page=100`)).map(toPull);
+      return (await getAllPages("listOpenPulls", `${REPO}/pulls?state=open&per_page=100`)).map(
+        toPull,
+      );
     },
   };
 }

@@ -66,12 +66,21 @@ describe("night phase C step 3", () => {
       "Com digest e `since` não nulo",
       "repos/alexcanario/friday-project/issues/<n>/comments?per_page=100&since=<since>&page=<p>",
       "Nunca usar --paginate: o proxy recusa o link da página seguinte (repositories/<id>)",
-      `--jq '[.[] | select(.created_at > "<since>") | {createdAt: .created_at, body: .body}]'`,
+      `--jq '[.[] | {createdAt: .created_at, body: .body}]'`,
       "Caso contrário `notes` = `[]` (",
     ]) {
       expect(step, part).toContain(part);
     }
     expect(step).not.toContain('issues/<n>/comments?per_page=100&since=<since>"');
+  });
+
+  it("phase C step 3 counts raw items before filtering by created_at", () => {
+    const step = phaseCStep3();
+    expect(step).toContain("100 itens brutos");
+    expect(step).toContain("created_at");
+    const line = step.split("\n").find((l) => l.includes("per_page=100&since="));
+    expect(line).toBeDefined();
+    expect(line).not.toContain("select(.created_at");
   });
 
   it("phase C step 3 uses the UTC date of phase C as nightOf", () => {
