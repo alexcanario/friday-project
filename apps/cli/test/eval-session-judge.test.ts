@@ -4,6 +4,7 @@ import {
   renderReviewBody,
   toAgentRunOptions,
   type AgentRunRequest,
+  type GitHubPort,
   type ReviewCredential,
 } from "@friday/application";
 import type { ReviewVerdict, RunFinished } from "@friday/contracts";
@@ -76,7 +77,7 @@ function fakeRuntime(queued: RunFinished[], requests: AgentRunRequest[]) {
 function setup(opts: Opts = {}) {
   const requests: AgentRunRequest[] = [];
   const staleVerdicts = fakeStale(opts.staleAlready === true);
-  const postReview = vi.fn(async () => ({ id: 9 }));
+  const postReview = vi.fn<GitHubPort["postReview"]>(async () => ({ id: 9 }));
   const reviewer = vi.fn<(token: string) => { postReview: typeof postReview }>(() => ({
     postReview,
   }));
