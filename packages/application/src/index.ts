@@ -166,4 +166,11 @@ export {
   type VariantRunRequest,
   type VariantRunner,
 } from "./eval-executor.ts";
+export {
+  runIssuePipeline,
+  type PipelineStepKind,
+  type PipelineStepRequest,
+  type PipelineStepResult,
+  type PipelineSteps,
+} from "./issue-pipeline.ts";
 export { compareToBaseline, type EvalBaseline, type EvalComparison } from "./eval-compare.ts";
