@@ -154,4 +154,16 @@ export {
 } from "@friday/contracts";
 export { evalSummary, type EvalRun, type EvalSummary } from "./eval-summary.ts";
 export { summarizeByVariant, type VariantSummary } from "./eval-variants.ts";
+export {
+  EXPERIMENT_ROUND_CAP_USD,
+  EXPERIMENT_RUN_CAP_USD,
+  planExperiment,
+  rolesFor,
+  runExperiment,
+  type ExperimentItem,
+  type PlannedRun,
+  type VariantOutcome,
+  type VariantRunRequest,
+  type VariantRunner,
+} from "./eval-executor.ts";
 export { compareToBaseline, type EvalBaseline, type EvalComparison } from "./eval-compare.ts";

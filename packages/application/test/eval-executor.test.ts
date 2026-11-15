@@ -99,9 +99,20 @@ describe("planExperiment", () => {
     expect(label("E1", 2)).toBe("b c a");
     expect(label("E2", 1)).toBe("b c a");
     expect(label("E2", 2)).toBe("c a b");
-    expect(plan.map((p) => p.itemId)).toEqual(
-      ["E1", "E1", "E1", "E1", "E1", "E1", "E2", "E2", "E2", "E2", "E2", "E2"],
-    );
+    expect(plan.map((p) => p.itemId)).toEqual([
+      "E1",
+      "E1",
+      "E1",
+      "E1",
+      "E1",
+      "E1",
+      "E2",
+      "E2",
+      "E2",
+      "E2",
+      "E2",
+      "E2",
+    ]);
     expect(planExperiment([], ["a", "b"], 2)).toEqual([]);
     expect(planExperiment([{ id: "E1", kind: "backend" }], ["a", "b"], 0)).toEqual([]);
   });
