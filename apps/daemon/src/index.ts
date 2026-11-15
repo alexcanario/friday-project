@@ -80,7 +80,13 @@ export {
   type RuntimeRepository,
   type RuntimeWiringDeps,
 } from "./runtime-wiring.ts";
-export { createJudgeBranch, type JudgeBranchDeps, type JudgeCompose } from "./judge-wiring.ts";
+export {
+  createJudgeBranch,
+  readReviewCredential,
+  type JudgeBranchDeps,
+  type JudgeCompose,
+  type TokenProviderFactory,
+} from "./judge-wiring.ts";
 export {
   buildTriageRequest,
   type TriageAgentConfig,
