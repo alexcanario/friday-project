@@ -1,7 +1,9 @@
 import {
   classifyRisk as realClassifyRisk,
   decideGates as realDecideGates,
+  PrDiffTruncatedError,
   type IssueSummary,
+  type PrDiff,
 } from "@friday/application";
 import type { IssueState, Risk } from "@friday/domain";
 import {
@@ -55,10 +57,23 @@ export function logError(env: HandlerEnv, message: string, error: unknown): void
   env.deps.log?.(`${message}: ${error instanceof Error ? error.message : String(error)}`);
 }
 
+type DiffRead = { diff: PrDiff } | { truncated: PrDiffTruncatedError };
+
+/** A PR over the API file limit has an unreadable diff; it is read as high risk (D101). */
+async function readDiff(env: HandlerEnv, pr: number): Promise<DiffRead> {
+  try {
+    return { diff: await env.deps.github.getPrDiff(pr) };
+  } catch (error) {
+    if (error instanceof PrDiffTruncatedError) return { truncated: error };
+    throw error;
+  }
+}
+
 async function tierOf(env: HandlerEnv, pr: number): Promise<Risk | null> {
-  const diff = await env.deps.github.getPrDiff(pr);
+  const read = await readDiff(env, pr);
+  if ("truncated" in read) return "high";
   const config = env.deps.readConfig();
-  return config === null ? null : env.classify(diff, config.risk).risk;
+  return config === null ? null : env.classify(read.diff, config.risk).risk;
 }
 
 export function approvalContext(env: HandlerEnv, approval: ApprovalDeps): ApprovalContext {
@@ -110,16 +125,21 @@ async function assess(
     deps.log?.(`A issue ${issueId} em RiskCheck não tem PR associado`);
     return null;
   }
-  const diff = await deps.github.getPrDiff(pr);
+  const read = await readDiff(env, pr);
   const config = deps.readConfig();
   if (config === null) {
     deps.log?.(`Configuração de risco indisponível para a issue ${issueId}`);
     return null;
   }
+  if ("truncated" in read) {
+    deps.log?.(
+      `Diff do PR ${pr} da issue ${issueId} excede o limite (${read.truncated.expected} arquivos); tratado como risco high`,
+    );
+  }
   const decision = env.decide({
-    risk: env.classify(diff, config.risk).risk,
+    risk: "diff" in read ? env.classify(read.diff, config.risk).risk : "high",
     mergeMode: config.mergeMode,
-    changedPaths: diff.files.map((f) => f.path),
+    changedPaths: "diff" in read ? read.diff.files.map((f) => f.path) : [],
     screenPaths: config.screenPaths,
     issueGates: labels.filter((l) => l.startsWith("gate:")),
   });
