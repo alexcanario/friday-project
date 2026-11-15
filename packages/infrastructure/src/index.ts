@@ -2,6 +2,7 @@ export { loadFactoryConfig, type LoadFactoryConfigResult } from "./factory-confi
 export { loadTriageAgent, type LoadTriageAgentResult } from "./triage-agent-loader.ts";
 export { buildRunEnv } from "./run-env.ts";
 export { readContextPack } from "./context-packs.ts";
+export { createExperimentRunFile } from "./experiment-run-file.ts";
 export { buildQueryOptions, type QueryOptionsInput } from "./query-options.ts";
 export {
   ClaudeAgentSdkRuntime,
