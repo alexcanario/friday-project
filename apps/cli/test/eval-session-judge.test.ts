@@ -9,7 +9,7 @@ import {
 } from "@friday/application";
 import type { ReviewVerdict, RunFinished } from "@friday/contracts";
 import { loadFactoryConfig } from "@friday/infrastructure";
-import { createJudgeStepRunner, judgePromptOf } from "../src/eval-session-judge.ts";
+import { createJudgeStepRunner, escapeControl, judgePromptOf } from "../src/eval-session-judge.ts";
 import { root } from "./helpers.ts";
 
 const loaded = loadFactoryConfig(join(root, "registry"));
@@ -114,6 +114,27 @@ describe("judgePromptOf", () => {
     expect(prompt).toBe(
       `Review the pull request of issue #12. The head SHA of the pull request is ${H1}. Read the diff with pr_diff and finish by calling review_verdict once, with that value in headSha.\n\nCritérios de aceite:\n1. c1 [command: dotnet test]`,
     );
+  });
+
+  it("escapes the control characters of the criteria and leaves other text unchanged", () => {
+    const claim = "a\nb\r\tc\u001bd\u0005e\u2028f\u007fg";
+    const prompt = judgePromptOf({
+      issue: ISSUE,
+      headSha: H1,
+      criteria: [{ index: 1, claim, proof: { kind: "command" as const, command: "x\ny" } }],
+    });
+    const lines = prompt.split("\n");
+    expect(lines).toHaveLength(4);
+    expect(lines.at(-1)).toBe(
+      String.raw`1. a\nb\r\tc\u001bd\u0005e\u2028f\u007fg [command: x\ny]`,
+    );
+    const bidi = judgePromptOf({
+      issue: ISSUE,
+      headSha: H1,
+      criteria: [{ index: 1, claim: "a\u202eb", proof: { kind: "step" as const, step: "s" } }],
+    });
+    expect(bidi.split("\n").at(-1)).toBe(String.raw`1. a\u202eb [step: s]`);
+    expect(escapeControl("plano ção ✓ \\")).toBe("plano ção ✓ \\");
   });
 });
 
