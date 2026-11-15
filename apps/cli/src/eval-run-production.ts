@@ -1,5 +1,4 @@
 import { randomUUID } from "node:crypto";
-import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
@@ -30,7 +29,6 @@ import {
   createResultStore,
   createRunLookup,
   createRunRepository,
-  openDatabase,
   readContextPack,
   type ClaudeAgentSdkRuntimeDeps,
   type FridayDatabase,
@@ -38,6 +36,7 @@ import {
   type GitWorktreeManagerDeps,
 } from "@friday/infrastructure";
 import { projectIdOf } from "./daemon-values.ts";
+import { openEvalDatabase } from "./eval-run-database.ts";
 import { createMemoryStaleVerdicts } from "./eval-memory-stale.ts";
 import { redactedError } from "./eval-redacted-error.ts";
 import { checkProduction, type CheckedProduction } from "./eval-run-checks.ts";
@@ -109,35 +108,6 @@ function redactorOf(input: ProductionInput, checked: CheckedProduction): (text: 
   const names = [checked.authorTokenEnv];
   if (checked.review.mode === "env") names.push(checked.review.tokenEnv);
   return createRedactor(input.env, names);
-}
-
-/** The temporary eval database with the project row the `runs` rows point to. */
-function openEvalDatabase(
-  tmpRoot: string,
-  projectId: string,
-): { db: FridayDatabase; close(): void } {
-  const dir = mkdtempSync(join(tmpRoot, "friday-eval-"));
-  let db: FridayDatabase | null = null;
-  const close = () => {
-    try {
-      db?.close();
-    } finally {
-      rmSync(dir, { recursive: true, force: true });
-    }
-  };
-  try {
-    db = openDatabase(join(dir, "eval.db"));
-    db.sqlite.prepare("INSERT OR IGNORE INTO projects (id) VALUES (?)").run(projectId);
-    return { db, close };
-  } catch (error) {
-    // The error of the opening prevails over any error of the cleanup.
-    try {
-      close();
-    } catch {
-      // ignored on purpose
-    }
-    throw error;
-  }
 }
 
 type Wiring = {
@@ -215,23 +185,26 @@ function runnerOf(w: Wiring): VariantRunner {
   return redactingRunner(runner, w.redact);
 }
 
-function compose(input: ProductionInput, seams: Seams): { runner: VariantRunner; close(): void } {
-  // Every check runs before any token is used, any adapter is built or the database is opened.
-  const checked = checkProduction(input, seams.readReview);
+/** Builds the real pieces; an error here is masked by `compose`, a failed wiring closes the store. */
+function wire(
+  input: ProductionInput,
+  seams: Seams,
+  checked: CheckedProduction,
+  redact: (text: string) => string,
+): { runner: VariantRunner; close(): void } {
   const { repository } = checked.config;
-  const { repoDir } = checked.paths;
   const github = seams.createGitHub(checked.authorToken, {
     owner: repository.owner,
     repo: repository.name,
   });
   const gitHost = seams.createGitHost({
     tokenEnv: checked.authorTokenEnv,
-    repoDir,
+    repoDir: checked.paths.repoDir,
     mirrorDir: mirrorDirOf({ env: input.env, homeDir: input.homeDir, repository }),
     targetUrl: targetUrlOf(repository),
     env: input.env,
   });
-  const worktrees = seams.createWorktrees({ repoDir });
+  const worktrees = seams.createWorktrees({ repoDir: checked.paths.repoDir });
   const store = openEvalDatabase(seams.tmpRoot, projectIdOf(repository));
   let closed = false;
   const close = () => {
@@ -239,7 +212,6 @@ function compose(input: ProductionInput, seams: Seams): { runner: VariantRunner;
     closed = true;
     store.close();
   };
-  const redact = redactorOf(input, checked);
   try {
     const wiring = { input, seams, checked, github, gitHost, worktrees, db: store.db, redact };
     return { runner: runnerOf(wiring), close };
@@ -249,6 +221,18 @@ function compose(input: ProductionInput, seams: Seams): { runner: VariantRunner;
     } catch {
       // the error of the wiring prevails over any error of the cleanup
     }
+    throw error;
+  }
+}
+
+function compose(input: ProductionInput, seams: Seams): { runner: VariantRunner; close(): void } {
+  // Every check runs before any token is used, any adapter is built or the database is opened.
+  const checked = checkProduction(input, seams.readReview);
+  const redact = redactorOf(input, checked);
+  try {
+    return wire(input, seams, checked, redact);
+  } catch (error) {
+    // Adapters, database and wiring may carry the author or review token in their errors.
     throw redactedError(error, redact);
   }
 }
