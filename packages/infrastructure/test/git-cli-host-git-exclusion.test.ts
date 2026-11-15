@@ -17,8 +17,7 @@ function host(): GitCliHost {
   });
 }
 
-const push = () =>
-  host().push({ worktree: fx.wt, branch: "friday/345-x", message: "feat: x" });
+const push = () => host().push({ worktree: fx.wt, branch: "friday/345-x", message: "feat: x" });
 
 function put(rel: string, content: string): void {
   const path = join(fx.wt, rel);
