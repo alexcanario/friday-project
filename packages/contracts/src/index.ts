@@ -20,6 +20,14 @@ export { nightDigestSchema, type NightDigest } from "./night-digest.ts";
 export { triageAgentConfigSchema, type TriageAgentConfig } from "./triage-agent-config.ts";
 export { evalRunsSchema, evalBaselineSchema } from "./eval-input.ts";
 export {
+  experimentRunSchema,
+  experimentRunsSchema,
+  experimentVariantsSchema,
+  experimentIssuesSchema,
+  type ExperimentRun,
+  type ExperimentKind,
+} from "./eval-experiment.ts";
+export {
   runReview,
   healthResponse,
   issueItem,

@@ -38,7 +38,8 @@ describe("experiment schemas", () => {
       { ...run, peakContextTokens: 1.5 },
     ];
     for (const item of bad) expect(experimentRunsSchema.safeParse([item]).success).toBe(false);
-    const { peakContextTokens: _omitted, ...withoutPeak } = run;
+    const withoutPeak: Record<string, unknown> = { ...run };
+    delete withoutPeak.peakContextTokens;
     expect(experimentRunsSchema.safeParse([withoutPeak]).success).toBe(false);
   });
 

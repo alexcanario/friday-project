@@ -141,6 +141,16 @@ export {
   type GoldenScore,
   type GoldenVerdict,
 } from "./golden-score.ts";
-export { evalRunsSchema, evalBaselineSchema } from "@friday/contracts";
+export {
+  evalRunsSchema,
+  evalBaselineSchema,
+  experimentRunSchema,
+  experimentRunsSchema,
+  experimentVariantsSchema,
+  experimentIssuesSchema,
+  type ExperimentRun,
+  type ExperimentKind,
+} from "@friday/contracts";
 export { evalSummary, type EvalRun, type EvalSummary } from "./eval-summary.ts";
+export { summarizeByVariant, type VariantSummary } from "./eval-variants.ts";
 export { compareToBaseline, type EvalBaseline, type EvalComparison } from "./eval-compare.ts";
