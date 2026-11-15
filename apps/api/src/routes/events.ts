@@ -1,3 +1,4 @@
+import type { ServerResponse } from "node:http";
 import type { StoredEvent } from "@friday/application";
 import type { CostUpdatedEvent } from "@friday/contracts";
 import { z } from "zod";
@@ -32,7 +33,20 @@ function eventFrame(e: StoredEvent): string | null {
   return null;
 }
 
+interface OpenStream {
+  timer: NodeJS.Timeout;
+  raw: ServerResponse;
+}
+
 export function eventsRoutes(app: App, deps: ApiDeps): void {
+  const open = new Set<OpenStream>();
+  app.addHook("preClose", () => {
+    for (const s of open) {
+      clearInterval(s.timer);
+      s.raw.end();
+    }
+    open.clear();
+  });
   app.get(
     "/events/stream",
     { schema: { querystring: projectQuery, response: { 200: z.string() } } },
@@ -65,13 +79,20 @@ export function eventsRoutes(app: App, deps: ApiDeps): void {
             if (e.type === "RunFinished") sendCost(e.issueId, true);
           }
           for (const issueId of [...followed.keys()]) sendCost(issueId, false);
-        } catch {
+        } catch (err) {
+          req.log.warn({ err }, "sse tick failed; closing stream");
           clearInterval(timer);
+          open.delete(entry);
           raw.end();
         }
       };
       const timer = setInterval(tick, deps.ssePollMs ?? DEFAULT_POLL_MS);
-      raw.on("close", () => clearInterval(timer));
+      const entry: OpenStream = { timer, raw };
+      open.add(entry);
+      raw.on("close", () => {
+        clearInterval(timer);
+        open.delete(entry);
+      });
       if (resumeFrom !== null) tick();
     },
   );
