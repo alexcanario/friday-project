@@ -174,3 +174,17 @@ export {
   type PipelineSteps,
 } from "./issue-pipeline.ts";
 export { compareToBaseline, type EvalBaseline, type EvalComparison } from "./eval-compare.ts";
+export {
+  areasOf,
+  criteriaFor,
+  probableFilesOf,
+  sandboxIssueOf,
+  specialistPrompt,
+} from "./variant-prompts.ts";
+export {
+  createSandboxVariantRunner,
+  type RunSession,
+  type RunSessionFactory,
+  type SandboxVariantRunnerDeps,
+  type SpecialistResult,
+} from "./sandbox-variant-runner.ts";
