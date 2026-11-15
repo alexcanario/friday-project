@@ -55,3 +55,16 @@ it("keeps the open error and removes the temporary folder when openDatabase thro
   await expect(createProductionRunner(inputOf(ws), f.seams)).rejects.toThrow("boom open");
   expect(readdirSync(ws.tmpRoot)).toEqual([]);
 });
+
+it("masks the tokens in the error of openDatabase", async () => {
+  const ws = workspace();
+  const f = fakes(ws.tmpRoot);
+  vi.mocked(openDatabase).mockImplementationOnce(() => {
+    throw new Error("boom open author-tok");
+  });
+  await expect(createProductionRunner(inputOf(ws), f.seams)).rejects.toThrow(
+    expect.objectContaining({ message: "boom open ***" }),
+  );
+  expect(readdirSync(ws.tmpRoot)).toEqual([]);
+  expect(f.seams.createRuntime).not.toHaveBeenCalled();
+});
