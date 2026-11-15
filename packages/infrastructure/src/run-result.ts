@@ -14,6 +14,8 @@ export interface RunObservation {
   pushedSha: string | null;
   /** Head of the PR read by the daemon before the run; used as the `headSha` when there was no push (D107). */
   headFallback: string | null;
+  /** Largest input context seen in one main-thread `assistant` turn; null when none was readable. */
+  peakContextTokens: number | null;
 }
 
 type Tokens = NonNullable<RunFinished["tokens"]>;
@@ -31,6 +33,26 @@ function sumTokens(result: ResultMessage): Tokens {
     total.output += usage.outputTokens;
     total.cacheRead += usage.cacheReadInputTokens;
     total.cacheCreation += usage.cacheCreationInputTokens;
+  }
+  return total;
+}
+
+const isCount = (value: unknown): value is number =>
+  Number.isInteger(value) && (value as number) >= 0;
+
+/** Input context of one main-thread turn; null for other messages, subagent turns and unreadable usage. */
+export function turnContextTokens(message: SDKMessage): number | null {
+  if (message.type !== "assistant" || message.parent_tool_use_id !== null) return null;
+  const usage = (
+    message.message as unknown as { usage?: Record<string, unknown> | null } | undefined
+  )?.usage;
+  if (usage == null || !isCount(usage.input_tokens)) return null;
+  let total = usage.input_tokens;
+  for (const key of ["cache_read_input_tokens", "cache_creation_input_tokens"]) {
+    const value = usage[key];
+    if (value == null) continue;
+    if (!isCount(value)) return null;
+    total += value;
   }
   return total;
 }
@@ -75,6 +97,7 @@ export function classify(obs: RunObservation, agent: AgentRunOptions): RunFinish
     tokens: sumTokens(result),
     numTurns: result.num_turns,
     durationMs: result.duration_ms,
+    peakContextTokens: obs.peakContextTokens,
   };
   if (obs.toolViolation || !obs.initSeen) return { ...finished, status: "misconfigured" };
   if (finished.status === "succeeded" && agent.outputKind != null) {

@@ -128,6 +128,7 @@ function observe(over: Partial<RunObservation>, structured: unknown): RunObserva
     timedOut: false,
     pushedSha: null,
     headFallback: null,
+    peakContextTokens: null,
     ...over,
   };
 }

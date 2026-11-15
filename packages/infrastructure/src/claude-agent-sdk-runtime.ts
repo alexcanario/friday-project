@@ -18,7 +18,7 @@ import { createFridayMcpServer } from "./friday-mcp-server.ts";
 import { buildQueryOptions } from "./query-options.ts";
 import { buildRunEnv } from "./run-env.ts";
 import { buildToolPolicy } from "./tool-policy.ts";
-import { classify, emptyFinished, type RunObservation } from "./run-result.ts";
+import { classify, emptyFinished, turnContextTokens, type RunObservation } from "./run-result.ts";
 
 type QueryFn = (params: { prompt: string; options: Options }) => AsyncIterable<SDKMessage>;
 
@@ -31,6 +31,7 @@ function newObservation(headFallback: string | null): RunObservation {
     timedOut: false,
     pushedSha: null,
     headFallback,
+    peakContextTokens: null,
   };
 }
 
@@ -160,6 +161,9 @@ export class ClaudeAgentSdkRuntime implements AgentRuntime {
           abortController.abort();
           return;
         }
+      } else if (message.type === "assistant") {
+        const turn = turnContextTokens(message);
+        if (turn !== null) obs.peakContextTokens = Math.max(obs.peakContextTokens ?? 0, turn);
       } else if (message.type === "result") {
         obs.result = message;
         for (const d of message.permission_denials ?? []) {
