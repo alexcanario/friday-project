@@ -34,7 +34,10 @@ const result = (
   ...extra,
 });
 
-const specialistOk = (summary: string, extra: Partial<PipelineStepResult> = {}): SpecialistResult => ({
+const specialistOk = (
+  summary: string,
+  extra: Partial<PipelineStepResult> = {},
+): SpecialistResult => ({
   ...result([{ type: "PhaseCompleted" }, { type: "WorkReported" }], extra),
   report: reportOf(summary),
 });
@@ -180,7 +183,10 @@ describe("createSandboxVariantRunner", () => {
     expect((await held.runner.run(cross)).status).toBe("failed");
     expect(held.log.specialist).toHaveLength(1);
 
-    const unknown = build({ specialist: [specialistOk("backend", { costUsd: null })], qa: [QA_OK] });
+    const unknown = build({
+      specialist: [specialistOk("backend", { costUsd: null })],
+      qa: [QA_OK],
+    });
     expect((await unknown.runner.run(cross)).status).toBe("failed");
     expect(unknown.log.specialist).toHaveLength(1);
 
