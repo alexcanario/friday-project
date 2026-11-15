@@ -42,6 +42,15 @@ describe("runFinishedSchema", () => {
     expect(ok({ ...full, violations: [{ code: "a" }] })).toBe(false);
   });
 
+  it("accepts and rejects peakContextTokens", () => {
+    expect(ok({ ...full, peakContextTokens: 6650 })).toBe(true);
+    expect(ok({ ...full, peakContextTokens: null })).toBe(true);
+    expect(ok(full)).toBe(true);
+    expect(ok({ ...full, peakContextTokens: -1 })).toBe(false);
+    expect(ok({ ...full, peakContextTokens: 1.5 })).toBe(false);
+    expect(ok({ ...full, peakContextTokens: "1" })).toBe(false);
+  });
+
   it("stays outside the contract kinds", () => {
     const r = validateContract("runFinished" as never, {});
     expect(r.ok).toBe(false);
