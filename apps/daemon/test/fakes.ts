@@ -208,6 +208,7 @@ export class FakeIssueRepository implements IssueRepository {
 export class FakeGitHub {
   readonly issues: IssueSummary[] = [];
   readonly diffs = new Map<number, PrDiff>();
+  readonly diffFailures = new Map<number, Error>();
   readonly listCalls: string[] = [];
   readonly labelCalls: { issue: number; label: string }[] = [];
   addLabelFailure: Error | null = null;
@@ -224,6 +225,8 @@ export class FakeGitHub {
   }
 
   getPrDiff(pr: number): Promise<PrDiff> {
+    const failure = this.diffFailures.get(pr);
+    if (failure) return Promise.reject(failure);
     const diff = this.diffs.get(pr);
     return diff ? Promise.resolve(diff) : Promise.reject(new Error(`sem diff para o PR ${pr}`));
   }
