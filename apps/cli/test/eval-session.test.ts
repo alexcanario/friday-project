@@ -26,16 +26,17 @@ const CRITERIA = [
   { index: 1, claim: "c1", proof: { kind: "command" as const, command: "dotnet test" } },
 ];
 const WORK = { summary: "feito", headSha: SHA_A, changedFiles: ["src/A.cs"], notDone: [] };
-const PASS = {
-  verdict: "pass",
-  criteria: [{ index: 1, result: "pass", how: "ok", screenshots: [] }],
+const qaReport = (verdict: string, how: string) => ({
+  verdict,
+  criteria: [{ index: 1, result: verdict, how, screenshots: [] }],
   notChecked: [],
-};
-const FAIL = {
-  verdict: "fail",
-  criteria: [{ index: 1, result: "fail", how: "quebrou", screenshots: [] }],
-  notChecked: [],
-};
+});
+const PASS = qaReport("pass", "ok");
+const FAIL = qaReport("fail", "quebrou");
+const QA = { criteria: CRITERIA, maxBudgetUsd: 1 };
+const JUDGE = { maxBudgetUsd: 2 };
+const TARGET = { root: "/wts", project: "sandbox", issue: 12 };
+const held = (reason: string) => [{ type: "RunHeld", reason }];
 
 const done = (over: Partial<RunFinished> = {}): RunFinished => ({
   status: "succeeded",
@@ -100,10 +101,9 @@ function setup(opts: Opts = {}) {
   return { factory, requests, saved, worktrees, judge, readPrHead };
 }
 
-const work =
-  (over: Partial<RunFinished> = {}): Handler =>
-  () =>
-    done({ output: WORK, ...over });
+function work(over: Partial<RunFinished> = {}): Handler {
+  return () => done({ output: WORK, ...over });
+}
 const withPr: Handler = (req) => {
   req.friday!.effects!.run.onPrCreated!(77);
   return done({ output: WORK });
@@ -121,14 +121,8 @@ describe("createRunSessionFactory", () => {
   it("creates one worktree and branch per run and rejects when it cannot", async () => {
     const s = setup({ handlers: [work()] });
     const session = await s.factory.open(OPEN);
-    expect(s.worktrees.create).toHaveBeenCalledTimes(1);
-    expect(s.worktrees.create).toHaveBeenCalledWith({
-      root: "/wts",
-      project: "sandbox",
-      issue: 12,
-      title: "E1-generic-r1-t1",
-      base: "develop",
-    });
+    const title = "E1-generic-r1-t1";
+    expect(s.worktrees.create.mock.calls).toEqual([[{ ...TARGET, title, base: "develop" }]]);
     await session.specialist(specialist);
     expect(s.requests[0]!.friday!.effects!.run.branch).toBe(BRANCH);
     const codes = ["WorktreeExists", "WorktreeCreateFailed", "InvalidPath"] as const;
@@ -146,12 +140,7 @@ describe("createRunSessionFactory", () => {
     const session = await s.factory.open(OPEN);
     await session.close();
     await session.close();
-    expect(s.worktrees.remove).toHaveBeenCalledTimes(1);
-    expect(s.worktrees.remove).toHaveBeenCalledWith({
-      root: "/wts",
-      project: "sandbox",
-      issue: 12,
-    });
+    expect(s.worktrees.remove.mock.calls).toEqual([[TARGET]]);
     const error = { code: "WorktreeRemoveFailed" as const, message: "não removeu" };
     const failing = setup({ remove: async () => ({ ok: false, error }) });
     await expect((await failing.factory.open(OPEN)).close()).resolves.toBeUndefined();
@@ -195,7 +184,6 @@ describe("createRunSessionFactory", () => {
   });
 
   it("caps the specialist budget and maps held outcomes", async () => {
-    const held = (reason: string) => [{ type: "RunHeld", reason }];
     const s = setup({
       handlers: [work(), work(), work({ status: "budget_exceeded" }), work({ output: { x: 1 } })],
     });
@@ -224,15 +212,15 @@ describe("createRunSessionFactory", () => {
     const session = await s.factory.open(OPEN);
     await session.specialist(specialist);
     expect(before).toEqual([null]);
-    await session.qa({ criteria: CRITERIA, maxBudgetUsd: 1 });
+    await session.qa(QA);
     expect(s.requests[1]!.friday!.effects!.run.getPullRequest()).toBe(77);
-    await session.judge({ maxBudgetUsd: 2 });
+    await session.judge(JUDGE);
     expect(s.judge.mock.calls[0]![0].pr).toBe(77);
   });
 
   it("runs QA on the last report and maps its outcomes", async () => {
     const s = await afterSpecialist({ handlers: [() => done({ output: PASS })] });
-    const passed = await s.session.qa({ criteria: CRITERIA, maxBudgetUsd: 1 });
+    const passed = await s.session.qa(QA);
     expect(qaCard.maxBudgetUsd).toBe(1.5);
     const req = s.requests[1]!;
     expect(req.cwd).toBe("/wt/12");
@@ -245,29 +233,23 @@ describe("createRunSessionFactory", () => {
     expect(req.friday!.effects!.run.role).toBe("qa");
     expect(req.prompt).toContain(`Head SHA: ${SHA_A}`);
     expect(req.prompt).toContain("1. c1 [command: dotnet test]");
-    expect(s.worktrees.isClean).toHaveBeenCalledTimes(1);
-    expect(s.worktrees.isClean).toHaveBeenCalledWith("/wt/12", SHA_A);
+    expect(s.worktrees.isClean.mock.calls).toEqual([["/wt/12", SHA_A]]);
     expect(passed).toMatchObject({ inputs: [{ type: "QaPassed" }], feedback: null });
 
-    const qa = { criteria: CRITERIA, maxBudgetUsd: 1 };
-    const failed = await (
-      await afterSpecialist({ handlers: [() => done({ output: FAIL })] })
-    ).session.qa(qa);
+    const failing = await afterSpecialist({ handlers: [() => done({ output: FAIL })] });
+    const failed = await failing.session.qa(QA);
     expect(failed.inputs).toEqual([{ type: "QaFailed" }]);
     expect(failed.feedback).toContain("Critério 1 reprovado: c1");
     const dirty = await afterSpecialist({ handlers: [() => done({ output: PASS })], clean: false });
-    expect((await dirty.session.qa(qa)).inputs).toEqual([{ type: "QaModifiedCode" }]);
+    expect((await dirty.session.qa(QA)).inputs).toEqual([{ type: "QaModifiedCode" }]);
     const invalid = await afterSpecialist({ handlers: [() => done({ output: { x: 1 } })] });
-    expect((await invalid.session.qa(qa)).inputs).toEqual([
-      { type: "RunHeld", reason: "SchemaInvalid" },
-    ]);
+    expect((await invalid.session.qa(QA)).inputs).toEqual(held("SchemaInvalid"));
 
     const early = await setup().factory.open(OPEN);
-    await expect(early.qa(qa)).rejects.toThrow("Erro: QA antes do relatório do especialista");
-    const heldRun = setup({ handlers: [work({ status: "failed" })] });
-    const heldSession = await heldRun.factory.open(OPEN);
+    await expect(early.qa(QA)).rejects.toThrow("Erro: QA antes do relatório do especialista");
+    const heldSession = await setup({ handlers: [work({ status: "failed" })] }).factory.open(OPEN);
     await heldSession.specialist(specialist);
-    await expect(heldSession.qa(qa)).rejects.toThrow("Erro: QA antes do relatório do especialista");
+    await expect(heldSession.qa(QA)).rejects.toThrow("Erro: QA antes do relatório do especialista");
   });
 
   it("delegates the Judge with the head, the criteria and a metered runtime", async () => {
@@ -285,11 +267,11 @@ describe("createRunSessionFactory", () => {
         () => done({ costUsd: 1.0, peakContextTokens: 8000 }),
       ],
     });
-    await s.session.qa({ criteria: CRITERIA, maxBudgetUsd: 1 });
-    const result = await s.session.judge({ maxBudgetUsd: 2 });
+    await s.session.qa(QA);
+    const result = await s.session.judge(JUDGE);
     expect(s.readPrHead).toHaveBeenCalledWith(77);
-    expect(s.judge).toHaveBeenCalledTimes(1);
-    expect(s.judge).toHaveBeenCalledWith({
+    expect(s.judge.mock.calls).toHaveLength(1);
+    expect(s.judge.mock.calls[0]![0]).toEqual({
       issue: ISSUE,
       pr: 77,
       cwd: "/wt/12",
@@ -308,15 +290,10 @@ describe("createRunSessionFactory", () => {
       peakContextTokens: 8000,
     });
 
-    const noPr = setup({ handlers: [work()] });
-    const plain = await noPr.factory.open(OPEN);
+    const plain = await setup({ handlers: [work()] }).factory.open(OPEN);
     await plain.specialist(specialist);
-    await expect(plain.judge({ maxBudgetUsd: 2 })).rejects.toThrow(
-      "Erro: Judge antes do PR do especialista",
-    );
+    await expect(plain.judge(JUDGE)).rejects.toThrow("Erro: Judge antes do PR do especialista");
     const noQa = await afterSpecialist();
-    await expect(noQa.session.judge({ maxBudgetUsd: 2 })).rejects.toThrow(
-      "Erro: Judge antes do QA",
-    );
+    await expect(noQa.session.judge(JUDGE)).rejects.toThrow("Erro: Judge antes do QA");
   });
 });
