@@ -7,7 +7,7 @@ const execFile = vi.hoisted(() =>
 );
 vi.mock("node:child_process", () => ({ execFile }));
 
-import { createGhNightReader } from "../src/gh-night-reader.ts";
+import { createGhNightReader, type GhExec } from "../src/gh-night-reader.ts";
 
 const R = "repos/alexcanario/friday-project";
 
@@ -194,7 +194,9 @@ describe("page ceiling (D100)", () => {
   const comments = (n: number) =>
     JSON.stringify(Array.from({ length: n }, (_, i) => ({ body: `b${i}`, created_at: "t" })));
   const issues = (n: number) =>
-    JSON.stringify(Array.from({ length: n }, (_, i) => ({ number: i + 1, title: "t", labels: [] })));
+    JSON.stringify(
+      Array.from({ length: n }, (_, i) => ({ number: i + 1, title: "t", labels: [] })),
+    );
   const pulls = (n: number) =>
     JSON.stringify(
       Array.from({ length: n }, (_, i) => ({
@@ -205,7 +207,7 @@ describe("page ceiling (D100)", () => {
         base: { ref: "develop" },
       })),
     );
-  const pageOf = (a: string[]) => a[1]?.match(/page=(\d+)/)?.[1];
+  const pageOf = (a: string[]) => a[1]?.match(/&page=(\d+)/)?.[1];
   const methods: [string, (n: number) => string, (r: Reader) => Promise<unknown[]>][] = [
     ["listComments", comments, (r) => r.listComments(1)],
     ["listOpenIssues", issues, (r) => r.listOpenIssues("x")],
@@ -213,7 +215,7 @@ describe("page ceiling (D100)", () => {
   ];
 
   it("listComments throws a pt-BR error after 10 full pages", async () => {
-    const exec = vi.fn(async (_a: string[]) => comments(100));
+    const exec = vi.fn<GhExec>(async () => comments(100));
     await expect(createGhNightReader({ exec }).listComments(1)).rejects.toThrow(
       /listComments.*10 páginas/,
     );
@@ -222,7 +224,7 @@ describe("page ceiling (D100)", () => {
   });
 
   it("listOpenIssues throws a pt-BR error after 10 full pages", async () => {
-    const exec = vi.fn(async (_a: string[]) => issues(100));
+    const exec = vi.fn<GhExec>(async () => issues(100));
     await expect(createGhNightReader({ exec }).listOpenIssues("x")).rejects.toThrow(
       /listOpenIssues.*10 páginas/,
     );
@@ -230,7 +232,7 @@ describe("page ceiling (D100)", () => {
   });
 
   it("listOpenPulls throws a pt-BR error after 10 full pages", async () => {
-    const exec = vi.fn(async (_a: string[]) => pulls(100));
+    const exec = vi.fn<GhExec>(async () => pulls(100));
     await expect(createGhNightReader({ exec }).listOpenPulls()).rejects.toThrow(
       /listOpenPulls.*10 páginas/,
     );
