@@ -104,6 +104,21 @@ describe("composeDaemon with the QA branch", () => {
     });
   });
 
+  it("masks the author token in the effect error log", async () => {
+    const t = await runQa();
+    const before = t.logs.length;
+    t.runtime.requests[0]!.friday!.effects!.run.onEffectError!(
+      "pr_create",
+      new Error("falha t0k3n ghs_abc123"),
+    );
+    const added = t.logs.slice(before);
+    expect(added).toHaveLength(1);
+    expect(added[0]).toContain("Falha na ferramenta pr_create da issue 7");
+    expect(added[0]).toContain("***");
+    expect(added[0]).not.toContain("t0k3n");
+    expect(added[0]).not.toContain("ghs_abc123");
+  });
+
   it("uses the dispatched runId in the request, events and ledger", async () => {
     const context: QaCompose["context"] = (id, runId, read) => {
       const base = contextFor(id, runId, read)!;

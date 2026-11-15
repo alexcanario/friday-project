@@ -2,6 +2,7 @@ import {
   buildEffectsRun,
   type AgentRunOptions,
   type AgentRunRequest,
+  type EffectTool,
   type EventStore,
   type QaStepInput,
   type StoredEvent,
@@ -29,9 +30,11 @@ export type QaRequestInput = {
   branch: string;
   base: string;
   getPullRequest: () => number | null;
+  /** Called by the MCP handler when an effect tool fails; `buildEffectsRun` drops it, so it is set after. */
+  onEffectError?: (tool: EffectTool, error: unknown) => void;
 };
 
-export type QaContext = Omit<QaRequestInput, "criteria" | "report">;
+export type QaContext = Omit<QaRequestInput, "criteria" | "report" | "onEffectError">;
 
 export type QaTargetDeps = {
   projectId: string;
@@ -90,7 +93,15 @@ export function buildQaStepInput(input: QaRequestInput): QaStepInput {
       configRoot: input.configRoot,
       prompt: promptOf(input),
       agent: input.agent,
-      friday: { ...input.friday, effects: { run } },
+      friday: {
+        ...input.friday,
+        effects: {
+          run:
+            input.onEffectError === undefined
+              ? run
+              : { ...run, onEffectError: input.onEffectError },
+        },
+      },
     },
     headSha: input.report.headSha,
     criteria: input.criteria,
@@ -121,7 +132,14 @@ export function qaTargetOf(
         deps.log?.(`A issue ${issueId} em QA não tem contexto para o QA`);
         return null;
       }
-      return buildQaStepInput({ ...context, criteria, report });
+      // R4: the hook never comes from the context; it is always overwritten after the spread.
+      const log = deps.log;
+      const onEffectError =
+        log === undefined
+          ? undefined
+          : (tool: EffectTool, error: unknown) =>
+              log(`Falha na ferramenta ${tool} da issue ${issueId}: ${String(error)}`);
+      return buildQaStepInput({ ...context, criteria, report, onEffectError });
     } catch (error) {
       const text = error instanceof Error ? error.message : String(error);
       deps.log?.(`Falha ao montar a entrada do QA da issue ${issueId}: ${text}`);
