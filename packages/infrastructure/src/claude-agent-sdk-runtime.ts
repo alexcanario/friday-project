@@ -49,6 +49,23 @@ function withPushCapture(request: AgentRunRequest, obs: RunObservation): AgentRu
   return { ...request, friday: { ...request.friday, effects: { ...effects, run } } };
 }
 
+async function readPromptFile(configRoot: string, promptFile: string): Promise<string | null> {
+  try {
+    return await readFile(join(configRoot, promptFile), "utf8");
+  } catch {
+    return null;
+  }
+}
+
+function startTimeout(obs: RunObservation, timeoutMs: number) {
+  const abortController = new AbortController();
+  const timer = setTimeout(() => {
+    obs.timedOut = true;
+    abortController.abort();
+  }, timeoutMs);
+  return { abortController, timer };
+}
+
 export interface ClaudeAgentSdkRuntimeDeps {
   query?: QueryFn;
   env?: Record<string, string | undefined>;
@@ -80,26 +97,12 @@ export class ClaudeAgentSdkRuntime implements AgentRuntime {
     if (!built.ok) return emptyFinished("misconfigured", null);
     const obs = newObservation(request.headFallback ?? null);
     const observed = withPushCapture(request, obs);
-    const mcpServers = buildFridayMcpServers(observed, {
-      runs: this.#deps.runs,
-      results: this.#deps.results,
-      github: this.#deps.github,
-      gitHost: this.#deps.gitHost,
-      createMcpServer: this.#deps.createMcpServer ?? createFridayMcpServer,
-    });
+    const mcpServers = this.#mcpServers(observed);
     if (mcpServers === null) return emptyFinished("misconfigured", null);
     const sink = dedupeDenials(this.#sink);
-    let systemPromptAppend: string;
-    try {
-      systemPromptAppend = await readFile(join(configRoot, request.agent.promptFile), "utf8");
-    } catch {
-      return emptyFinished("misconfigured", null);
-    }
-    const abortController = new AbortController();
-    const timer = setTimeout(() => {
-      obs.timedOut = true;
-      abortController.abort();
-    }, request.agent.timeoutMs);
+    const systemPromptAppend = await readPromptFile(configRoot, request.agent.promptFile);
+    if (systemPromptAppend === null) return emptyFinished("misconfigured", null);
+    const { abortController, timer } = startTimeout(obs, request.agent.timeoutMs);
     try {
       const options = buildQueryOptions({
         request: observed,
@@ -123,6 +126,16 @@ export class ClaudeAgentSdkRuntime implements AgentRuntime {
       clearTimeout(timer);
     }
     return classify(obs, request.agent);
+  }
+
+  #mcpServers(observed: AgentRunRequest): ReturnType<typeof buildFridayMcpServers> {
+    return buildFridayMcpServers(observed, {
+      runs: this.#deps.runs,
+      results: this.#deps.results,
+      github: this.#deps.github,
+      gitHost: this.#deps.gitHost,
+      createMcpServer: this.#deps.createMcpServer ?? createFridayMcpServer,
+    });
   }
 
   async #consume(

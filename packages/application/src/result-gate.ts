@@ -39,7 +39,14 @@ export type GateOutcome =
 
 const isResultTool = (tool: string): tool is ResultTool => Object.hasOwn(RESULT_TOOLS, tool);
 
-/** Gates in fixed order: 403, 404, 409, 422, then 200 (the only one that records). */
+/**
+ * Gates in fixed order: 403, 404, 409, 422, then 200 (the only one that records).
+ *
+ * Note: `run_results` stores the `headSha` exactly as the agent sent it through the MCP tool. It may
+ * diverge from `RunFinished.output.headSha`, which the runtime corrects with the sha of the last
+ * `git_push`. Today only `ResultStore.has` reads `run_results`; the official value of a run is
+ * `RunFinished.output`.
+ */
 export function checkResult(
   deps: { runs: RunLookup; results: ResultStore },
   request: GateRequest,
