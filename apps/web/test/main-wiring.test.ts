@@ -1,8 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
-const read = (rel: string): string =>
-  readFileSync(new URL(rel, import.meta.url), "utf8");
+const read = (rel: string): string => readFileSync(new URL(rel, import.meta.url), "utf8");
 
 describe("main wiring", () => {
   it("main passes project and baseUrl to App", () => {
