@@ -10,26 +10,40 @@ export const JUDGE_NOT_CHECKED_MAX_CHARS = 300;
 export const JUDGE_CLAIM_MAX_CHARS = 500;
 
 const TRUNCATED = "[truncado]";
-const CLOSING_TAG = /<\/\s*untrusted_data/gi;
-const OPENING_TAG = /<\s*untrusted_data/gi;
+const DELIMITER_TAG = /<\s*\/?\s*untrusted_data/gi;
+const TAG_NAME_LENGTH = "untrusted_data".length;
 const OPEN = (kind: string) => `<untrusted_data kind="${kind}">\n`;
 const CLOSE = "\n</untrusted_data>";
 
 type Redact = (text: string) => string;
 
+/** Drops a trailing high surrogate, so a cut never leaves half a pair before the marker. */
+function withoutHalfPair(head: string): string {
+  const last = head.charCodeAt(head.length - 1);
+  return last >= 0xd800 && last <= 0xdbff ? head.slice(0, -1) : head;
+}
+
 /** Cuts `text` to `max` characters, the last ones being the truncation marker. */
 function cut(text: string, max: number): string {
   if (text.length <= max) return text;
   if (max <= TRUNCATED.length) return TRUNCATED.slice(0, Math.max(0, max));
-  return text.slice(0, max - TRUNCATED.length) + TRUNCATED;
+  return withoutHalfPair(text.slice(0, max - TRUNCATED.length)) + TRUNCATED;
 }
 
 const SHORT_ESCAPES: Record<string, string> = { "\n": "\\n", "\r": "\\r", "\t": "\\t" };
 const PARTIAL_ESCAPE = /\\(?:u[0-9a-f]{0,3})?$/;
 
-/** C0, DEL, C1, U+2028 and U+2029. */
+/** C0, DEL, C1, U+2028, U+2029 and the zero-width and bidi format characters. */
 function isControl(code: number): boolean {
-  return code <= 0x1f || (code >= 0x7f && code <= 0x9f) || code === 0x2028 || code === 0x2029;
+  return (
+    code <= 0x1f ||
+    (code >= 0x7f && code <= 0x9f) ||
+    (code >= 0x200b && code <= 0x200d) ||
+    (code >= 0x2028 && code <= 0x202e && code !== 0x202f) ||
+    code === 0x2060 ||
+    (code >= 0x2066 && code <= 0x2069) ||
+    code === 0xfeff
+  );
 }
 
 /** Turns line breaks and other control characters into visible escape sequences. */
@@ -52,15 +66,16 @@ function capField(text: string, max: number): string {
   if (partial !== null && (partial[0].length > 1 || /[nrtu]/.test(next))) {
     head = head.slice(0, partial.index);
   }
-  return head + TRUNCATED;
+  return withoutHalfPair(head) + TRUNCATED;
 }
 
 /** Redacts secrets, escapes control characters, neutralizes the delimiters and caps the field. */
 function field(text: string, redact: Redact, max: number): string {
   const escaped = escapeControl(redact(text));
-  const safe = escaped
-    .replace(CLOSING_TAG, (m) => `<\\/${m.slice(2).trimStart()}`)
-    .replace(OPENING_TAG, (m) => `<\\${m.slice(1).trimStart()}`);
+  const safe = escaped.replace(DELIMITER_TAG, (m) => {
+    const name = m.slice(-TAG_NAME_LENGTH);
+    return m.includes("/") ? `<\\/${name}` : `<\\${name}`;
+  });
   return capField(safe, max);
 }
 
