@@ -38,6 +38,36 @@ interface OpenStream {
   raw: ServerResponse;
 }
 
+/** One poll step of a stream: writes the new event frames and the changed costs. */
+function createPoll(
+  deps: ApiDeps,
+  project: string,
+  raw: ServerResponse,
+  start: number,
+): () => void {
+  let cursor = start;
+  const followed = new Map<number, CostUpdatedEvent>();
+  const sendCost = (issueId: number, always: boolean): void => {
+    const sum = deps.ledger.sumByIssue(project, issueId);
+    const prev = followed.get(issueId);
+    if (!always && prev?.costUsd === sum.costUsd && prev.anyCostUnknown === sum.anyCostUnknown)
+      return;
+    const next = { issueId, ...sum };
+    followed.set(issueId, next);
+    raw.write(frame("cost_updated", next));
+  };
+  return () => {
+    for (const e of deps.events.listSince(project, cursor)) {
+      cursor = e.seq;
+      const out = e.issueId === null ? null : eventFrame(e);
+      if (out === null || e.issueId === null) continue;
+      raw.write(out);
+      if (e.type === "RunFinished") sendCost(e.issueId, true);
+    }
+    for (const issueId of [...followed.keys()]) sendCost(issueId, false);
+  };
+}
+
 export function eventsRoutes(app: App, deps: ApiDeps): void {
   const open = new Set<OpenStream>();
   app.addHook("preClose", () => {
@@ -53,32 +83,15 @@ export function eventsRoutes(app: App, deps: ApiDeps): void {
     (req, reply) => {
       const project = req.query.project;
       const resumeFrom = parseLastEventId(req.headers["last-event-id"]);
-      let cursor = resumeFrom ?? deps.events.listSince(project, 0).at(-1)?.seq ?? 0;
-      const followed = new Map<number, CostUpdatedEvent>();
+      const cursor = resumeFrom ?? deps.events.listSince(project, 0).at(-1)?.seq ?? 0;
       reply.hijack();
       const raw = reply.raw;
       raw.writeHead(200, { "Content-Type": "text/event-stream", "Cache-Control": "no-cache" });
       raw.flushHeaders();
-
-      const sendCost = (issueId: number, always: boolean): void => {
-        const sum = deps.ledger.sumByIssue(project, issueId);
-        const prev = followed.get(issueId);
-        if (!always && prev?.costUsd === sum.costUsd && prev.anyCostUnknown === sum.anyCostUnknown)
-          return;
-        const next = { issueId, ...sum };
-        followed.set(issueId, next);
-        raw.write(frame("cost_updated", next));
-      };
+      const poll = createPoll(deps, project, raw, cursor);
       const tick = (): void => {
         try {
-          for (const e of deps.events.listSince(project, cursor)) {
-            cursor = e.seq;
-            const out = e.issueId === null ? null : eventFrame(e);
-            if (out === null || e.issueId === null) continue;
-            raw.write(out);
-            if (e.type === "RunFinished") sendCost(e.issueId, true);
-          }
-          for (const issueId of [...followed.keys()]) sendCost(issueId, false);
+          poll();
         } catch (err) {
           req.log.warn({ err }, "sse tick failed; closing stream");
           clearInterval(timer);
