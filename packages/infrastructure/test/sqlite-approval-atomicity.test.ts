@@ -28,6 +28,7 @@ function setup() {
       return real.append(e);
     },
     list: (p, i) => real.list(p, i),
+    listSince: (p, after) => real.listSince(p, after),
   };
   const merges: Array<{ inTx: boolean; decision: string | null | undefined }> = [];
   const github = {

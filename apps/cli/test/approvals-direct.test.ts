@@ -49,6 +49,7 @@ function client() {
         return real.append(e);
       },
       list: (p, i) => real.list(p, i),
+      listSince: (p, after) => real.listSince(p, after),
     },
     unitOfWork: createUnitOfWork(db),
     issues: issues(),

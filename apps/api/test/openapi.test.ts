@@ -33,4 +33,15 @@ describe("GET /openapi.json", () => {
     }
     await app.close();
   });
+
+  it("lists the events stream path", async () => {
+    f = openFixture();
+    const app = await buildApp(f.deps);
+    const res = await app.inject({ method: "GET", url: "/openapi.json" });
+    const doc = res.json<{
+      paths: Record<string, { get?: { responses: Record<string, unknown> } }>;
+    }>();
+    expect(doc.paths["/events/stream"]?.get?.responses["200"]).toBeDefined();
+    await app.close();
+  });
 });

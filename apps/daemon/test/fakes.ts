@@ -71,6 +71,10 @@ export class FakeEvents implements EventStore {
     return { ...event, seq: this.appended.length };
   }
 
+  listSince(projectId: string, afterSeq: number): StoredEvent[] {
+    return this.list(projectId).filter((e) => e.seq > afterSeq);
+  }
+
   list(projectId?: string, issueId?: number): StoredEvent[] {
     return this.appended.flatMap((event, index) =>
       (projectId === undefined || event.projectId === projectId) &&

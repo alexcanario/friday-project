@@ -25,7 +25,7 @@ describe("sqlite event store", () => {
     expect(second.seq).toBeGreaterThan(first.seq);
     expect(store.list("a", 1).map((e) => e.seq)).toEqual([first.seq, second.seq]);
     expect(store.list("a", 1)[0]?.payload).toEqual({ n: 1 });
-    expect(Object.keys(store).sort()).toEqual(["append", "list"]);
+    expect(Object.keys(store).sort()).toEqual(["append", "list", "listSince"]);
     expect("update" in store).toBe(false);
     expect("delete" in store).toBe(false);
   });
