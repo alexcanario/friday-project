@@ -138,6 +138,42 @@ describe("QA agent definition", () => {
     );
   });
 
+  it("allows dotnet build and dotnet test and nothing broader", () => {
+    const qa = loadQa(qaRoot());
+    const allow = qa.bash_allow ?? [];
+    expect(allow).toEqual(
+      expect.arrayContaining([
+        "dotnet build",
+        "dotnet test",
+        "pnpm test",
+        "pnpm -r test",
+        "git log",
+        "git diff",
+        "git diff origin/develop...HEAD",
+        "git diff --stat origin/develop...HEAD",
+        "git log --oneline origin/develop..HEAD",
+      ]),
+    );
+    expect(allow).toHaveLength(9);
+    for (const cmd of ["dotnet build", "dotnet test"]) {
+      expect(isBashAllowed(cmd, allow), cmd).toBe(true);
+    }
+    for (const cmd of ["dotnet publish", "dotnet test; rm -rf x", "git push"]) {
+      expect(isBashAllowed(cmd, allow), cmd).toBe(false);
+    }
+  });
+
+  it("the QA prompt names dotnet test and keeps the pnpm rule", () => {
+    const bashRule = promptText.split("\n").find((line) => line.includes("Use Bash only for"));
+    expect(bashRule).toBeDefined();
+    expect(bashRule).toContain("`dotnet test`");
+    expect(bashRule).toContain("`dotnet build`");
+    expect(bashRule).toContain("`pnpm test`");
+    expect(promptText).toContain(
+      "`pnpm test` runs the test script of the PR worktree, so it executes code from the PR itself; isolation comes from the worktree and the `cwd`.",
+    );
+  });
+
   it("has no secret in the QA definition", () => {
     expect(scanSecrets(agentText, "agents/qa.yaml")).toEqual([]);
     expect(hasSecretPrefix(promptText)).toBe(false);
