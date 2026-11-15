@@ -3,7 +3,7 @@ import { renderToString } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { App } from "../src/App.tsx";
 import type { ApiClient } from "../src/api.ts";
-import { connectionStateOf } from "../src/connection-state.ts";
+import { connectionStateOf, displayState } from "../src/connection-state.ts";
 import { ConnectionStatus } from "../src/ConnectionStatus.tsx";
 
 const client: ApiClient = { fetchHealth: () => Promise.resolve({ status: "ok" }) };
@@ -41,5 +41,18 @@ describe("panel page", () => {
     const html = renderApp(qc);
     expect(html).toContain("Conectado");
     expect(html).not.toContain("Carregando…");
+  });
+
+  it("renders the reconnecting state alone", () => {
+    const html = renderToString(<ConnectionStatus state="reconnecting" />);
+    expect(html).toContain("Reconectando…");
+    expect(html).toContain('data-state="reconnecting"');
+    TEXTS.forEach((t) => expect(html).not.toContain(t));
+  });
+
+  it("live state overrides the health state", () => {
+    expect(displayState("reconnecting", "success")).toBe("reconnecting");
+    expect(displayState(null, "success")).toBe("connected");
+    expect(displayState(null, "error")).toBe("offline");
   });
 });
