@@ -19,6 +19,7 @@ interface Stream {
   res: Response;
   text: () => string;
   waitFor: (needle: string, from?: number) => Promise<number>;
+  ended: Promise<void>;
 }
 
 async function start(headers: Record<string, string> = {}, project = "p1"): Promise<Stream> {
@@ -33,7 +34,7 @@ async function start(headers: Record<string, string> = {}, project = "p1"): Prom
   let buf = "";
   const reader = res.body!.getReader();
   const decoder = new TextDecoder();
-  void (async () => {
+  const ended = (async () => {
     try {
       for (;;) {
         const { done, value } = await reader.read();
@@ -44,6 +45,7 @@ async function start(headers: Record<string, string> = {}, project = "p1"): Prom
       // aborted by the test
     }
   })();
+  void ended;
   const waitFor = async (needle: string, from = 0): Promise<number> => {
     const limit = Date.now() + 2000;
     while (Date.now() < limit) {
@@ -53,7 +55,7 @@ async function start(headers: Record<string, string> = {}, project = "p1"): Prom
     }
     throw new Error(`timeout waiting for ${needle}; got ${buf}`);
   };
-  return { res, text: () => buf, waitFor };
+  return { res, text: () => buf, waitFor, ended };
 }
 
 async function boot(): Promise<void> {
@@ -198,6 +200,16 @@ describe("GET /events/stream", () => {
       const res = await app.inject({ method: "GET", url });
       expect(res.statusCode, url).toBe(400);
     }
+  });
+
+  it("closes open streams when the app closes", async () => {
+    await boot();
+    const s = await start();
+    await new Promise((r) => setTimeout(r, 100));
+    const t0 = Date.now();
+    await app.close();
+    expect(Date.now() - t0).toBeLessThan(1000);
+    await s.ended;
   });
 
   it("stops polling when the client disconnects", async () => {
