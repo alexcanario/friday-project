@@ -16,7 +16,11 @@ function assistant(
 
 describe("turnContextTokens", () => {
   it("sums input and cache tokens of one turn", () => {
-    const full = { input_tokens: 1000, cache_read_input_tokens: 0, cache_creation_input_tokens: 5000 };
+    const full = {
+      input_tokens: 1000,
+      cache_read_input_tokens: 0,
+      cache_creation_input_tokens: 5000,
+    };
     expect(turnContextTokens(assistant(full))).toBe(6000);
     const partial = { input_tokens: 700, cache_read_input_tokens: null };
     expect(turnContextTokens(assistant(partial))).toBe(700);
@@ -27,7 +31,9 @@ describe("turnContextTokens", () => {
     expect(turnContextTokens(assistant(undefined))).toBeNull();
     expect(turnContextTokens(assistant({ input_tokens: "x" }))).toBeNull();
     expect(turnContextTokens(assistant({ input_tokens: -1 }))).toBeNull();
-    expect(turnContextTokens(assistant({ input_tokens: 1, cache_read_input_tokens: 1.5 }))).toBeNull();
+    expect(
+      turnContextTokens(assistant({ input_tokens: 1, cache_read_input_tokens: 1.5 })),
+    ).toBeNull();
     expect(turnContextTokens(assistant({ input_tokens: 1 }, "toolu_1"))).toBeNull();
   });
 });

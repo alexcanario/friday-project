@@ -29,6 +29,8 @@ export const runFinishedSchema = z.strictObject({
   numTurns: count.nullable(),
   durationMs: count.nullable(),
   output: z.unknown().nullable(),
+  /** Largest input context of one main-thread turn; absent or null means not read (D112). */
+  peakContextTokens: count.nullable().optional(),
   violations: z.array(z.strictObject({ code: z.string(), path: z.string(), message: z.string() })),
 });
 
