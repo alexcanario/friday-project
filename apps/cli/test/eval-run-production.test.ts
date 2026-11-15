@@ -216,6 +216,34 @@ it("creates the project row and removes the temporary database on close", async 
   expect(() => close()).not.toThrow();
 });
 
+it("logs each denied tool with the tokens masked, even after close", async () => {
+  const ws = workspace();
+  const log = vi.fn();
+  const f = fakes(ws.tmpRoot);
+  const { close } = await createProductionRunner(inputOf(ws), { ...f.seams, log });
+  const sink = f.seams.createRuntime.mock.calls[0]![0].sink!;
+  expect(sink).toBeDefined();
+  sink.record({ toolName: "Bash", toolUseId: "t1" });
+  expect(log.mock.calls).toEqual([["Ferramenta negada: Bash (t1)"]]);
+  sink.record({ toolName: "x-author-tok", toolUseId: "t2" });
+  expect(log).toHaveBeenLastCalledWith("Ferramenta negada: x-*** (t2)");
+  close();
+  sink.record({ toolName: "Write", toolUseId: "t3" });
+  expect(log).toHaveBeenCalledTimes(3);
+  expect(log).toHaveBeenLastCalledWith("Ferramenta negada: Write (t3)");
+
+  const write = vi.spyOn(process.stderr, "write").mockImplementation(() => true);
+  try {
+    const g = fakes(ws.tmpRoot);
+    const second = await createProductionRunner(inputOf(ws), g.seams);
+    g.seams.createRuntime.mock.calls[0]![0].sink!.record({ toolName: "Edit", toolUseId: "t4" });
+    expect(write).toHaveBeenCalledWith("Ferramenta negada: Edit (t4)\n");
+    second.close();
+  } finally {
+    write.mockRestore();
+  }
+});
+
 it("the daemon exports readReviewCredential", () => {
   expect(typeof readReviewCredential).toBe("function");
 });

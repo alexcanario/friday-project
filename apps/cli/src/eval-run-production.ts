@@ -8,6 +8,7 @@ import {
   type GitHost,
   type GitHubPort,
   type ReviewCredential,
+  type ToolDenialSink,
   type VariantRunner,
   type WorktreeManager,
 } from "@friday/application";
@@ -38,6 +39,7 @@ import {
 } from "@friday/infrastructure";
 import { projectIdOf } from "./daemon-values.ts";
 import { createMemoryStaleVerdicts } from "./eval-memory-stale.ts";
+import { redactedError } from "./eval-redacted-error.ts";
 import { checkProduction, type CheckedProduction } from "./eval-run-checks.ts";
 import { createJudgeStepRunner } from "./eval-session-judge.ts";
 import { createRunSessionFactory, type JudgeStepRunner } from "./eval-session.ts";
@@ -63,6 +65,8 @@ export type ProductionSeams = {
   readReview?: (root: string) => ReviewCredential | null;
   newRunId?: () => string;
   tmpRoot?: string;
+  /** Where the denied tools are logged (D111); the default is stderr. */
+  log?: (message: string) => void;
 };
 
 type Seams = Required<ProductionSeams>;
@@ -81,13 +85,8 @@ function withDefaults(seams: ProductionSeams): Seams {
     readReview: seams.readReview ?? ((root) => readReviewCredential(root, defaultProvider)),
     newRunId: seams.newRunId ?? randomUUID,
     tmpRoot: seams.tmpRoot ?? tmpdir(),
+    log: seams.log ?? ((message) => void process.stderr.write(message + "\n")),
   };
-}
-
-/** A copy of the error with the tokens masked (the review token included, #551 note 1). */
-function redactedError(error: unknown, redact: (text: string) => string): Error {
-  const message = error instanceof Error ? error.message : String(error);
-  return new Error(redact(message));
 }
 
 function redactingJudge(judge: JudgeStepRunner, redact: (text: string) => string): JudgeStepRunner {
@@ -120,15 +119,23 @@ function openEvalDatabase(
   const dir = mkdtempSync(join(tmpRoot, "friday-eval-"));
   let db: FridayDatabase | null = null;
   const close = () => {
-    db?.close();
-    rmSync(dir, { recursive: true, force: true });
+    try {
+      db?.close();
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   };
   try {
     db = openDatabase(join(dir, "eval.db"));
     db.sqlite.prepare("INSERT OR IGNORE INTO projects (id) VALUES (?)").run(projectId);
     return { db, close };
   } catch (error) {
-    close();
+    // The error of the opening prevails over any error of the cleanup.
+    try {
+      close();
+    } catch {
+      // ignored on purpose
+    }
     throw error;
   }
 }
@@ -159,6 +166,17 @@ function judgeOf(w: Wiring, repo: Repo): JudgeStepRunner {
   return redactingJudge(judge, w.redact);
 }
 
+/**
+ * Logs each denied tool with the tokens masked. The log is written at once, so it survives the
+ * `close()` that deletes the temporary database; the runtime already dedupes by `toolUseId`.
+ */
+function denialLogOf(w: Wiring): ToolDenialSink {
+  return {
+    record: ({ toolName, toolUseId }) =>
+      w.seams.log(w.redact(`Ferramenta negada: ${toolName} (${toolUseId})`)),
+  };
+}
+
 function runnerOf(w: Wiring): VariantRunner {
   const { input, checked } = w;
   const { owner, name, base } = checked.config.repository;
@@ -168,6 +186,7 @@ function runnerOf(w: Wiring): VariantRunner {
     results: createResultStore(w.db),
     github: w.github,
     gitHost: w.gitHost,
+    sink: denialLogOf(w),
   });
   const sessions = createRunSessionFactory({
     worktrees: w.worktrees,
@@ -225,7 +244,11 @@ function compose(input: ProductionInput, seams: Seams): { runner: VariantRunner;
     const wiring = { input, seams, checked, github, gitHost, worktrees, db: store.db, redact };
     return { runner: runnerOf(wiring), close };
   } catch (error) {
-    close();
+    try {
+      close();
+    } catch {
+      // the error of the wiring prevails over any error of the cleanup
+    }
     throw redactedError(error, redact);
   }
 }
