@@ -1,4 +1,4 @@
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, eq, gt } from "drizzle-orm";
 import type { EventStore, NewEvent, StoredEvent } from "@friday/application";
 import type { FridayDatabase } from "./database.ts";
 import { events } from "./schema.ts";
@@ -39,6 +39,15 @@ export function createEventStore(db: FridayDatabase): EventStore {
         .select()
         .from(events)
         .where(and(eq(events.projectId, projectId), eq(events.issueId, issueId)))
+        .orderBy(asc(events.seq))
+        .all()
+        .map(toStored);
+    },
+    listSince(projectId, afterSeq) {
+      return db.orm
+        .select()
+        .from(events)
+        .where(and(eq(events.projectId, projectId), gt(events.seq, afterSeq)))
         .orderBy(asc(events.seq))
         .all()
         .map(toStored);

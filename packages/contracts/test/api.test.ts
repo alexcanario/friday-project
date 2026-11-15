@@ -6,6 +6,9 @@ import {
   healthResponse,
   issueItem,
   runItem,
+  costUpdatedEvent,
+  runFinishedEvent,
+  stageChangedEvent,
   statusResponse,
   transitionItem,
 } from "../src/index.ts";
@@ -52,5 +55,21 @@ describe("api response schemas", () => {
     expect(statusResponse.safeParse({ enabled: null, breaker }).success).toBe(true);
     expect(statusResponse.safeParse({ enabled: "yes", breaker }).success).toBe(false);
     expect(statusResponse.safeParse({ enabled: true }).success).toBe(false);
+  });
+});
+
+describe("stream event schemas", () => {
+  it("stream event schemas accept the payloads and reject wrong types", () => {
+    const stage = { issueId: 14, from: "Todo", to: "InProgress", heldReason: null };
+    expect(stageChangedEvent.parse(stage)).toEqual(stage);
+    expect(runFinishedEvent.parse({ issueId: 14, runId: "r1" })).toEqual({
+      issueId: 14,
+      runId: "r1",
+    });
+    const cost = { issueId: 14, costUsd: 0.5, anyCostUnknown: false };
+    expect(costUpdatedEvent.parse(cost)).toEqual(cost);
+    expect(stageChangedEvent.safeParse({ ...stage, issueId: "14" }).success).toBe(false);
+    expect(runFinishedEvent.safeParse({ issueId: 14 }).success).toBe(false);
+    expect(costUpdatedEvent.safeParse({ ...cost, costUsd: "0.5" }).success).toBe(false);
   });
 });

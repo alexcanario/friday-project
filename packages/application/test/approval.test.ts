@@ -63,6 +63,7 @@ function memoryEvents(): EventStore & { all: StoredEvent[] } {
       return s;
     },
     list: () => all,
+    listSince: (p, after) => all.filter((e) => e.projectId === p && e.seq > after),
   };
 }
 

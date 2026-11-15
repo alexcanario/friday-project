@@ -165,7 +165,13 @@ describe("friday resume", () => {
 
     const noop = await run(
       "7",
-      deps({ events: { list: real.list, append: (e) => ({ ...e }) as never } }),
+      deps({
+        events: {
+          list: real.list,
+          listSince: real.listSince,
+          append: (e) => ({ ...e }) as never,
+        },
+      }),
     );
     expect(noop).toEqual({ stdout: "", stderr: "Falha ao retomar a issue.\n", code: 1 });
     expect(closes).toBe(2);

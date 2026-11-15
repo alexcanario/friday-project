@@ -25,6 +25,8 @@ export interface StateChangedPayload extends StateChanged {
 export interface EventStore {
   append(event: NewEvent): StoredEvent;
   list(projectId: string, issueId: number): StoredEvent[];
+  /** Events of the project (all issues) with `seq > afterSeq`, ordered by `seq` ascending. */
+  listSince(projectId: string, afterSeq: number): StoredEvent[];
 }
 
 export interface IssueRow {

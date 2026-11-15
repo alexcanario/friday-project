@@ -72,7 +72,28 @@ export const statusResponse = z.object({
   }),
 });
 
+/** Payload of the `stage_changed` frame of `GET /events/stream`. */
+export const stageChangedEvent = z.object({
+  issueId: z.number().int(),
+  from: z.string(),
+  to: z.string(),
+  heldReason: z.string().nullable(),
+});
+
+/** Payload of the `run_finished` frame of `GET /events/stream`. */
+export const runFinishedEvent = z.object({ issueId: z.number().int(), runId: z.string() });
+
+/** Payload of the `cost_updated` frame of `GET /events/stream`: accumulated cost of the issue. */
+export const costUpdatedEvent = z.object({
+  issueId: z.number().int(),
+  costUsd: z.number(),
+  anyCostUnknown: z.boolean(),
+});
+
 export type StatusResponse = z.infer<typeof statusResponse>;
+export type StageChangedEvent = z.infer<typeof stageChangedEvent>;
+export type RunFinishedEvent = z.infer<typeof runFinishedEvent>;
+export type CostUpdatedEvent = z.infer<typeof costUpdatedEvent>;
 export type HealthResponse = z.infer<typeof healthResponse>;
 export type IssueItem = z.infer<typeof issueItem>;
 export type TransitionItem = z.infer<typeof transitionItem>;
