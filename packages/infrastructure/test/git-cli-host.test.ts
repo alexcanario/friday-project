@@ -169,7 +169,14 @@ describe("GitCliHost", () => {
     const mirrorRead = ["--git-dir", mirror, "config"];
     expect(all.map((c) => c.argv)).toEqual([
       ["config", "--name-only", "--get-regexp", "^(filter|hook)\\."],
-      ["add", "-A"],
+      [
+        "add",
+        "-A",
+        "--",
+        ".",
+        ":(exclude,icase,glob)**/.gitattributes",
+        ":(exclude,icase,glob)**/.gitmodules",
+      ],
       ["diff-index", "--cached", "--quiet", "HEAD"],
       [
         ...[

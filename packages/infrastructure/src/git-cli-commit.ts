@@ -10,6 +10,9 @@ export const FRIDAY_AUTHOR = {
 
 export const HOOKS_OFF = "/dev/null";
 
+/** Files git reads from the work tree that an agent could plant; never published by the orchestrator commit. */
+export const GIT_EXCLUDED_PATHS = [".gitattributes", ".gitmodules"];
+
 const SHA_RE = /^[0-9a-f]{40}$/;
 const HOOK_KEY_RE = /^hook\.(.*)\.[A-Za-z0-9-]+$/;
 const FILTER_KEY_RE = /^filter\.(.+?)\.(?:clean|smudge|process|required)(?:\s|$)/;
@@ -175,7 +178,8 @@ export async function commitWorktree(
     const first = await exec(GUARD_CONFIG_ARGS, stepEnv(request, gitDir, home, []), [0, 1]);
     const guards = guardsOf(String(first.stdout ?? ""));
     const env = stepEnv(request, gitDir, home, guards.drivers, guards.hooks);
-    await exec(["add", "-A"], env);
+    const excludes = GIT_EXCLUDED_PATHS.map((n) => `:(exclude,icase,glob)**/${n}`);
+    await exec(["add", "-A", "--", ".", ...excludes], env);
     const diff = await exec(["diff-index", "--cached", "--quiet", "HEAD"], env, [0, 1]);
     if (diff.exitCode === 1) {
       const commit = [...identityArgs(), "commit", "--no-verify", "-m", request.message];
