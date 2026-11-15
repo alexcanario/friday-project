@@ -90,7 +90,13 @@ function withOutput(
   knownSha: string | null,
 ): RunFinished {
   let raw = "structured_output" in result ? result.structured_output : undefined;
-  if (kind === "workReport" && knownSha !== null && typeof raw === "object" && raw !== null) {
+  if (
+    kind === "workReport" &&
+    knownSha !== null &&
+    typeof raw === "object" &&
+    raw !== null &&
+    !Array.isArray(raw)
+  ) {
     raw = { ...raw, headSha: knownSha };
   }
   if (raw === undefined)
