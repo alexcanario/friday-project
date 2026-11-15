@@ -1,7 +1,7 @@
 import { existsSync, mkdirSync, readdirSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, expect, it, vi } from "vitest";
 import { readReviewCredential } from "@friday/daemon";
 import {
   createProductionRunner,
@@ -107,117 +107,115 @@ const CASES: Case[] = [
   },
 ];
 
-describe("createProductionRunner", () => {
-  it("refuses invalid config, other repository and missing credentials before any side effect", async () => {
-    for (const c of CASES) {
-      const ws = workspace();
-      const over = c.prepare?.(ws) ?? {};
-      const f = fakes(ws.tmpRoot);
-      const message = await messageOf(
-        createProductionRunner(inputOf(ws, over), { ...f.seams, ...c.seams }),
-      );
-      expect(message, c.name).toBe(c.message(ws));
-      expect(f.seams.createRuntime, c.name).not.toHaveBeenCalled();
-      expect(f.seams.createWorktrees, c.name).not.toHaveBeenCalled();
-      expect(f.seams.createGitHost, c.name).not.toHaveBeenCalled();
-      expect(f.seams.createGitHub, c.name).not.toHaveBeenCalled();
-      expect(readdirSync(ws.tmpRoot), c.name).toEqual([]);
-    }
-  });
-
-  it("wires the worktrees, git host and GitHub from the factory config", async () => {
+it("refuses invalid config, other repository and missing credentials before any side effect", async () => {
+  for (const c of CASES) {
     const ws = workspace();
+    const over = c.prepare?.(ws) ?? {};
     const f = fakes(ws.tmpRoot);
-    const { runner, close } = await createProductionRunner(inputOf(ws), f.seams);
-    try {
-      expect(f.seams.createWorktrees.mock.calls).toEqual([[{ repoDir: ws.repoDir }]]);
-      expect(f.seams.createGitHost.mock.calls).toEqual([
-        [
-          {
-            tokenEnv: "FRIDAY_AUTHOR_TOKEN",
-            repoDir: ws.repoDir,
-            mirrorDir: join(ws.home, "mirrors", "alexcanario__friday-sandbox.git"),
-            targetUrl: "https://github.com/alexcanario/friday-sandbox.git",
-            env: ws.env,
-          },
-        ],
-      ]);
-      expect(f.seams.createGitHub.mock.calls[0]).toEqual([
-        "author-tok",
-        { owner: "alexcanario", repo: "friday-sandbox" },
-      ]);
-      await runner.run(REQUEST);
-      expect(vi.mocked(f.worktrees.create).mock.calls[0]![0]).toMatchObject({
-        root: join(ws.home, "worktrees"),
-        project: "alexcanario__friday-sandbox",
-        base: "develop",
-      });
-    } finally {
-      close();
-    }
-  });
+    const message = await messageOf(
+      createProductionRunner(inputOf(ws, over), { ...f.seams, ...c.seams }),
+    );
+    expect(message, c.name).toBe(c.message(ws));
+    expect(f.seams.createRuntime, c.name).not.toHaveBeenCalled();
+    expect(f.seams.createWorktrees, c.name).not.toHaveBeenCalled();
+    expect(f.seams.createGitHost, c.name).not.toHaveBeenCalled();
+    expect(f.seams.createGitHub, c.name).not.toHaveBeenCalled();
+    expect(readdirSync(ws.tmpRoot), c.name).toEqual([]);
+  }
+});
 
-  it("runs one issue end to end with an active run row per runtime call", async () => {
-    const ws = workspace();
-    const f = fakes(ws.tmpRoot);
-    const { runner, close } = await createProductionRunner(inputOf(ws), f.seams);
-    try {
-      const outcome = await runner.run(REQUEST);
-      expect(outcome).toMatchObject({
-        status: "done",
-        costUsd: 1,
-        rounds: 2,
-        judgeFirstRound: true,
-      });
-      expect(vi.mocked(f.github.listIssuesByLabel).mock.calls).toEqual([["experimento-d112"]]);
-      expect(f.seen).toHaveLength(3);
-      expect(new Set(f.seen).size).toBe(3);
-      expect(f.activeAtCall).toEqual([true, true, true]);
-      expect(f.seen.map((id) => f.isActive(id))).toEqual([false, false, false]);
-      expect(f.postReview).toHaveBeenCalledTimes(1);
-      expect(f.seams.createGitHub.mock.calls[1]).toEqual([
-        "review-tok",
-        { owner: "alexcanario", repo: "friday-sandbox" },
-      ]);
-    } finally {
-      close();
-    }
-  });
-
-  it("masks the author and review tokens in the errors of the runner", async () => {
-    const ws = workspace();
-    const f = fakes(ws.tmpRoot, { createFails: new Error("falhou author-tok e review-tok") });
-    const { runner, close } = await createProductionRunner(inputOf(ws), f.seams);
-    try {
-      expect(await messageOf(runner.run(REQUEST))).toBe("falhou *** e ***");
-    } finally {
-      close();
-    }
-  });
-
-  it("creates the project row and removes the temporary database on close", async () => {
-    const ws = workspace();
-    const f = fakes(ws.tmpRoot);
-    const { close } = await createProductionRunner(inputOf(ws), f.seams);
-    const dirs = readdirSync(ws.tmpRoot);
-    expect(dirs).toHaveLength(1);
-    expect(dirs[0]).toMatch(/^friday-eval-/);
-    const dbPath = join(ws.tmpRoot, dirs[0]!, "eval.db");
-    expect(existsSync(dbPath)).toBe(true);
-    const reader = new DatabaseSync(dbPath, { readOnly: true });
-    try {
-      expect(reader.prepare("SELECT id FROM projects").all()).toEqual([
-        { id: "alexcanario/friday-sandbox" },
-      ]);
-    } finally {
-      reader.close();
-    }
+it("wires the worktrees, git host and GitHub from the factory config", async () => {
+  const ws = workspace();
+  const f = fakes(ws.tmpRoot);
+  const { runner, close } = await createProductionRunner(inputOf(ws), f.seams);
+  try {
+    expect(f.seams.createWorktrees.mock.calls).toEqual([[{ repoDir: ws.repoDir }]]);
+    expect(f.seams.createGitHost.mock.calls).toEqual([
+      [
+        {
+          tokenEnv: "FRIDAY_AUTHOR_TOKEN",
+          repoDir: ws.repoDir,
+          mirrorDir: join(ws.home, "mirrors", "alexcanario__friday-sandbox.git"),
+          targetUrl: "https://github.com/alexcanario/friday-sandbox.git",
+          env: ws.env,
+        },
+      ],
+    ]);
+    expect(f.seams.createGitHub.mock.calls[0]).toEqual([
+      "author-tok",
+      { owner: "alexcanario", repo: "friday-sandbox" },
+    ]);
+    await runner.run(REQUEST);
+    expect(vi.mocked(f.worktrees.create).mock.calls[0]![0]).toMatchObject({
+      root: join(ws.home, "worktrees"),
+      project: "alexcanario__friday-sandbox",
+      base: "develop",
+    });
+  } finally {
     close();
-    expect(readdirSync(ws.tmpRoot)).toEqual([]);
-    expect(() => close()).not.toThrow();
-  });
+  }
+});
 
-  it("the daemon exports readReviewCredential", () => {
-    expect(typeof readReviewCredential).toBe("function");
-  });
+it("runs one issue end to end with an active run row per runtime call", async () => {
+  const ws = workspace();
+  const f = fakes(ws.tmpRoot);
+  const { runner, close } = await createProductionRunner(inputOf(ws), f.seams);
+  try {
+    const outcome = await runner.run(REQUEST);
+    expect(outcome).toMatchObject({
+      status: "done",
+      costUsd: 1,
+      rounds: 2,
+      judgeFirstRound: true,
+    });
+    expect(vi.mocked(f.github.listIssuesByLabel).mock.calls).toEqual([["experimento-d112"]]);
+    expect(f.seen).toHaveLength(3);
+    expect(new Set(f.seen).size).toBe(3);
+    expect(f.activeAtCall).toEqual([true, true, true]);
+    expect(f.seen.map((id) => f.isActive(id))).toEqual([false, false, false]);
+    expect(f.postReview).toHaveBeenCalledTimes(1);
+    expect(f.seams.createGitHub.mock.calls[1]).toEqual([
+      "review-tok",
+      { owner: "alexcanario", repo: "friday-sandbox" },
+    ]);
+  } finally {
+    close();
+  }
+});
+
+it("masks the author and review tokens in the errors of the runner", async () => {
+  const ws = workspace();
+  const f = fakes(ws.tmpRoot, { createFails: new Error("falhou author-tok e review-tok") });
+  const { runner, close } = await createProductionRunner(inputOf(ws), f.seams);
+  try {
+    expect(await messageOf(runner.run(REQUEST))).toBe("falhou *** e ***");
+  } finally {
+    close();
+  }
+});
+
+it("creates the project row and removes the temporary database on close", async () => {
+  const ws = workspace();
+  const f = fakes(ws.tmpRoot);
+  const { close } = await createProductionRunner(inputOf(ws), f.seams);
+  const dirs = readdirSync(ws.tmpRoot);
+  expect(dirs).toHaveLength(1);
+  expect(dirs[0]).toMatch(/^friday-eval-/);
+  const dbPath = join(ws.tmpRoot, dirs[0]!, "eval.db");
+  expect(existsSync(dbPath)).toBe(true);
+  const reader = new DatabaseSync(dbPath, { readOnly: true });
+  try {
+    expect(reader.prepare("SELECT id FROM projects").all()).toEqual([
+      { id: "alexcanario/friday-sandbox" },
+    ]);
+  } finally {
+    reader.close();
+  }
+  close();
+  expect(readdirSync(ws.tmpRoot)).toEqual([]);
+  expect(() => close()).not.toThrow();
+});
+
+it("the daemon exports readReviewCredential", () => {
+  expect(typeof readReviewCredential).toBe("function");
 });
