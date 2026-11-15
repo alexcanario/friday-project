@@ -162,14 +162,14 @@ describe("createSandboxVariantRunner", () => {
       roles: ["backend", "frontend"],
     });
     const ok = build({
-      specialist: [specialistOk("backend", { costUsd: 0.5 }), specialistOk("frontend")],
+      specialist: [specialistOk("Endpoint criado", { costUsd: 0.5 }), specialistOk("frontend")],
       qa: [QA_OK],
       judge: [JUDGE_OK],
     });
     const outcome = await ok.runner.run(cross);
     expect(ok.log.specialist.map((s) => s.role)).toEqual(["backend", "frontend"]);
     expect(ok.log.specialist[1]?.prompt).toContain("## Relatório do backend");
-    expect(ok.log.specialist[1]?.prompt).toContain("backend");
+    expect(ok.log.specialist[1]?.prompt).toContain("Endpoint criado");
     expect(ok.log.specialist[0]?.maxBudgetUsd).toBeCloseTo(2);
     expect(ok.log.specialist[1]?.maxBudgetUsd).toBeCloseTo(1.5);
     expect(ok.log.qa).toHaveLength(1);
