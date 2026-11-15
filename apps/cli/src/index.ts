@@ -14,7 +14,9 @@ import { homedir } from "node:os";
 import { runApprovals } from "./approvals.ts";
 import { runResume } from "./resume.ts";
 import { runDaemonCommand } from "./daemon.ts";
-import { createProductionOpen } from "./production-client.ts";
+import { createProductionOpen, resolveConfigRoot } from "./production-client.ts";
+import { runEvalRun } from "./eval-run.ts";
+import { createProductionRunner } from "./eval-run-production.ts";
 
 const USAGE = "Uso: friday config check --root <pasta>\n";
 
@@ -57,6 +59,14 @@ async function run(args: string[]): Promise<{ stdout: string; stderr: string; co
   if (args[0] === "daemon") return runDaemonCommand(args, { env: process.env, homeDir: homedir() });
   if (args[0] === "costs") return costs(args);
   if (args[0] === "report") return report(args);
+  if (args[0] === "eval" && args.includes("--run"))
+    return runEvalRun(args, {
+      registryRoot: resolveConfigRoot({ env: process.env, homeDir: homedir() }),
+      createRunner: createProductionRunner,
+      env: process.env,
+      homeDir: homedir(),
+      now: Date.now,
+    });
   if (args[0] === "eval") return evalCommand(args);
   if (args[0] === "night") return nightDigest(args, { reader: createGhNightReader() });
   return main(args);
