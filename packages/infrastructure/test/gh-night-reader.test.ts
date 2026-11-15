@@ -188,3 +188,61 @@ describe("open issues and pulls pagination", () => {
     await expect(p.listOpenPulls()).rejects.toThrow("boom");
   });
 });
+
+describe("page ceiling (D100)", () => {
+  type Reader = ReturnType<typeof createGhNightReader>;
+  const comments = (n: number) =>
+    JSON.stringify(Array.from({ length: n }, (_, i) => ({ body: `b${i}`, created_at: "t" })));
+  const issues = (n: number) =>
+    JSON.stringify(Array.from({ length: n }, (_, i) => ({ number: i + 1, title: "t", labels: [] })));
+  const pulls = (n: number) =>
+    JSON.stringify(
+      Array.from({ length: n }, (_, i) => ({
+        number: i + 1,
+        title: "p",
+        body: null,
+        merged_at: null,
+        base: { ref: "develop" },
+      })),
+    );
+  const pageOf = (a: string[]) => a[1]?.match(/page=(\d+)/)?.[1];
+  const methods: [string, (n: number) => string, (r: Reader) => Promise<unknown[]>][] = [
+    ["listComments", comments, (r) => r.listComments(1)],
+    ["listOpenIssues", issues, (r) => r.listOpenIssues("x")],
+    ["listOpenPulls", pulls, (r) => r.listOpenPulls()],
+  ];
+
+  it("listComments throws a pt-BR error after 10 full pages", async () => {
+    const exec = vi.fn(async (_a: string[]) => comments(100));
+    await expect(createGhNightReader({ exec }).listComments(1)).rejects.toThrow(
+      /listComments.*10 páginas/,
+    );
+    expect(exec).toHaveBeenCalledTimes(10);
+    expect(pageOf(exec.mock.calls[9]?.[0] ?? [])).toBe("10");
+  });
+
+  it("listOpenIssues throws a pt-BR error after 10 full pages", async () => {
+    const exec = vi.fn(async (_a: string[]) => issues(100));
+    await expect(createGhNightReader({ exec }).listOpenIssues("x")).rejects.toThrow(
+      /listOpenIssues.*10 páginas/,
+    );
+    expect(exec).toHaveBeenCalledTimes(10);
+  });
+
+  it("listOpenPulls throws a pt-BR error after 10 full pages", async () => {
+    const exec = vi.fn(async (_a: string[]) => pulls(100));
+    await expect(createGhNightReader({ exec }).listOpenPulls()).rejects.toThrow(
+      /listOpenPulls.*10 páginas/,
+    );
+    expect(exec).toHaveBeenCalledTimes(10);
+  });
+
+  it("all three methods accept a short 10th page and return 999 items", async () => {
+    for (const [name, make, call] of methods) {
+      const exec = vi.fn(async (a: string[]) => (Number(pageOf(a)) < 10 ? make(100) : make(99)));
+      const out = await call(createGhNightReader({ exec }));
+      expect(out, name).toHaveLength(999);
+      expect(exec, name).toHaveBeenCalledTimes(10);
+    }
+  });
+});
