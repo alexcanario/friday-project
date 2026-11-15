@@ -18,7 +18,12 @@ const FIRST_LINE = {
 } as const;
 type Role = keyof typeof FIRST_LINE;
 
-function load(role: Role): { text: string; parsed: ParsedYaml; agent: AgentConfig; prompt: string } {
+function load(role: Role): {
+  text: string;
+  parsed: ParsedYaml;
+  agent: AgentConfig;
+  prompt: string;
+} {
   const text = readFileSync(join(registry, `agents/${role}.yaml`), "utf8");
   const result = parseYaml(text);
   if (!result.ok) throw new Error(`${role}.yaml is not valid YAML`);
@@ -38,8 +43,20 @@ function expectApproved(role: Role): void {
   expect(agent.output).toBe("workReport");
   expect(agent.prompt_file).toBe(`prompts/${role}.md`);
   expect(agent.tools).toEqual(["Read", "Glob", "Grep", "Bash", "Edit", "Write"]);
-  expect(agent.mcp_tools).toEqual(["work_report", "git_push", "pr_create", "pr_diff", "issue_comment"]);
-  expect(agent.bash_allow).toEqual(["dotnet restore", "dotnet build", "dotnet test", "git status", "git diff"]);
+  expect(agent.mcp_tools).toEqual([
+    "work_report",
+    "git_push",
+    "pr_create",
+    "pr_diff",
+    "issue_comment",
+  ]);
+  expect(agent.bash_allow).toEqual([
+    "dotnet restore",
+    "dotnet build",
+    "dotnet test",
+    "git status",
+    "git diff",
+  ]);
   expect(agentExtraProblems(parsed, `agents/${role}.yaml`, registry)).toEqual([]);
   const granted = agent.mcp_tools.map((t) => "mcp__friday__" + t).sort();
   expect(granted).toEqual([...SPECIALIST_ALLOWED_MCP].sort());
@@ -109,6 +126,8 @@ describe("generic and frontend agent definitions", () => {
     const result = loadFactoryConfig(registry);
     expect(result.ok).toBe(true);
     if (!result.ok) return;
-    expect(Object.keys(result.agents)).toEqual(expect.arrayContaining(["generic", "frontend", "backend"]));
+    expect(Object.keys(result.agents)).toEqual(
+      expect.arrayContaining(["generic", "frontend", "backend"]),
+    );
   });
 });

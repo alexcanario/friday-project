@@ -1,6 +1,7 @@
 export { configProblem, type ConfigProblem, type ConfigProblemCode } from "./config-problem.ts";
 export { checkRoster } from "./roster-check.ts";
 export { BREAKER_OPEN_MS } from "./breaker.ts";
+export { CONTEXT_AREAS, selectContextPackAreas, type ContextArea } from "./context-packs.ts";
 export {
   buildNightDigest,
   type NightComment,

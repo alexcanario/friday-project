@@ -26,7 +26,9 @@ describe("context packs in the registry", () => {
       for (const heading of headings) {
         expect(sectionBody(pack, heading).some((l) => l.trim() !== "")).toBe(true);
       }
-      expect(sectionBody(pack, "## Modelo").filter((l) => l.startsWith("```")).length).toBeGreaterThanOrEqual(2);
+      expect(
+        sectionBody(pack, "## Modelo").filter((l) => l.startsWith("```")).length,
+      ).toBeGreaterThanOrEqual(2);
       expect(pack.split("\n").length).toBeLessThanOrEqual(300);
       expect(pack).not.toMatch(/sk-ant-|ghp_|github_pat_/);
     }
