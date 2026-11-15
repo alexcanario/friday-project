@@ -1,0 +1,12 @@
+[
+  {
+    "itemId": "E1",
+    "kind": "backend",
+    "variant": "generic",
+    "status": "done",
+    "costUsd": 1,
+    "rounds": 1,
+    "judgeFirstRound": true,
+    "durationS": 100
+  }
+]
