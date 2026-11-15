@@ -20,6 +20,7 @@ import {
   type ZodTypeProvider,
 } from "fastify-type-provider-zod";
 import { approvalRoutes } from "./routes/approvals.ts";
+import { eventsRoutes } from "./routes/events.ts";
 import { healthRoutes } from "./routes/health.ts";
 import { issueRoutes } from "./routes/issues.ts";
 import { ledgerRoutes } from "./routes/ledger.ts";
@@ -37,6 +38,8 @@ export interface ApiDeps {
   breaker: BreakerStateRepository;
   enabled: ProjectEnabledRepository;
   now: () => number;
+  /** Poll interval of `GET /events/stream` in ms (default 1000). */
+  ssePollMs?: number;
 }
 
 export interface BuildAppOptions {
@@ -62,6 +65,7 @@ export async function buildApp(
   ledgerRoutes(app, deps);
   approvalRoutes(app, deps);
   statusRoutes(app, deps);
+  eventsRoutes(app, deps);
   app.get("/openapi.json", { schema: { hide: true } }, () => app.swagger());
   if (options.webRoot !== undefined && existsSync(join(options.webRoot, "index.html"))) {
     await app.register(fastifyStatic, { root: options.webRoot, schemaHide: true });
