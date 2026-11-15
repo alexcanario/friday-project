@@ -149,10 +149,12 @@ describe("qa effect error hook", () => {
 
   it("qaTargetOf logs the failed tool and issue through log", () => {
     const log = vi.fn<(m: string) => void>();
-    const target = qaTargetOf({ projectId: "p", events: eventsOf(base), context: () => context, log })(
-      7,
-      "run-1",
-    );
+    const target = qaTargetOf({
+      projectId: "p",
+      events: eventsOf(base),
+      context: () => context,
+      log,
+    })(7, "run-1");
     const hook = target!.request.friday!.effects!.run.onEffectError;
     expect(typeof hook).toBe("function");
     hook!("pr_create", new Error("falha"));
@@ -177,10 +179,12 @@ describe("qa effect error hook", () => {
     const own = vi.fn();
     const hostile = { ...context, onEffectError: own } as unknown as QaContext;
     const log = vi.fn<(m: string) => void>();
-    const withLog = qaTargetOf({ projectId: "p", events: eventsOf(base), context: () => hostile, log })(
-      7,
-      "run-1",
-    );
+    const withLog = qaTargetOf({
+      projectId: "p",
+      events: eventsOf(base),
+      context: () => hostile,
+      log,
+    })(7, "run-1");
     withLog!.request.friday!.effects!.run.onEffectError!("pr_create", new Error("falha"));
     expect(own).not.toHaveBeenCalled();
     expect(log).toHaveBeenCalledWith("Falha na ferramenta pr_create da issue 7: Error: falha");
