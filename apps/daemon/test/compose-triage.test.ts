@@ -77,7 +77,6 @@ describe("composeDaemon triage wiring", () => {
   it("holds the issue for an unstaffed specialist and assigns a staffed one", async () => {
     const output = (specialist: string) => finished({ ...GOOD, specialist }, "succeeded", 0.3);
     const unstaffed = triageScenario();
-    unstaffed.runtime = undefined as never;
     const rt = new FakeAgentRuntime([output("security")]);
     unstaffed.opts.runtime = rt;
     unstaffed.opts.createRuntime = () => rt;
