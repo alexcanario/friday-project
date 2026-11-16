@@ -1,5 +1,6 @@
 import type { HookCallback, HookJSONOutput } from "@anthropic-ai/claude-agent-sdk";
 import type { ToolDenialSink } from "@friday/application";
+import { denialTargetOf } from "./denial-target.ts";
 import { decideToolCall, type ToolDecision } from "./tool-decision.ts";
 import type { ToolPolicy } from "./tool-policy.ts";
 
@@ -53,16 +54,27 @@ export function buildPreToolUseHook(input: PreToolUseHookInput): HookCallback {
     const toolName = typeof raw.tool_name === "string" ? raw.tool_name : "desconhecida";
     const toolUseId = typeof raw.tool_use_id === "string" ? raw.tool_use_id : "";
     let reason: string | null;
+    let detail: string | undefined;
     try {
       const decision = await decideWithin(input, { toolName, toolInput: raw.tool_input });
-      if (decision === TIMED_OUT) reason = "Tempo esgotado na política de permissões.";
-      else reason = decision.allow ? null : denialMessage(toolName);
+      if (decision === TIMED_OUT) reason = detail = "Tempo esgotado na política de permissões.";
+      else if (decision.allow) reason = null;
+      else {
+        reason = denialMessage(toolName);
+        detail = decision.reason;
+      }
     } catch {
-      reason = "Erro na política de permissões.";
+      reason = detail = "Erro na política de permissões.";
     }
     if (reason === null) return {};
     try {
-      input.sink.record({ toolName, toolUseId });
+      const target = denialTargetOf(toolName, raw.tool_input);
+      input.sink.record({
+        toolName,
+        toolUseId,
+        ...(detail === undefined ? {} : { reason: detail }),
+        ...(target === undefined ? {} : { target }),
+      });
     } catch {
       // The denial stands even when the sink fails.
     }
