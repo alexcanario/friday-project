@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import type { ApprovalRecord, IssueRow, PrDiff, StateChangedPayload } from "@friday/application";
+import { MERGE_GRACE_MS } from "../src/approval-wiring.ts";
 import { createStateDispatcher, type ApprovalDeps, type DispatchConfig } from "../src/index.ts";
 import { FakeApprovalStore, FakeEvents, FakeGitHub, FakeIssueRepository } from "./fakes.ts";
 
@@ -219,7 +220,7 @@ describe("approval wiring", () => {
     ]) {
       const t = setup({ state: "AwaitingApproval" });
       t.store.seed(approved());
-      t.clock.ms = T0 + 120_000;
+      t.clock.ms = T0 + 60_000 + MERGE_GRACE_MS;
       t.prMergeStateOf.mockResolvedValue(state);
       await t.dispatcher.listReady();
       expect(t.changes().map((c) => [c.trigger, c.to])).toEqual([
@@ -247,6 +248,31 @@ describe("approval wiring", () => {
       expect(d.prMergeStateOf).not.toHaveBeenCalled();
       expect(d.events.list("p", 13)).toHaveLength(0);
     }
+  });
+
+  it("waits for the next tick while the PR is still open right after the decision (#589)", async () => {
+    const t = setup({ state: "AwaitingApproval" });
+    t.store.seed(approved());
+    t.clock.ms = T0 + 60_000 + MERGE_GRACE_MS - 1;
+    t.prMergeStateOf.mockResolvedValue({ merged: false, headSha: A });
+    await t.dispatcher.listReady();
+    expect(t.changes()).toHaveLength(0);
+    expect(t.issues.rows.get(13)?.state).toBe("AwaitingApproval");
+    t.prMergeStateOf.mockResolvedValue({ merged: true, headSha: A });
+    await t.dispatcher.listReady();
+    expect(t.changes().map((c) => [c.trigger, c.to])).toEqual([
+      ["ApprovalGranted", "Merging"],
+      ["Merged", "Done"],
+    ]);
+  });
+
+  it("blocks immediately when the PR was merged at another sha, even inside the grace window", async () => {
+    const t = setup({ state: "AwaitingApproval" });
+    t.store.seed(approved());
+    t.clock.ms = T0 + 61_000;
+    t.prMergeStateOf.mockResolvedValue({ merged: true, headSha: B });
+    await t.dispatcher.listReady();
+    expect(t.changes().map((c) => c.trigger)).toEqual(["ApprovalGranted", "MergeBlocked"]);
   });
 
   it("logs and does nothing when an approved request has no decidedAt", async () => {
