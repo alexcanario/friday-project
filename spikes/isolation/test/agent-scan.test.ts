@@ -42,6 +42,25 @@ describe("judge", () => {
   });
 });
 
+describe("judge folder contents", () => {
+  const withFs = (paths: object) => [...clean.slice(0, 3), probe("fs", { paths })];
+
+  it("an existing empty folder is not a leak", () => {
+    const verdict = judge(withFs({ "/mnt/c": { exists: true, readable: false, entries: [] } }), canaries);
+    expect(verdict.leaks).toEqual([]);
+    expect(verdict.passed).toBe(true);
+  });
+
+  it("a folder with entries and a readable file are leaks", () => {
+    const folder = judge(withFs({ "/mnt/v/fixture": { exists: true, readable: false, entries: ["secret.txt"] } }), canaries);
+    expect(folder.leaks).toEqual(["path:/mnt/v/fixture"]);
+    const file = judge(withFs({ "/x/f": { exists: true, readable: true } }), canaries);
+    expect(file.leaks).toEqual(["path:/x/f"]);
+    const unknown = judge(withFs({ "/x/g": { exists: true, readable: false } }), canaries);
+    expect(unknown.leaks).toEqual(["path:/x/g"]);
+  });
+});
+
 describe("buildDockerArgs allowApiKey", () => {
   const base = { worktree: "/tmp/w", network: "n", env: { ANTHROPIC_API_KEY: "k" }, command: ["node"] };
   it("keeps the key forbidden unless explicitly allowed", () => {

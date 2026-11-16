@@ -1,7 +1,7 @@
 import { homedir } from "node:os";
 import { dirname } from "node:path";
 import { describe, expect, it } from "vitest";
-import { buildDockerArgs } from "../src/docker-args.ts";
+import { buildDockerArgs, splitMount } from "../src/docker-args.ts";
 
 const base = { worktree: "/tmp/w", network: "net-a", env: { PATH: "/usr/bin" }, command: ["node", "probe.ts"] };
 
@@ -47,5 +47,41 @@ describe("buildDockerArgs", () => {
       expect(() => buildDockerArgs({ ...base, env: { [key]: "x" } })).toThrow(`variável proibida: ${key}`);
     }
     expect(() => buildDockerArgs({ ...base, extraMounts: [], env: {} })).not.toThrow();
+  });
+});
+
+describe("mount and env hardening", () => {
+  it("splitMount keeps the drive letter of a Windows path", () => {
+    expect(splitMount("V:\\repo\\w:/work:ro")).toEqual({ host: "V:\\repo\\w", rest: "/work:ro" });
+    expect(splitMount("/tmp/w:/work")).toEqual({ host: "/tmp/w", rest: "/work" });
+    expect(splitMount("/data")).toEqual({ host: "/data", rest: "" });
+  });
+
+  it("rejects forbidden Windows mounts and mounts allowed ones read-only", () => {
+    expect(() => buildDockerArgs({ ...base, extraMounts: ["V:\\Users\\a\\.ssh"] })).toThrow("montagem proibida: V:\\Users\\a\\.ssh");
+    expect(() => buildDockerArgs({ ...base, extraMounts: ["V:\\Users\\a\\.claude\\token:/x"] })).toThrow(
+      "montagem proibida: V:\\Users\\a\\.claude\\token",
+    );
+    const args = buildDockerArgs({ ...base, extraMounts: ["V:\\data:/mnt/d"] });
+    expect(valuesAfter(args, "-v")).toContain("V:\\data:/mnt/d:ro");
+  });
+
+  it("forces :ro on every extra mount and rejects :rw", () => {
+    const mount = (extra: string) => valuesAfter(buildDockerArgs({ ...base, extraMounts: [extra] }), "-v")[1];
+    expect(mount("/data:/mnt/d")).toBe("/data:/mnt/d:ro");
+    expect(mount("/data:/mnt/d:ro")).toBe("/data:/mnt/d:ro");
+    expect(mount("/data")).toBe("/data:/data:ro");
+    expect(() => buildDockerArgs({ ...base, extraMounts: ["/data:/mnt/d:rw"] })).toThrow("montagem proibida: /data:/mnt/d:rw");
+  });
+
+  it("refuses every token variable with and without allowApiKey", () => {
+    for (const key of ["CLAUDE_CODE_OAUTH_TOKEN", "ANTHROPIC_AUTH_TOKEN", "GITHUB_TOKEN", "GH_TOKEN"]) {
+      for (const allowApiKey of [false, true]) {
+        expect(() => buildDockerArgs({ ...base, env: { [key]: "x" }, allowApiKey }), key).toThrow(`variável proibida: ${key}`);
+      }
+    }
+    const env = { ANTHROPIC_API_KEY: "k" };
+    expect(buildDockerArgs({ ...base, env, allowApiKey: true })).toContain("ANTHROPIC_API_KEY=k");
+    expect(() => buildDockerArgs({ ...base, env })).toThrow("variável proibida: ANTHROPIC_API_KEY");
   });
 });

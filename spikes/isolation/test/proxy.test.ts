@@ -1,4 +1,5 @@
 import { spawn, type ChildProcess } from "node:child_process";
+import http from "node:http";
 import net from "node:net";
 import { resolve } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -48,7 +49,7 @@ describe("proxy", () => {
   beforeAll(async () => {
     port = await freePort();
     child = spawn(process.execPath, [proxySource], {
-      env: { ...process.env, ALLOWLIST: "allowed.test", PORT: String(port) },
+      env: { ...process.env, ALLOWLIST: "allowed.test,127.0.0.1", PORT: String(port) },
       stdio: ["ignore", "pipe", "inherit"],
     });
     await new Promise<void>((done, fail) => {
@@ -66,5 +67,49 @@ describe("proxy", () => {
     expect(await connectLine(port, "allowed.test:65536")).toBe("HTTP/1.1 400 Bad Request");
     expect(child.exitCode).toBeNull();
     expect(await connectLine(port, "blocked.test:443")).toBe("HTTP/1.1 403 Forbidden");
+  });
+
+  it("does not forward hop-by-hop headers in either direction", async () => {
+    const seen: { headers: http.IncomingHttpHeaders; body: string }[] = [];
+    const upstream = http.createServer((req, res) => {
+      let body = "";
+      req.on("data", (chunk) => (body += chunk));
+      req.on("end", () => {
+        seen.push({ headers: req.headers, body });
+        res.writeHead(200, { connection: "x-up", "x-up": "1", "x-resp": "2" });
+        res.end("ok");
+      });
+    });
+    await new Promise<void>((done) => upstream.listen(0, "127.0.0.1", done));
+    const upstreamPort = (upstream.address() as net.AddressInfo).port;
+    try {
+      const res = await new Promise<http.IncomingMessage>((done, fail) => {
+        const req = http.request(
+          {
+            host: "127.0.0.1",
+            port,
+            method: "POST",
+            path: `http://127.0.0.1:${upstreamPort}/p`,
+            headers: { "proxy-authorization": "Basic eA==", "proxy-connection": "keep-alive", "x-keep": "1" },
+          },
+          done,
+        );
+        req.on("error", fail);
+        req.end("payload");
+      });
+      res.resume();
+      expect(res.statusCode).toBe(200);
+      expect(res.headers["x-up"]).toBeUndefined();
+      expect(res.headers["x-resp"]).toBe("2");
+      const [got] = seen;
+      expect(got?.headers["proxy-authorization"]).toBeUndefined();
+      expect(got?.headers["proxy-connection"]).toBeUndefined();
+      expect(got?.headers["x-keep"]).toBe("1");
+      expect(got?.body).toBe("payload");
+      expect(await connectLine(port, "blocked.test:443")).toBe("HTTP/1.1 403 Forbidden");
+      expect(await connectLine(port, "allowed.test:65536")).toBe("HTTP/1.1 400 Bad Request");
+    } finally {
+      upstream.close();
+    }
   });
 });
