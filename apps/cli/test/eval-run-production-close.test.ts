@@ -56,6 +56,18 @@ it("keeps the open error and removes the temporary folder when openDatabase thro
   expect(readdirSync(ws.tmpRoot)).toEqual([]);
 });
 
+it("keeps the wiring error over the close error and removes the temporary folder", async () => {
+  const ws = workspace();
+  const f = fakes(ws.tmpRoot);
+  const createRuntime = vi.fn().mockImplementation(() => {
+    throw new Error("falhou author-tok");
+  });
+  await expect(createProductionRunner(inputOf(ws), { ...f.seams, createRuntime })).rejects.toThrow(
+    expect.objectContaining({ message: "falhou ***" }),
+  );
+  expect(readdirSync(ws.tmpRoot)).toEqual([]);
+});
+
 it("masks the tokens in the error of openDatabase", async () => {
   const ws = workspace();
   const f = fakes(ws.tmpRoot);
