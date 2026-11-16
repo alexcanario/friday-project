@@ -103,6 +103,8 @@ describe("judge findings on docker-args", () => {
       "../../../../../../../../../../var/run",
       "../../../../../../../../../../run",
       "..\\..\\..\\..\\..\\..\\..\\..\\..\\..\\var\\run",
+      ".",
+      "./run",
     ]) {
       expect(() => buildDockerArgs({ ...base, extraMounts: [path] }), path).toThrow(`montagem proibida: ${path}`);
     }

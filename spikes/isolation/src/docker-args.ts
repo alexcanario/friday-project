@@ -6,7 +6,8 @@ export const LABEL = "friday-spike=isolation";
 const FORBIDDEN_ENV = ["ANTHROPIC_API_KEY", "CLAUDE_CODE_OAUTH_TOKEN", "ANTHROPIC_AUTH_TOKEN", "GITHUB_TOKEN", "GH_TOKEN"];
 const FORBIDDEN_SEGMENTS = [".claude", ".ssh", ".env"];
 const DOCKER_SOCKET_FOLDERS = ["/", "/var", "/var/run", "/run"];
-const ENV_NAME = /^[A-Za-z_][A-Za-z0-9_]*$/;
+const ABSOLUTE_HOST = /^(\/|[A-Za-z]:[\\/]|\\\\)/;
+const ENV_NAME =/^[A-Za-z_][A-Za-z0-9_]*$/;
 
 export interface DockerArgsOptions {
   worktree: string;
@@ -43,6 +44,8 @@ function assertMountAllowed(entry: string): void {
   const path = resolve(host);
   const segments = [...path.split(/[\\/]/), ...posixForm(host).split("/")].map((segment) => segment.toLowerCase());
   const forbidden =
+    // Docker resolves a relative source against its own folder, so only absolute ones (POSIX, drive letter, UNC) are accepted.
+    !ABSOLUTE_HOST.test(host) ||
     // The socket works through a read-only bind mount, so it and every folder above it are out.
     // Also the resolved form: Docker turns a relative source (`../../var/run`) into an absolute one.
     [host, path].some((form) => DOCKER_SOCKET_FOLDERS.includes(posixForm(form))) ||
