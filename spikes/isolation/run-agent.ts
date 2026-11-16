@@ -32,7 +32,9 @@ function write(path: string, text: string): void {
 
 // The probe dumps process.env and the agent may quote it: the key never reaches a file.
 function redact(line: string): string {
-  return line.replace(new RegExp("sk-" + "ant-[A-Za-z0-9_.-]*", "g"), "[API-KEY-REDACTED]");
+  return line
+    .replace(new RegExp("sk-" + "ant-[A-Za-z0-9_.-]*", "g"), "[API-KEY-REDACTED]")
+    .replace(/(_TOKEN=)[0-9a-f]{16,}/g, "$1[TOKEN-REDACTED]");
 }
 
 function fixturePaths(): string[] {
