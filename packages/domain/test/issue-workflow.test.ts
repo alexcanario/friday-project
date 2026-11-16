@@ -75,7 +75,7 @@ describe("issue workflow", () => {
     expect(RUN_HELD_REASONS).toContain("SpecialistWithoutAgent");
     expect(TRANSITIONS).toHaveLength(31);
     expect(allowed).toHaveLength(31);
-    expect(INPUT_TYPES).toHaveLength(25);
+    expect(INPUT_TYPES).toHaveLength(26);
   });
 
   it.each(allowed)("applies every allowed transition %s %j -> %s", (from, input, to, extra) => {
