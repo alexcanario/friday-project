@@ -1,0 +1,16 @@
+[
+  {
+    "toolName": "Bash",
+    "input": {
+      "command": "cd \"V:/scratch/friday/draft-agile\" && node \"V:/repo/agile-canary/scripts/resolve-issue.js\" route F-1 2>&1 | tail -20",
+      "description": "Route item F-1 for resolve"
+    }
+  },
+  {
+    "toolName": "Bash",
+    "input": {
+      "command": "cd \"V:/scratch/friday/draft-agile\" && node \"V:/repo/agile-canary/scripts/dispatch.js\" plan F-1 --typed --lanes --write --assume 2>&1 | tail -20",
+      "description": "Plan the lane for F-1 with assumed answers"
+    }
+  }
+]

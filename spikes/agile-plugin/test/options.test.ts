@@ -29,6 +29,25 @@ describe("buildPluginOptions", () => {
     expect(calls).toEqual([{ toolName: "AskUserQuestion", input: { questions: [] } }]);
   });
 
+  it("permissive mode allows only the draft project and the plugin scripts", async () => {
+    const calls: unknown[] = [];
+    const options = buildPluginOptions({
+      ...base,
+      cwd: "V:/scratch/draft",
+      pluginPath: "V:/repo/plug",
+      permissive: true,
+      recordCanUse: (c) => calls.push(c),
+    });
+    const run = (tool: string, input: Record<string, unknown>) => options.canUseTool(tool, input, ctx);
+    expect((await run("Skill", {})).behavior).toBe("allow");
+    expect((await run("Bash", { command: 'node "V:\\repo\\plug\\scripts\\x.js" y' })).behavior).toBe("allow");
+    expect((await run("Write", { file_path: "V:\\scratch\\draft\\a.md" })).behavior).toBe("allow");
+    expect((await run("Write", { file_path: "V:/other/a.md" })).behavior).toBe("deny");
+    expect((await run("Bash", { command: "curl http://x" })).behavior).toBe("deny");
+    expect((await run("AskUserQuestion", { questions: [] })).behavior).toBe("deny");
+    expect(calls).toHaveLength(6);
+  });
+
   it("rejects invalid input", () => {
     expect(() => buildPluginOptions({ ...base, pluginPath: "" })).toThrow("plugin ausente");
     expect(() => buildPluginOptions({ ...base, maxTurns: 0 })).toThrow(

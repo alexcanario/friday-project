@@ -15,7 +15,7 @@ Fonte única das decisões em vigor. O histórico e o raciocínio estão em `pla
 | D13 | Painel: Blazor WASM + cliente C# gerado do OpenAPI (*produto*) | substituída pela D80 | 2026-11-04 |
 | D14 | Multi-projeto com `project_id` desde o início; política de segurança fora do repositório do projeto (*produto*) | fechada | 2026-11-04 |
 | D15 | Nome `friday` em tudo (label, CLI, `mcp__friday__*`, `.friday/`) | fechada | 2026-11-04 |
-| D16 | Carregar o `agile@canary` pelo SDK | **aberta**: depende do spike #10 | — |
+| D16 | Carregar o `agile@canary` pelo SDK | **ajustar** (spike #57, 15/11): o plugin carrega por `plugins: [{ type: "local", path }]` e a skill e os scripts rodam; paradas humanas, hooks de ferramenta e quem move o Status seguem sem prova (limite da D44 e rascunho em `master`). Nova rodada acompanhada, sem `--assume` e com limite maior, antes de aceitar. Dados em `spikes/agile-plugin/FINDINGS.md` | 2026-11-15 |
 | D17 | Fábrica de construção: 3 tarefas agendadas do Claude Code na nuvem por noite, assinatura Max 20x | fechada | 2026-11-04 |
 | D18 | Gates humanos: regra de negócio, segurança, estouro de teto e telas | fechada | 2026-11-04 |
 | D19 | Painel e workflow (máquina de estados com gates) ficam no escopo | fechada | 2026-11-04 |

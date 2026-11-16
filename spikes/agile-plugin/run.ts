@@ -18,6 +18,9 @@ const { values } = parseArgs({
     project: { type: "string" },
     args: { type: "string", default: "" },
     "env-keys": { type: "string", default: "" },
+    permissive: { type: "boolean", default: false },
+    "max-budget": { type: "string" },
+    "max-turns": { type: "string" },
   },
 });
 
@@ -36,8 +39,9 @@ await runPluginSpike({
     cwd: values.project,
     pluginPath: values.plugin,
     env,
-    maxTurns: RUN_MAX_TURNS,
-    maxBudgetUsd: RUN_MAX_BUDGET_USD,
+    maxTurns: values["max-turns"] ? Number(values["max-turns"]) : RUN_MAX_TURNS,
+    maxBudgetUsd: values["max-budget"] ? Number(values["max-budget"]) : RUN_MAX_BUDGET_USD,
+    permissive: values.permissive === true,
   },
   outDir: fileURLToPath(new URL("./spike", import.meta.url)),
 });
