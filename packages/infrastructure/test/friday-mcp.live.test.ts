@@ -50,7 +50,10 @@ describe.skipIf(process.env.FRIDAY_LIVE !== "1")("friday MCP server (live, #93)"
     await runtime.run({
       cwd,
       configRoot,
-      prompt: "Chame a ferramenta work_report duas vezes com o mesmo relatório de exemplo.",
+      prompt:
+        "Chame a ferramenta work_report duas vezes seguidas, com exatamente estes argumentos nas duas chamadas: " +
+        `summary="Relatório de exemplo", headSha="${"a".repeat(40)}", changedFiles=[], notDone=[]. ` +
+        "Não mude nenhum valor e não pare depois da primeira chamada.",
       agent: {
         model: "haiku",
         states: ["InProgress"],
@@ -69,6 +72,7 @@ describe.skipIf(process.env.FRIDAY_LIVE !== "1")("friday MCP server (live, #93)"
         getIssueState: () => "InProgress",
       },
     });
-    expect(secondCallDenied(texts)).toBe(true);
+    // The results ride in the compared object so a failure shows what the tool really answered.
+    expect({ denied: secondCallDenied(texts), results: texts }).toMatchObject({ denied: true });
   });
 });
