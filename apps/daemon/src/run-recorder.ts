@@ -7,6 +7,7 @@ import {
   type LedgerRepository,
   type StateChangedPayload,
   type ToolDenialSink,
+  type ToolDenied,
 } from "@friday/application";
 import {
   DEFAULT_PHASES,
@@ -26,6 +27,8 @@ export type RunRecorderDeps = {
   issues: IssueRepository;
   now: () => Date;
   ledger?: LedgerRepository;
+  /** Masks secrets in the denial `reason` and `target`; without it both are omitted (D116). */
+  redact?: (text: string) => string;
 };
 
 export type RunContext = { runId: string; issueId: number; maxBudgetUsd?: number };
@@ -99,8 +102,30 @@ const NO_USAGE = {
   numTurns: null,
 };
 
+const DENIAL_TEXT_MAX = 200;
+
+/** Redacts first, then cuts, so a secret straddling the limit is never half-kept. */
+function denialText(redact: (text: string) => string, text: string): string {
+  const clean = redact(text);
+  return clean.length > DENIAL_TEXT_MAX ? `${clean.slice(0, DENIAL_TEXT_MAX - 1)}…` : clean;
+}
+
+function denialPayload(
+  denial: ToolDenied,
+  redact: RunRecorderDeps["redact"],
+): Record<string, string> {
+  const { toolName, toolUseId, reason, target } = denial;
+  if (redact === undefined) return { toolName, toolUseId };
+  return {
+    toolName,
+    toolUseId,
+    ...(reason === undefined ? {} : { reason: denialText(redact, reason) }),
+    ...(target === undefined ? {} : { target: denialText(redact, target) }),
+  };
+}
+
 function denialSinkOf(
-  events: RunRecorderDeps["events"],
+  deps: RunRecorderDeps,
   base: (
     ctx: RunContext,
   ) => Omit<Parameters<RunRecorderDeps["events"]["append"]>[0], "type" | "payload">,
@@ -108,9 +133,11 @@ function denialSinkOf(
 ): ReturnType<RunRecorder["denialSink"]> {
   const seen = new Set<string>();
   return {
-    record({ toolName, toolUseId }) {
+    record(denial) {
+      const { toolUseId } = denial;
       if (toolUseId !== "" && seen.has(toolUseId)) return;
-      events.append({ ...base(ctx), type: "ToolDenied", payload: { toolName, toolUseId } });
+      const payload = denialPayload(denial, deps.redact);
+      deps.events.append({ ...base(ctx), type: "ToolDenied", payload });
       if (toolUseId !== "") seen.add(toolUseId);
     },
   };
@@ -166,6 +193,6 @@ export function createRunRecorder(deps: RunRecorderDeps): RunRecorder {
         ...NO_USAGE,
       });
     },
-    denialSink: (ctx) => denialSinkOf(events, base, ctx),
+    denialSink: (ctx) => denialSinkOf(deps, base, ctx),
   };
 }

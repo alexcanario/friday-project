@@ -75,6 +75,14 @@ describe("dedupeDenials", () => {
     dedup.record(denial);
     expect(seen).toEqual(["t1"]);
   });
+
+  it("keeps the hook denial with its target over the result duplicate", () => {
+    const seen: ToolDenied[] = [];
+    const dedup = dedupeDenials({ record: (d) => seen.push(d) });
+    dedup.record({ toolName: "Read", toolUseId: "t1", reason: "r", target: "/x" });
+    dedup.record({ toolName: "Read", toolUseId: "t1" });
+    expect(seen).toEqual([{ toolName: "Read", toolUseId: "t1", reason: "r", target: "/x" }]);
+  });
 });
 
 describe("StructuredOutput in the hook", () => {

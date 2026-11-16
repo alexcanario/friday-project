@@ -44,7 +44,7 @@ import { createIntake } from "./intake.ts";
 import type { JudgeCompose } from "./judge-wiring.ts";
 import { acquireProcessLock, type ProcessLockDeps } from "./process-lock.ts";
 import { reconcile, type ReconcileReport } from "./reconcile.ts";
-import { withRedactedLog } from "./redact.ts";
+import { createRedactor, withRedactedLog } from "./redact.ts";
 import { createRunRecorder } from "./run-recorder.ts";
 import type { RunRecordingDeps } from "./run-registration.ts";
 import { createStateDispatcher, type StateDispatcherDeps } from "./state-dispatcher.ts";
@@ -52,7 +52,6 @@ import { assertTriageAgentConfig, type TriageAgentConfig } from "./triage-reques
 import { createVerifyBranch } from "./verify-wiring.ts";
 import { buildRuntimeFor, mirrorDirOf, targetUrlOf } from "./runtime-wiring.ts";
 import { createTicker, type Clock, type Ticker } from "./tick.ts";
-
 export interface ComposeOptions {
   root: string;
   /** Repository of the daemon (the same one the `GitWorktreeManager` works on). */
@@ -209,6 +208,7 @@ async function assemble(
   github: GitHubPort,
   runtimeFor: NonNullable<RunRecordingDeps["runtimeFor"]>,
   repo: Repo,
+  redact: (text: string) => string,
 ) {
   const { root, projectId, worktrees } = opts;
   const now = opts.now ?? (() => new Date());
@@ -229,7 +229,7 @@ async function assemble(
     worktrees,
     now,
   });
-  const recorder = createRunRecorder({ ...recorderDeps, ledger });
+  const recorder = createRunRecorder({ ...recorderDeps, ledger, redact });
   const ctx = {
     db,
     github,
@@ -276,7 +276,8 @@ export async function composeDaemon(opts: ComposeOptions): Promise<Daemon> {
       env: opts.env,
       ...(opts.createRuntime === undefined ? {} : { createRuntime: opts.createRuntime }),
     });
-    const { ticker, report } = await assemble(opts, db, github, runtimeFor, repo);
+    const redact = createRedactor(opts.env, author.tokenEnvNames);
+    const { ticker, report } = await assemble(opts, db, github, runtimeFor, repo, redact);
     const opened = db;
     return {
       ticker,

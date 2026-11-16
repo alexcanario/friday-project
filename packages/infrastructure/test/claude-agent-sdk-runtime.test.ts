@@ -290,6 +290,8 @@ describe("ClaudeAgentSdkRuntime", () => {
       yield result({ permission_denials: [denial] });
     };
     await new ClaudeAgentSdkRuntime({ query, env: {}, sink }).run(makeRequest());
-    expect(denied).toEqual([{ toolName: "Bash", toolUseId: "t1" }]);
+    expect(denied).toEqual([
+      { toolName: "Bash", toolUseId: "t1", reason: "ferramenta fora da ficha", target: "ls" },
+    ]);
   });
 });

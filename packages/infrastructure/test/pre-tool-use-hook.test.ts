@@ -43,7 +43,9 @@ describe("buildPreToolUseHook", () => {
     expect(recorded).toEqual([]);
     const out = await hook(input("Write", { file_path: "/etc/x", content: "" }), "t1", signal);
     expect(out).toEqual(denial("Ferramenta Write negada pela política de permissões."));
-    expect(recorded).toEqual([{ toolName: "Write", toolUseId: "t1" }]);
+    expect(recorded).toEqual([
+      { toolName: "Write", toolUseId: "t1", reason: "caminho fora da worktree", target: "/etc/x" },
+    ]);
   });
 
   it("blocks the call on hook timeout or error", async () => {
@@ -57,7 +59,9 @@ describe("buildPreToolUseHook", () => {
     expect(await slow.hook(input("Read", {}), "t1", signal)).toEqual(
       denial("Tempo esgotado na política de permissões."),
     );
-    expect(slow.recorded).toEqual([{ toolName: "Read", toolUseId: "t1" }]);
+    expect(slow.recorded).toEqual([
+      { toolName: "Read", toolUseId: "t1", reason: "Tempo esgotado na política de permissões." },
+    ]);
 
     const boom = setup({
       decide: () => {
@@ -84,5 +88,59 @@ describe("buildPreToolUseHook", () => {
     expect(await hook(input("Write", { file_path: "/etc/x" }), "t1", signal)).toEqual(
       denial("Ferramenta Write negada pela política de permissões."),
     );
+  });
+
+  it("records reason and target of a denied Read", async () => {
+    const { hook, recorded } = setup({
+      decide: async () => ({ allow: false, reason: "caminho fora da worktree" }),
+    });
+    await hook(input("Read", { file_path: "../outside.txt" }, "t1"), "t1", signal);
+    expect(recorded).toEqual([
+      {
+        toolName: "Read",
+        toolUseId: "t1",
+        reason: "caminho fora da worktree",
+        target: "../outside.txt",
+      },
+    ]);
+  });
+
+  it("records the timeout and error reasons with the target", async () => {
+    const slow = setup({
+      timeoutMs: 10,
+      decide: async () => {
+        await sleep(200);
+        return { allow: true };
+      },
+    });
+    await slow.hook(input("Bash", { command: "ls" }), "t1", signal);
+    expect(slow.recorded).toEqual([
+      {
+        toolName: "Bash",
+        toolUseId: "t1",
+        reason: "Tempo esgotado na política de permissões.",
+        target: "ls",
+      },
+    ]);
+    const boom = setup({
+      decide: () => {
+        throw new Error("boom");
+      },
+    });
+    await boom.hook(input("Bash", { command: "pwd" }), "t1", signal);
+    expect(boom.recorded).toEqual([
+      {
+        toolName: "Bash",
+        toolUseId: "t1",
+        reason: "Erro na política de permissões.",
+        target: "pwd",
+      },
+    ]);
+  });
+
+  it("does not record an allowed call", async () => {
+    const { hook, recorded } = setup({ decide: async () => ({ allow: true }) });
+    expect(await hook(input("Read", { file_path: "/work/wt/17/a.ts" }), "t1", signal)).toEqual({});
+    expect(recorded).toEqual([]);
   });
 });

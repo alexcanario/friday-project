@@ -112,6 +112,34 @@ describe("composeDaemon runtime wiring", () => {
     daemon.release();
   });
 
+  it("stores a redacted target in the ToolDenied event", async () => {
+    const t = setupCompose();
+    t.opts.env.ANTHROPIC_API_KEY = "SECRETVALUE123";
+    const daemon = await composeDaemon(t.opts);
+    await daemon.ticker.tick();
+    await Promise.resolve();
+    t.gates.forEach((g) => g());
+    await daemon.ticker.idle();
+    const sink = t.runs[0]!.deps.sink!;
+    sink.record({
+      toolName: "Bash",
+      toolUseId: "u1",
+      reason: "negado",
+      target: "echo SECRETVALUE123",
+    });
+    const row = daemon.db.sqlite
+      .prepare("SELECT run_id, issue_id, payload_json FROM events WHERE type = 'ToolDenied'")
+      .get() as { run_id: string; issue_id: number; payload_json: string };
+    const run = daemon.db.sqlite.prepare("SELECT id FROM runs WHERE issue_id = 7").get() as {
+      id: string;
+    };
+    expect(row.payload_json).toContain("***");
+    expect(row.payload_json).not.toContain("SECRETVALUE123");
+    expect(row.run_id).toBe(run.id);
+    expect(row.issue_id).toBe(7);
+    daemon.release();
+  });
+
   it("fails the run when createRuntime throws", async () => {
     const t = setupCompose({ createRuntimeThrows: true });
     const daemon = await composeDaemon(t.opts);
