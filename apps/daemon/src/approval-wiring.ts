@@ -27,6 +27,9 @@ export type ApprovalContext = {
   tierOf: (pr: number) => Promise<Risk | null>;
 };
 
+/** How long after an approved decision an open PR is still treated as "merge in progress" (#589). */
+export const MERGE_GRACE_MS = 300_000;
+
 type RiskDecision = { risk: Risk; autoMerge: boolean };
 
 /** True when the risk decision leads to AwaitingApproval instead of Merging. */
@@ -110,6 +113,10 @@ export async function handleAwaitingApproval(ctx: ApprovalContext, issueId: numb
     return;
   }
   const state = await ctx.approval.prMergeStateOf(latest.pr);
+  // #589: decideApproval stores "approved" before squashMerge; an open PR right after the
+  // decision is the CLI mid-merge, not a failure. Wait for the next tick inside the grace window.
+  const recent = ctx.now().getTime() - latest.decidedAt < MERGE_GRACE_MS;
+  if (!state.merged && recent) return;
   const granted = apply(ctx, issueId, {
     type: "ApprovalGranted",
     headSha: latest.headSha,
