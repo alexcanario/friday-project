@@ -51,6 +51,7 @@ export const INPUTS = {
   Merged: { type: "Merged" },
   MergeBlocked: { type: "MergeBlocked" },
   Resumed: { type: "Resumed" },
+  TriageRetried: { type: "TriageRetried" },
   CancelRequested: { type: "CancelRequested" },
 } as const satisfies Record<WorkflowInput["type"], WorkflowInput>;
 

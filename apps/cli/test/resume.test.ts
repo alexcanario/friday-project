@@ -53,6 +53,25 @@ function seed(
   createIssueRepository(db).rebuild("p1");
 }
 
+function seedCriteria(issue: number) {
+  createEventStore(db).append({
+    projectId: "p1",
+    issueId: issue,
+    runId: null,
+    type: "CriteriaSet",
+    actor: "daemon",
+    at: SEED_AT,
+    payload: {
+      criteria: [{ index: 1, claim: "c", proof: { kind: "command", command: "pnpm test" } }],
+    },
+  });
+}
+
+function seedHeld(issue: number, reason: string, verifyRound = 0, reviewIter = 0) {
+  seed(issue, "Held", reason, verifyRound, reviewIter);
+  seedCriteria(issue);
+}
+
 function deps(over: Partial<ResumeDeps> = {}): ResumeDeps {
   return {
     events: createEventStore(db),
@@ -70,7 +89,7 @@ const run = (issue: string, d: ResumeDeps = deps()) => runResume(args(issue), ()
 
 describe("friday resume", () => {
   it("resume writes StateChanged Resumed as human:cli", async () => {
-    seed(7, "Held", "SchemaInvalid");
+    seedHeld(7, "SchemaInvalid");
     const out = await run("7");
     expect(out).toEqual({ stdout: "Issue 7 retomada.\n", stderr: "", code: 0 });
     const last = createEventStore(db).list("p1", 7).at(-1);
@@ -80,7 +99,7 @@ describe("friday resume", () => {
   });
 
   it("resume leaves the issue InProgress without a held reason", async () => {
-    seed(7, "Held", "SchemaInvalid");
+    seedHeld(7, "SchemaInvalid");
     await run("7");
     const row = createIssueRepository(db).get("p1", 7);
     expect(row?.state).toBe("InProgress");
@@ -88,13 +107,13 @@ describe("friday resume", () => {
   });
 
   it("resume resets only the counter of the held reason", async () => {
-    seed(7, "Held", "VerifyRoundsExhausted", 3);
+    seedHeld(7, "VerifyRoundsExhausted", 3);
     await run("7");
     expect(createIssueRepository(db).get("p1", 7)?.verifyRound).toBe(0);
   });
 
   it("resume releases an issue held by JudgeContextMissing and keeps the counters", async () => {
-    seed(7, "Held", "JudgeContextMissing", 0, 2);
+    seedHeld(7, "JudgeContextMissing", 0, 2);
     const out = await run("7");
     expect(out).toEqual({ stdout: "Issue 7 retomada.\n", stderr: "", code: 0 });
     const last = createEventStore(db).list("p1", 7).at(-1);
@@ -103,6 +122,17 @@ describe("friday resume", () => {
     expect(last?.payload).toMatchObject({ trigger: "Resumed", from: "Held", to: "InProgress" });
     const row = createIssueRepository(db).get("p1", 7);
     expect(row).toMatchObject({ state: "InProgress", heldReason: null, reviewIter: 2 });
+  });
+
+  it("resume of a Held issue without CriteriaSet returns it to Todo", async () => {
+    seed(7, "Held", "SchemaInvalid");
+    const out = await run("7");
+    expect(out).toEqual({ stdout: "Issue 7 retomada.\n", stderr: "", code: 0 });
+    const last = createEventStore(db).list("p1", 7).at(-1);
+    expect(last?.actor).toBe("human:cli");
+    expect(last?.payload).toMatchObject({ trigger: "TriageRetried", from: "Held", to: "Todo" });
+    const row = createIssueRepository(db).get("p1", 7);
+    expect(row).toMatchObject({ state: "Todo", heldReason: null });
   });
 
   it("resume refuses an issue that is not Held and writes nothing", async () => {
@@ -147,7 +177,7 @@ describe("friday resume", () => {
     expect(openFail).toEqual({ stdout: "", stderr: "Falha ao abrir o banco.\n", code: 1 });
     expect(closes).toBe(0);
 
-    seed(7, "Held", "SchemaInvalid");
+    seedHeld(7, "SchemaInvalid");
     const real = createEventStore(db);
     const throwing = await run(
       "7",
@@ -188,7 +218,7 @@ describe("friday resume", () => {
   });
 
   it("resume twice only resumes once", async () => {
-    seed(7, "Held", "SchemaInvalid");
+    seedHeld(7, "SchemaInvalid");
     expect((await run("7")).code).toBe(0);
     expect((await run("7")).code).toBe(1);
     const resumed = createEventStore(db)

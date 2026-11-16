@@ -43,6 +43,7 @@ const allowed: Case[] = [
   ["Merging", INPUTS.Merged, "Done"],
   ["Merging", INPUTS.MergeBlocked, "Held"],
   ["Held", INPUTS.Resumed, "InProgress"],
+  ["Held", INPUTS.TriageRetried, "Todo"],
   ["Held", INPUTS.CancelRequested, "Canceled"],
 ];
 
@@ -72,8 +73,8 @@ describe("issue workflow", () => {
     expect(new Set(HELD_REASONS).size).toBe(HELD_REASONS.length);
     expect(HELD_REASONS).toContain("SpecialistWithoutAgent");
     expect(RUN_HELD_REASONS).toContain("SpecialistWithoutAgent");
-    expect(TRANSITIONS).toHaveLength(30);
-    expect(allowed).toHaveLength(30);
+    expect(TRANSITIONS).toHaveLength(31);
+    expect(allowed).toHaveLength(31);
     expect(INPUT_TYPES).toHaveLength(25);
   });
 
@@ -88,7 +89,7 @@ describe("issue workflow", () => {
   const forbidden = pairs.filter(([s, t]) => !allowedKeys.has(`${s}:${t}`));
 
   it("rejects every other state and input pair", () => {
-    expect(forbidden).toHaveLength(295);
+    expect(forbidden).toHaveLength(307);
     for (const [state, type] of forbidden) {
       const result = transition(snap(state), INPUTS[type]);
       expect(result, `${state} ${type}`).toEqual({ ok: false, error: "InvalidTransition" });
@@ -216,7 +217,7 @@ describe("issue workflow", () => {
       for (const v of Object.values(o)) if (v && typeof v === "object") deepFreeze(v);
       return Object.freeze(o);
     };
-    expect(allowed).toHaveLength(30);
+    expect(allowed).toHaveLength(31);
     for (const [from, input, , extra] of allowed) {
       const frozen = deepFreeze(structuredClone(snap(from, extra ?? {})));
       const copy = structuredClone(frozen);
