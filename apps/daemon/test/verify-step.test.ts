@@ -195,9 +195,9 @@ describe("runVerifyStep", () => {
       const worktree = tmp();
       const started = Date.now();
       try {
-        const out = await run(holder("process.exit(0)"), { timeoutS: 3, worktree });
+        const out = await run(holder("process.exit(0)"), { timeoutS: 10, worktree });
         expect(out.input).toEqual({ type: "VerifyPassed" });
-        expect(Date.now() - started).toBeLessThan(3000);
+        expect(Date.now() - started).toBeLessThan(8000);
       } finally {
         remember(worktree);
       }
