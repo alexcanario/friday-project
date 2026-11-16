@@ -12,6 +12,8 @@ export interface DockerArgsOptions {
   env: Record<string, string>;
   command: string[];
   extraMounts?: string[];
+  // Only the real-agent run (#58) needs the API key inside; every other variable stays forbidden.
+  allowApiKey?: boolean;
 }
 
 // The home folder itself or any folder above it would expose everything inside.
@@ -34,7 +36,7 @@ function assertMountAllowed(entry: string): void {
 
 export function buildDockerArgs(opts: DockerArgsOptions): string[] {
   for (const key of Object.keys(opts.env)) {
-    if (FORBIDDEN_ENV.includes(key)) throw new Error(`variável proibida: ${key}`);
+    if (FORBIDDEN_ENV.includes(key) && !(opts.allowApiKey && key === "ANTHROPIC_API_KEY")) throw new Error(`variável proibida: ${key}`);
   }
   const extra = opts.extraMounts ?? [];
   for (const entry of [opts.worktree, ...extra]) assertMountAllowed(entry);
