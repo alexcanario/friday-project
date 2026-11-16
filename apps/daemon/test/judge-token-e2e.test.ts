@@ -38,7 +38,9 @@ function setup() {
   github.issues.push({ number: 7, title: "t", body: "", labels: ["friday"] });
   const runtime = new FakeAgentRuntime([finished(verdict())]);
   const postReview = vi.fn(async () => ({ id: 1 }));
-  const reviewerFor = vi.fn((_token: string) => ({ postReview }));
+  const reviewerFor = vi.fn<(token: string) => { postReview: typeof postReview }>(() => ({
+    postReview,
+  }));
   const logs: string[] = [];
   const { budget } = slackBudget(recorder);
   const branch = createJudgeBranch({

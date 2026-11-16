@@ -21,7 +21,7 @@ export type JudgeCompose = {
   input: (issueId: number, headSha: string) => { cwd: string; prompt: string; configRoot: string };
 };
 
-/** Builds the installation-token provider of one App (same shape as `ComposeOptions.createTokenProvider`). */
+/** Builds the installation-token provider of one App (also the type of `ComposeOptions.createTokenProvider`). */
 export type TokenProviderFactory = (input: {
   appId: number;
   installationId: number;
@@ -71,10 +71,15 @@ const defaultProvider: TokenProviderFactory = (input) =>
   createInstallationTokenProvider({ ...input, now: Date.now, fetch: globalThis.fetch });
 
 /** Memoizes providers per App/installation/key: the config is re-read per run, the renewal cache must survive. */
-function memoized(create: TokenProviderFactory): TokenProviderFactory {
+export function memoized(create: TokenProviderFactory): TokenProviderFactory {
   const cache = new Map<string, ReturnType<TokenProviderFactory>>();
   return (input) => {
-    const key = JSON.stringify([input.appId, input.installationId, input.privateKeyPath]);
+    const key = JSON.stringify([
+      input.appId,
+      input.installationId,
+      input.privateKeyPath,
+      input.permissions ?? null,
+    ]);
     const found = cache.get(key);
     if (found !== undefined) return found;
     const created = create(input);

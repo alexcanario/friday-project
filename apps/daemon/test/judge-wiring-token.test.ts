@@ -32,14 +32,16 @@ describe("memoized", () => {
 
 describe("ComposeOptions.createTokenProvider", () => {
   it("ComposeOptions.createTokenProvider is a TokenProviderFactory", () => {
-    expectTypeOf<NonNullable<ComposeOptions["createTokenProvider"]>>().toEqualTypeOf<TokenProviderFactory>();
+    expectTypeOf<
+      NonNullable<ComposeOptions["createTokenProvider"]>
+    >().toEqualTypeOf<TokenProviderFactory>();
     const ignoring: ComposeOptions["createTokenProvider"] = (input: { appId: number }) => ({
       getToken: async () => String(input.appId),
     });
     expect(ignoring).toBeDefined();
     // @ts-expect-error a factory demanding an extra required parameter is rejected
-    const extra: ComposeOptions["createTokenProvider"] = (_input: unknown, _more: string) => ({
-      getToken: async () => "x",
+    const extra: ComposeOptions["createTokenProvider"] = (input: unknown, more: string) => ({
+      getToken: async () => String(input) + more,
     });
     expect(extra).toBeDefined();
   });
