@@ -105,7 +105,9 @@ describe("buildQueryOptions", () => {
         permissionDecisionReason: "Ferramenta Bash negada pela política de permissões.",
       },
     });
-    expect(denied).toEqual([{ toolName: "Bash", toolUseId: "t1" }]);
+    expect(denied).toEqual([
+      { toolName: "Bash", toolUseId: "t1", reason: "Bash negado", target: "rm -rf x" },
+    ]);
     expect(await call("pnpm test")).toEqual({});
     expect(denied).toHaveLength(1);
   });
