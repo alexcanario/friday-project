@@ -44,7 +44,8 @@ function assertMountAllowed(entry: string): void {
   const segments = [...path.split(/[\\/]/), ...posixForm(host).split("/")].map((segment) => segment.toLowerCase());
   const forbidden =
     // The socket works through a read-only bind mount, so it and every folder above it are out.
-    DOCKER_SOCKET_FOLDERS.includes(posixForm(host)) ||
+    // Also the resolved form: Docker turns a relative source (`../../var/run`) into an absolute one.
+    [host, path].some((form) => DOCKER_SOCKET_FOLDERS.includes(posixForm(form))) ||
     segments.includes("docker.sock") ||
     containsHome(path) ||
     FORBIDDEN_SEGMENTS.some((segment) => segments.includes(segment));
