@@ -40,7 +40,7 @@ As 4 da #11 e mais 4 vistas aqui: o WSL2 não controla a saída de rede (precisa
 
 ## O que exige o dono
 
-Feito em 16/11 (#58): o agente real rodou no contêiner e no WSL2 (ver Resultado). O que sobra é a issue de endurecimento (`gate:security`), que reúne as notas acima.
+Feito em 16/11 (a issue `owner-action` #58): o agente real rodou no contêiner e no WSL2 (ver Resultado). O que sobra é a issue de endurecimento (`gate:security`), que reúne as notas acima.
 
 Fora do escopo: escolher entre `spawnClaudeCodeProcess` e `sandbox` do SDK, o contêiner por run em produção (FHP-034), `hooks.PreToolUse` de Bash e `permissionMode` (#16 e #17).
 
