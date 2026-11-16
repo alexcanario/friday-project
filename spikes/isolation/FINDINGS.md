@@ -57,5 +57,6 @@ Fora do escopo: escolher entre `spawnClaudeCodeProcess` e `sandbox` do SDK, o co
 - API: interface de programação de aplicações.
 - CI: integração contínua.
 - DNS: sistema de nomes de domínio.
+- JSON: notação de objetos do JavaScript.
 - SDK: kit de desenvolvimento de software.
 - WSL2: subsistema Windows para Linux, versão 2.

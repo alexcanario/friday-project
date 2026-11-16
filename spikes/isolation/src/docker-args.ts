@@ -1,10 +1,12 @@
 import { homedir } from "node:os";
-import { isAbsolute, relative, resolve } from "node:path";
+import { isAbsolute, posix, relative, resolve } from "node:path";
 
 export const IMAGE = "node:26-slim";
 export const LABEL = "friday-spike=isolation";
 const FORBIDDEN_ENV = ["ANTHROPIC_API_KEY", "CLAUDE_CODE_OAUTH_TOKEN", "ANTHROPIC_AUTH_TOKEN", "GITHUB_TOKEN", "GH_TOKEN"];
 const FORBIDDEN_SEGMENTS = [".claude", ".ssh", ".env"];
+const DOCKER_SOCKET_FOLDERS = ["/", "/var", "/var/run", "/run"];
+const ENV_NAME = /^[A-Za-z_][A-Za-z0-9_]*$/;
 
 export interface DockerArgsOptions {
   worktree: string;
@@ -29,13 +31,20 @@ export function splitMount(entry: string): { host: string; rest: string } {
   return colon === -1 ? { host: entry, rest: "" } : { host: entry.slice(0, colon), rest: entry.slice(colon + 1) };
 }
 
+// The same path written the POSIX way, lower case: `V:\Var\Run` and `//var/run` both become `/var/run`.
+function posixForm(host: string): string {
+  const slashes = host.replace(/\\/g, "/").replace(/^[A-Za-z]:(?=\/|$)/, "");
+  return posix.normalize(slashes.replace(/\/+/g, "/")).toLowerCase();
+}
+
 function assertMountAllowed(entry: string): void {
   const { host } = splitMount(entry);
   const path = resolve(host);
-  const segments = path.split(/[\\/]/);
+  const segments = [...path.split(/[\\/]/), ...posixForm(host).split("/")].map((segment) => segment.toLowerCase());
   const forbidden =
-    path === "/var/run/docker.sock" ||
-    path === "/run/docker.sock" ||
+    // The socket works through a read-only bind mount, so it and every folder above it are out.
+    DOCKER_SOCKET_FOLDERS.includes(posixForm(host)) ||
+    segments.includes("docker.sock") ||
     containsHome(path) ||
     FORBIDDEN_SEGMENTS.some((segment) => segments.includes(segment));
   if (forbidden) throw new Error(`montagem proibida: ${host}`);
@@ -51,6 +60,8 @@ function readOnlyMount(entry: string): string {
 
 export function buildDockerArgs(opts: DockerArgsOptions): string[] {
   for (const key of Object.keys(opts.env)) {
+    // A name with `=` would let `-e KEY=value` define another variable than the one checked.
+    if (!ENV_NAME.test(key)) throw new Error(`variável proibida: ${key}`);
     if (FORBIDDEN_ENV.includes(key) && !(opts.allowApiKey && key === "ANTHROPIC_API_KEY")) throw new Error(`variável proibida: ${key}`);
   }
   const extra = opts.extraMounts ?? [];

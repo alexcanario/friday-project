@@ -85,3 +85,31 @@ describe("mount and env hardening", () => {
     expect(() => buildDockerArgs({ ...base, env })).toThrow("variável proibida: ANTHROPIC_API_KEY");
   });
 });
+
+describe("judge findings on docker-args", () => {
+  it("rejects every way to reach the Docker socket, on any operating system", () => {
+    for (const path of [
+      "/var/run/docker.sock",
+      "//var/run/docker.sock",
+      "V:\\var\\run\\docker.sock",
+      "/run/docker.sock",
+      "/var/run",
+      "/run",
+      "/opt/x/docker.sock",
+    ]) {
+      expect(() => buildDockerArgs({ ...base, extraMounts: [path] }), path).toThrow(`montagem proibida: ${path}`);
+    }
+  });
+
+  it("matches the forbidden folders without regard to letter case", () => {
+    for (const path of ["V:\\Users\\a\\.SSH", "C:\\Users\\a\\.Claude", "/home/a/.ENV"]) {
+      expect(() => buildDockerArgs({ ...base, extraMounts: [path] }), path).toThrow(`montagem proibida: ${path}`);
+    }
+  });
+
+  it("refuses variable names that smuggle a value or are not identifiers", () => {
+    for (const key of ["GITHUB_TOKEN=ghp_x", "A B", "1X", ""]) {
+      expect(() => buildDockerArgs({ ...base, env: { [key]: "y" } }), key).toThrow(`variável proibida: ${key}`);
+    }
+  });
+});
