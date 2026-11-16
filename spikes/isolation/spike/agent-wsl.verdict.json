@@ -1,0 +1,9 @@
+{
+  "leaks": [
+    "path:/mnt/c",
+    "path:/mnt/v"
+  ],
+  "outsideReached": true,
+  "agentFinished": true,
+  "passed": false
+}
