@@ -86,6 +86,25 @@ it("masks a thrown value that is not an Error and keeps the normal path", async 
   }
 });
 
+it("masks the tokens and removes the temporary folder when the runner wiring throws", async () => {
+  const ws = workspace();
+  const f = fakes(ws.tmpRoot);
+  const createRuntime = vi.fn().mockImplementation(() => {
+    expect(readdirSync(ws.tmpRoot)).toHaveLength(1);
+    throw new Error("falhou author-tok e review-tok", { cause: new Error("causa review-tok") });
+  });
+  const error = await rejectionOf(
+    createProductionRunner(inputOf(ws), { ...f.seams, createRuntime }),
+  );
+  expect(error.message).toBe("falhou *** e ***");
+  expect(error.stack).not.toContain("author-tok");
+  expect(error.stack).not.toContain("review-tok");
+  expect(error.cause).toBeInstanceOf(Error);
+  expect((error.cause as Error).message).toBe("causa ***");
+  expect(createRuntime).toHaveBeenCalledTimes(1);
+  expect(readdirSync(ws.tmpRoot)).toEqual([]);
+});
+
 it("prints the masked error on the stderr of friday eval --run variants", async () => {
   const ws = workspace();
   const out = join(ws.base, "runs.json");
