@@ -34,7 +34,8 @@ export function splitMount(entry: string): { host: string; rest: string } {
 // The same path written the POSIX way, lower case: `V:\Var\Run` and `//var/run` both become `/var/run`.
 function posixForm(host: string): string {
   const slashes = host.replace(/\\/g, "/").replace(/^[A-Za-z]:(?=\/|$)/, "");
-  return posix.normalize(slashes.replace(/\/+/g, "/")).toLowerCase();
+  const normal = posix.normalize(slashes.replace(/\/+/g, "/")).toLowerCase();
+  return normal.length > 1 ? normal.replace(/\/+$/, "") : normal;
 }
 
 function assertMountAllowed(entry: string): void {

@@ -96,9 +96,14 @@ describe("judge findings on docker-args", () => {
       "/var/run",
       "/run",
       "/opt/x/docker.sock",
+      "/var/run/",
+      "/run/",
+      "/var/",
+      "V:\\var\\run\\",
     ]) {
       expect(() => buildDockerArgs({ ...base, extraMounts: [path] }), path).toThrow(`montagem proibida: ${path}`);
     }
+    expect(() => buildDockerArgs({ ...base, extraMounts: ["/var/run/:/x"] })).toThrow("montagem proibida: /var/run/");
   });
 
   it("matches the forbidden folders without regard to letter case", () => {
