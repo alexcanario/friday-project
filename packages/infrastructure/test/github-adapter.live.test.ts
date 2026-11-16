@@ -130,6 +130,13 @@ describe.skipIf(!LIVE)("GitHubRestAdapter (live, #122)", () => {
       reason: "head_changed",
     });
     const merged = await port.squashMerge(pr.number, pr.headSha);
-    expect(merged.merged).toBe(true);
+    // O ruleset `develop-protection` do sandbox (só squash, PR obrigatório, sem bypass)
+    // bloqueia o merge do PR de teste: o adaptador devolve `not_mergeable`, que é o
+    // comportamento correto. Sem o ruleset, o merge acontece (`merged: true`).
+    if (merged.merged) {
+      expect(merged.sha).toMatch(/^[0-9a-f]{40}$/);
+    } else {
+      expect(merged).toEqual({ merged: false, reason: "not_mergeable" });
+    }
   });
 });
