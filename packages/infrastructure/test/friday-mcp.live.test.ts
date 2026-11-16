@@ -8,18 +8,34 @@ import { describe, expect, it } from "vitest";
 import { ClaudeAgentSdkRuntime } from "../src/index.ts";
 import { secondCallDenied } from "./live-helpers.ts";
 
+/** Texts of the tool results; a result `content` is either a plain string or a list of text items. */
 function toolResultTexts(message: SDKMessage): string[] {
   if (message.type !== "user") return [];
   const content: unknown = message.message.content;
   if (!Array.isArray(content)) return [];
   const texts: string[] = [];
   for (const block of content as { type?: string; content?: unknown }[]) {
-    if (block.type !== "tool_result" || !Array.isArray(block.content)) continue;
+    if (block.type !== "tool_result") continue;
+    if (typeof block.content === "string") texts.push(block.content);
+    if (!Array.isArray(block.content)) continue;
     for (const item of block.content as { type?: string; text?: string }[]) {
       if (item.type === "text" && typeof item.text === "string") texts.push(item.text);
     }
   }
   return texts;
+}
+
+/** One short line per message, so a failure shows what the run really did. */
+function describeMessage(message: SDKMessage): string {
+  if (message.type === "result") return `result:${message.subtype}`;
+  if (message.type === "assistant" || message.type === "user") {
+    const blocks = message.message.content;
+    const kinds = Array.isArray(blocks)
+      ? (blocks as { type?: string; name?: string }[]).map((b) => b.name ?? b.type ?? "?")
+      : ["text"];
+    return `${message.type}:${kinds.join("+")}`;
+  }
+  return message.type;
 }
 
 describe.skipIf(process.env.FRIDAY_LIVE !== "1")("friday MCP server (live, #93)", () => {
@@ -32,6 +48,7 @@ describe.skipIf(process.env.FRIDAY_LIVE !== "1")("friday MCP server (live, #93)"
     );
     const recorded = new Set<string>();
     const texts: string[] = [];
+    const trace: string[] = [];
     const { query } = await import("@anthropic-ai/claude-agent-sdk");
     const runtime = new ClaudeAgentSdkRuntime({
       runs: { isActive: () => true },
@@ -42,6 +59,7 @@ describe.skipIf(process.env.FRIDAY_LIVE !== "1")("friday MCP server (live, #93)"
       query: (params) =>
         (async function* () {
           for await (const message of query(params)) {
+            trace.push(describeMessage(message));
             texts.push(...toolResultTexts(message));
             yield message;
           }
@@ -72,7 +90,7 @@ describe.skipIf(process.env.FRIDAY_LIVE !== "1")("friday MCP server (live, #93)"
         getIssueState: () => "InProgress",
       },
     });
-    // The results ride in the compared object so a failure shows what the tool really answered.
-    expect({ denied: secondCallDenied(texts), results: texts }).toMatchObject({ denied: true });
+    const evidence = `tool results: ${JSON.stringify(texts)}; messages: ${trace.join(" > ")}`;
+    expect(secondCallDenied(texts), evidence).toBe(true);
   });
 });
