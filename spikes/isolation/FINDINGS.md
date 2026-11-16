@@ -38,6 +38,14 @@ Rodada de 16/11, `query()` real (Opus 5.5, `bypassPermissions`, no máximo 15 tu
 
 As 4 da #11 e mais 4 vistas aqui: o WSL2 não controla a saída de rede (precisa de firewall ou proxy); o juiz deve checar conteúdo e não só existência de pasta; em Windows, `buildDockerArgs` corta a montagem em `:` e lê só a letra da unidade (`V`), então a proteção do `~` não vale para caminhos `V:\...`; e a chave de API só entra por `allowApiKey`, que em produção deve virar allowlist de variáveis.
 
+### Endurecimento aplicado (#586)
+
+Corrigido com testes unitários, sem Docker nem chave: `splitMount` respeita a letra de unidade (`V:\...`); `buildDockerArgs` recusa também `CLAUDE_CODE_OAUTH_TOKEN` e `ANTHROPIC_AUTH_TOKEN` e monta toda `extraMounts` com `:ro` (`:rw` é recusado); o `judge` não conta mais pasta existente e vazia como vazamento (a sonda `fs` informa `entries`); `redact` (agora em `src/redact.ts`) cobre o formato JSON e valores não hex e é aplicado ao `agent-docker.messages.jsonl`; o proxy remove os cabeçalhos hop-by-hop nos dois sentidos.
+
+Consequência: o `judge` da rodada recebe as linhas cruas, mas o arquivo gravado já vem redigido. Rodar `run-agent.ts judge --file` sobre esse arquivo não acha mais o canário de ambiente (`FRIDAY_CANARY_TOKEN`), porque `redact` apaga o valor dele.
+
+Ficam fora: o WSL2 sem controle de saída de rede e a allowlist de variáveis no lugar de `allowApiKey` (#591), e a imagem fixada por digest (#592).
+
 ## O que exige o dono
 
 Feito em 16/11 (a issue `owner-action` #58): o agente real rodou no contêiner e no WSL2 (ver Resultado). O que sobra é a issue de endurecimento (`gate:security`), que reúne as notas acima.

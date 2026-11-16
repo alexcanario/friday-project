@@ -2,6 +2,7 @@
 import http from "node:http";
 import net from "node:net";
 import { connectPort, isAllowed } from "./allowlist.ts";
+import { stripHopByHop } from "./hop-by-hop.ts";
 
 const allowlist = (process.env.ALLOWLIST ?? "").split(",").filter(Boolean);
 const port = Number(process.env.PORT ?? 3128);
@@ -24,10 +25,10 @@ const server = http.createServer((req, res) => {
       port: target.port || 80,
       method: req.method,
       path: target.pathname + target.search,
-      headers: req.headers,
+      headers: stripHopByHop(req.headers),
     },
     (up) => {
-      res.writeHead(up.statusCode ?? 502, up.headers);
+      res.writeHead(up.statusCode ?? 502, stripHopByHop(up.headers));
       up.pipe(res);
     },
   );

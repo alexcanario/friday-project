@@ -7,6 +7,7 @@ import { parseArgs } from "node:util";
 import { createEgressStack } from "./src/agent-stack.ts";
 import { judge, makeCanaries, type Canaries } from "./src/agent-scan.ts";
 import { IMAGE, buildDockerArgs } from "./src/docker-args.ts";
+import { redact } from "./src/redact.ts";
 
 const SDK = "0.3.318";
 const here = import.meta.dirname;
@@ -28,13 +29,6 @@ function fail(message: string): never {
 function write(path: string, text: string): void {
   mkdirSync(join(path, ".."), { recursive: true });
   writeFileSync(path, text);
-}
-
-// The probe dumps process.env and the agent may quote it: the key never reaches a file.
-function redact(line: string): string {
-  return line
-    .replace(new RegExp("sk-" + "ant-[A-Za-z0-9_.-]*", "g"), "[API-KEY-REDACTED]")
-    .replace(/(_TOKEN=)[0-9a-f]{16,}/g, "$1[TOKEN-REDACTED]");
 }
 
 function fixturePaths(): string[] {
@@ -97,7 +91,8 @@ function runDocker(): void {
     const args = buildDockerArgs({ worktree: agentDir, network: stack.agentNetwork, env, allowApiKey: true, command: ["node", "/work/agent-task.ts"] });
     const run = spawnSync("docker", args, { encoding: "utf8", timeout: 600000, maxBuffer: 64 * 1024 * 1024 });
     const lines = run.stdout.split("\n").filter(Boolean);
-    write(join(outDir, "agent-docker.messages.jsonl"), lines.map((l) => `${l}\n`).join(""));
+    // The file is redacted; the judge below gets the raw lines, because redact would erase the env canary.
+    write(join(outDir, "agent-docker.messages.jsonl"), lines.map((l) => `${redact(l)}\n`).join(""));
     process.stderr.write(run.stderr.slice(-2000));
     printVerdict("docker", lines);
   } finally {
