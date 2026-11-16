@@ -1,5 +1,5 @@
 // Runs inside the container and prints what it managed to read. Uses only Node built-ins.
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import http from "node:http";
 import net from "node:net";
 
@@ -19,12 +19,23 @@ function read(path: string): string | null {
   }
 }
 
+// Present only when the path is a folder that can be listed: a file, a missing path or an unreadable folder give undefined.
+function listFolder(path: string): string[] | undefined {
+  try {
+    return readdirSync(path).sort();
+  } catch {
+    return undefined;
+  }
+}
+
 function fsProbe(paths: string[]): void {
-  const info: Record<string, { exists: boolean; readable: boolean; content?: string }> = {};
+  const info: Record<string, { exists: boolean; readable: boolean; content?: string; entries?: string[] }> = {};
   for (const path of paths) {
     const content = read(path);
+    const entries = listFolder(path);
     info[path] = { exists: existsSync(path), readable: content !== null };
     if (content !== null) info[path].content = content;
+    if (entries !== undefined) info[path].entries = entries;
   }
   let etcWrite = true;
   try {

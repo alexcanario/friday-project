@@ -7,6 +7,8 @@ const spikeDir = resolve(import.meta.dirname, "..");
 describe("package.json", () => {
   it("pins vitest only and stays outside the workspace", () => {
     const pkg = JSON.parse(readFileSync(resolve(spikeDir, "package.json"), "utf8"));
+    const root = JSON.parse(readFileSync(resolve(spikeDir, "../../package.json"), "utf8"));
+    expect(pkg.packageManager).toBe(root.packageManager);
     expect(pkg.private).toBe(true);
     expect(pkg.type).toBe("module");
     expect(pkg.scripts.test).toBe("vitest run");

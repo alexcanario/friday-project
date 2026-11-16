@@ -37,8 +37,10 @@ function reached(probes: Probe[]): boolean {
 
 function existingPaths(probes: Probe[]): string[] {
   const fsProbe = probes.find((p) => p.name === "fs");
-  const paths = (fsProbe?.result.paths ?? {}) as Record<string, { exists: boolean }>;
-  return Object.entries(paths).flatMap(([path, info]) => (info.exists ? [`path:${path}`] : []));
+  const paths = (fsProbe?.result.paths ?? {}) as Record<string, { exists: boolean; entries?: string[] }>;
+  // An existing folder that lists as empty exposes nothing; without `entries` we cannot tell, so it counts.
+  const isEmptyFolder = (info: { entries?: string[] }) => Array.isArray(info.entries) && info.entries.length === 0;
+  return Object.entries(paths).flatMap(([path, info]) => (info.exists && !isEmptyFolder(info) ? [`path:${path}`] : []));
 }
 
 export function judge(lines: string[], canaries: Canaries): Verdict {
