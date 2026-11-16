@@ -73,6 +73,7 @@ export type WorkflowInput =
   | { type: "Merged" }
   | { type: "MergeBlocked" }
   | { type: "Resumed" }
+  | { type: "TriageRetried" }
   | { type: "CancelRequested" };
 
 export interface StateChanged {

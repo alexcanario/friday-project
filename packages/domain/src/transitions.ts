@@ -32,6 +32,7 @@ export const TRANSITIONS = [
   { from: "Merging", on: "Merged" },
   { from: "Merging", on: "MergeBlocked" },
   { from: "Held", on: "Resumed" },
+  { from: "Held", on: "TriageRetried" },
   { from: "Held", on: "CancelRequested" },
 ] as const satisfies readonly { from: IssueState; on: InputType }[];
 

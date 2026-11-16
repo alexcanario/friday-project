@@ -1,5 +1,6 @@
 import { parseArgs } from "node:util";
 import type { EventStore, IssueRepository } from "@friday/application";
+import type { WorkflowInput } from "@friday/domain";
 import { applyInputs } from "./apply-inputs.ts";
 
 export type ResumeDeps = {
@@ -45,7 +46,9 @@ function execute(deps: ResumeDeps, { project, issue }: Parsed): Output {
   if (row.state !== "Held") return fail(`A issue ${issue} não está retida (Held).\n`);
   try {
     const before = deps.events.list(project, issue).length;
-    applyInputs(deps, { projectId: project, issueId: issue }, [{ type: "Resumed" }]);
+    const hasCriteria = deps.events.list(project, issue).some((e) => e.type === "CriteriaSet");
+    const input: WorkflowInput = hasCriteria ? { type: "Resumed" } : { type: "TriageRetried" };
+    applyInputs(deps, { projectId: project, issueId: issue }, [input]);
     if (deps.events.list(project, issue).length !== before + 1) {
       return fail("Falha ao retomar a issue.\n");
     }

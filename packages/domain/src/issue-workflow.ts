@@ -142,6 +142,8 @@ function decideRelease(s: WorkflowSnapshot, input: WorkflowInput): Result<Next, 
       return ok(hold("MergeBlocked"));
     case "Resumed":
       return ok(resume(s));
+    case "TriageRetried":
+      return ok({ state: "Todo", phaseIndex: 0 });
     case "CancelRequested":
       return ok({ state: "Canceled" });
     default:
