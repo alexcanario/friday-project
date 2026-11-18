@@ -125,7 +125,8 @@ describe("reader agents without Bash", () => {
   it("judge body says it is the night-factory contract and the daemon Judge uses registry/prompts/judge.md", () => {
     const sentence =
       "This file is the contract of the night factory only. The daemon Judge does not read it: it runs with registry/prompts/judge.md and receives the criteria of the last valid CriteriaSet and the QA report of the reviewed head, without CI status (D104, D105, D106).";
-    const withoutSentence = "---\nname: judge\n---\n" + entryPhrase.judge + "\n\n" + verifyCheckRuns;
+    const withoutSentence =
+      "---\nname: judge\n---\n" + entryPhrase.judge + "\n\n" + verifyCheckRuns;
     expect(bodyOf(withoutSentence)).not.toContain("registry/prompts/judge.md");
     const body = bodyOf(agentText("judge"));
     expect(body.split(/\r?\n/)).toContain(sentence);
