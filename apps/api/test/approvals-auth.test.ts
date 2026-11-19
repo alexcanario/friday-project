@@ -11,7 +11,7 @@ describe("approval writes need the panel token", () => {
     seedApproval(f);
     const squashMerge = vi.fn();
     const readPrHead = vi.fn();
-    const eventsBefore = [f.deps.events.list("p1"), f.deps.events.list("p1", 14)];
+    const eventsBefore = [f.deps.events.listSince("p1", 0), f.deps.events.list("p1", 14)];
     const cases: [string | undefined, Record<string, string>][] = [
       ["s3cret", {}],
       ["s3cret", { "x-friday-token": "errado" }],
@@ -45,6 +45,6 @@ describe("approval writes need the panel token", () => {
     expect(squashMerge).not.toHaveBeenCalled();
     expect(readPrHead).not.toHaveBeenCalled();
     expect(f.deps.approvals.get("00000001")?.decision).toBeNull();
-    expect([f.deps.events.list("p1"), f.deps.events.list("p1", 14)]).toEqual(eventsBefore);
+    expect([f.deps.events.listSince("p1", 0), f.deps.events.list("p1", 14)]).toEqual(eventsBefore);
   });
 });

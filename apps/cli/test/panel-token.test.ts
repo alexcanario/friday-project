@@ -14,7 +14,12 @@ afterEach(() => db.close());
 function open() {
   db = openDatabase(join(mkdtempSync(join(tmpdir(), "friday-panel-token-")), "friday.db"));
   db.sqlite.prepare("INSERT INTO projects (id) VALUES ('p1')").run();
-  const getPrMergeState = vi.fn(async (_pr: number) => ({ merged: false, headSha: "h7" }));
+  const getPrMergeState = vi.fn<(pr: number) => Promise<{ merged: boolean; headSha: string }>>(
+    async () => ({
+      merged: false,
+      headSha: "h7",
+    }),
+  );
   const squashMerge = vi.fn(async () => ({ merged: true as const, sha: "s" }));
   const github = { getPrMergeState, squashMerge } as unknown as Daemon["github"];
   return { github, getPrMergeState };

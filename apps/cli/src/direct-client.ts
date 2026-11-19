@@ -1,4 +1,5 @@
 import {
+  applyInputs,
   decideApproval,
   type ApprovalStore,
   type EventStore,
@@ -6,7 +7,6 @@ import {
   type IssueRepository,
   type UnitOfWork,
 } from "@friday/application";
-import { applyInputs } from "./apply-inputs.ts";
 import type { ApprovalsClient } from "./approvals.ts";
 
 export type DirectClientDeps = {
@@ -41,7 +41,12 @@ export function createDirectClient(deps: DirectClientDeps): ApprovalsClient {
       }
       const rec = deps.store.get(id);
       if (rec !== null) {
-        applyInputs(deps, { projectId: rec.projectId, issueId: rec.issueId }, outcome.inputs);
+        applyInputs(deps, {
+          projectId: rec.projectId,
+          issueId: rec.issueId,
+          inputs: outcome.inputs,
+          actor: "human:cli",
+        });
       }
       return outcome.kind === "merged"
         ? { kind: "merged", sha: outcome.sha }

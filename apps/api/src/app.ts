@@ -5,12 +5,14 @@ import type {
   ApprovalStore,
   BreakerStateRepository,
   EventStore,
+  GitHubPort,
   IssueRepository,
   LedgerRepository,
   ProjectEnabledRepository,
   ProjectListReader,
   RunLedgerReader,
   RunRepository,
+  UnitOfWork,
 } from "@friday/application";
 import fastifyStatic from "@fastify/static";
 import Fastify, { type FastifyInstance } from "fastify";
@@ -40,6 +42,11 @@ export interface ApiDeps {
   breaker: BreakerStateRepository;
   enabled: ProjectEnabledRepository;
   projects: ProjectListReader;
+  /** Secret of the `x-friday-token` header (D108); undefined or empty rejects every write. */
+  panelToken: string | undefined;
+  unitOfWork: UnitOfWork;
+  github: Pick<GitHubPort, "squashMerge">;
+  readPrHead: (pr: number) => Promise<string>;
   now: () => number;
   /** Poll interval of `GET /events/stream` in ms (default 1000). */
   ssePollMs?: number;

@@ -3,7 +3,7 @@ import type {
   IssueRepository,
   IssueRow,
   StateChangedPayload,
-} from "@friday/application";
+} from "./persistence-ports.ts";
 import {
   DEFAULT_PHASES,
   HELD_REASONS,
@@ -35,13 +35,12 @@ function snapshotOf(row: IssueRow): WorkflowSnapshot | null {
   };
 }
 
-/** Applies the inputs in order as human:cli; stops without throwing on a refusal or a missing issue. */
+/** Applies the inputs in order as `ref.actor`; stops without throwing on a refusal or a missing issue. */
 export function applyInputs(
   deps: ApplyInputsDeps,
-  ref: { projectId: string; issueId: number },
-  inputs: WorkflowInput[],
+  ref: { projectId: string; issueId: number; inputs: WorkflowInput[]; actor: string },
 ): void {
-  const { projectId, issueId } = ref;
+  const { projectId, issueId, inputs, actor } = ref;
   for (const input of inputs) {
     const row = deps.issues.get(projectId, issueId);
     if (row === null) return;
@@ -62,7 +61,7 @@ export function applyInputs(
       projectId,
       issueId,
       runId: null,
-      actor: "human:cli",
+      actor,
       at: new Date(deps.now()).toISOString(),
       payload,
     });

@@ -229,7 +229,13 @@ export async function startDaemon(deps: DaemonDeps): Promise<Result> {
       }),
     );
     const port = loaded.config.panel?.port ?? DEFAULT_PANEL_PORT;
-    const api = await startPanel(daemon, deps.startApi ?? realStartApi, port, logOf(deps));
+    const api = await startPanel(
+      daemon,
+      deps.startApi ?? realStartApi,
+      port,
+      logOf(deps),
+      deps.env,
+    );
     const stop = await startOrRelease(daemon, api);
     const exit = deps.exit ?? ((code: number) => process.exit(code));
     return await untilSignal(daemon, api, stop, deps.onSignal ?? defaultOnSignal, exit, redact);

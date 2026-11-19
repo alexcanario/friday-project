@@ -42,11 +42,11 @@ export function openFixture(): Fixture {
     unitOfWork: createUnitOfWork(db),
     github: {
       squashMerge: async () => {
-        throw new Error("github n�o configurado no teste");
+        throw new Error("github não configurado no teste");
       },
     },
     readPrHead: async () => {
-      throw new Error("github n�o configurado no teste");
+      throw new Error("github não configurado no teste");
     },
     now: () => clock.now,
   };

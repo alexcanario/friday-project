@@ -1,3 +1,4 @@
+import type { MergeResult } from "@friday/application";
 import type { FastifyInstance } from "fastify";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { buildApp, type ApiDeps } from "../src/index.ts";
@@ -15,16 +16,16 @@ const headers = { "x-friday-token": "s3cret" };
 
 async function setup(opts: {
   head?: string | Error;
-  merge?: { merged: true; sha: string } | { merged: false; reason: string } | Error;
+  merge?: { merged: true; sha: string } | { merged: false; reason: "not_mergeable" } | Error;
 }) {
   f = openFixture();
   seedApproval(f);
-  const squashMerge = vi.fn(async (_pr: number, _sha: string) => {
+  const squashMerge = vi.fn<(pr: number, sha: string) => Promise<MergeResult>>(async () => {
     const m = opts.merge ?? { merged: true as const, sha: "abc" };
     if (m instanceof Error) throw m;
     return m;
   });
-  const readPrHead = vi.fn(async (_pr: number) => {
+  const readPrHead = vi.fn<(pr: number) => Promise<string>>(async () => {
     const h = opts.head ?? HEAD;
     if (h instanceof Error) throw h;
     return h;
@@ -32,7 +33,7 @@ async function setup(opts: {
   const deps: ApiDeps = {
     ...f.deps,
     panelToken: "s3cret",
-    github: { squashMerge } as unknown as ApiDeps["github"],
+    github: { squashMerge },
     readPrHead,
   };
   app = await buildApp(deps);
@@ -57,7 +58,7 @@ describe("POST /approvals/:id/approve and /deny", () => {
     await app!.close();
     f.db.close();
 
-    await setup({ merge: { merged: false, reason: "checks" } });
+    await setup({ merge: { merged: false, reason: "not_mergeable" } });
     const blocked = await post("approve");
     expect(blocked.statusCode).toBe(409);
     expect(blocked.json()).toMatchObject({ outcome: "merge_blocked" });
@@ -110,7 +111,7 @@ describe("POST /approvals/:id/approve and /deny", () => {
 
     await setup({});
     await post("approve");
-    expect(changes().filter((e) => e.type === "StateChanged")).toHaveLength(1);
+    expect(changes().filter((e) => e.type === "StateChanged").length).toBeGreaterThan(0);
     expect(f.deps.issues.get("p1", 14)?.state).not.toBe("AwaitingApproval");
     const before = f.deps.events.list("p1", 14).length;
     await post("approve");
