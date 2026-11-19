@@ -126,6 +126,8 @@ describe("validateContract", () => {
         "daySum",
         "errorResponse",
         "healthResponse",
+        "hostEntry",
+        "hostsFile",
         "issueItem",
         "runFinishedEvent",
         "runItem",

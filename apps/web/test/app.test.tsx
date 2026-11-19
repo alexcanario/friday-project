@@ -6,7 +6,11 @@ import type { ApiClient } from "../src/api.ts";
 import { connectionStateOf, displayState } from "../src/connection-state.ts";
 import { ConnectionStatus } from "../src/ConnectionStatus.tsx";
 
-const client: ApiClient = { fetchHealth: () => Promise.resolve({ status: "ok" }) };
+const client: ApiClient = {
+  fetchHealth: () => Promise.resolve({ status: "ok" }),
+  fetchProjects: () => Promise.resolve([]),
+  fetchProjectOverview: () => Promise.reject(new Error("unused")),
+};
 const TEXTS = ["Carregando…", "Conectado", "Sem conexão"];
 
 function renderApp(qc: QueryClient): string {
