@@ -8,6 +8,7 @@ import {
   createIssueRepository,
   createLedgerRepository,
   createProjectEnabledRepository,
+  createProjectListReader,
   createRunLedgerReader,
   createRunRepository,
   openDatabase,
@@ -35,6 +36,7 @@ export function openFixture(): Fixture {
     approvals: createApprovalStore(db),
     breaker: createBreakerStateRepository(db),
     enabled: createProjectEnabledRepository(db),
+    projects: createProjectListReader(db),
     now: () => clock.now,
   };
   return { db, deps, clock };
