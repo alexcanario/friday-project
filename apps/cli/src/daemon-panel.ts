@@ -7,6 +7,7 @@ import {
   createIssueRepository,
   createLedgerRepository,
   createProjectEnabledRepository,
+  createProjectListReader,
   createRunLedgerReader,
   createRunRepository,
   type FridayDatabase,
@@ -28,6 +29,7 @@ export function apiDepsOf(db: FridayDatabase): ApiDeps {
     approvals: createApprovalStore(db),
     breaker: createBreakerStateRepository(db),
     enabled: createProjectEnabledRepository(db),
+    projects: createProjectListReader(db),
     now: Date.now,
   };
 }

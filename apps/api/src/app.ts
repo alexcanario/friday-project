@@ -8,6 +8,7 @@ import type {
   IssueRepository,
   LedgerRepository,
   ProjectEnabledRepository,
+  ProjectListReader,
   RunLedgerReader,
   RunRepository,
 } from "@friday/application";
@@ -24,6 +25,7 @@ import { eventsRoutes } from "./routes/events.ts";
 import { healthRoutes } from "./routes/health.ts";
 import { issueRoutes } from "./routes/issues.ts";
 import { ledgerRoutes } from "./routes/ledger.ts";
+import { projectRoutes } from "./routes/projects.ts";
 import { runReviewRoutes } from "./routes/run-review.ts";
 import { runRoutes } from "./routes/runs.ts";
 import { statusRoutes } from "./routes/status.ts";
@@ -37,6 +39,7 @@ export interface ApiDeps {
   approvals: ApprovalStore;
   breaker: BreakerStateRepository;
   enabled: ProjectEnabledRepository;
+  projects: ProjectListReader;
   now: () => number;
   /** Poll interval of `GET /events/stream` in ms (default 1000). */
   ssePollMs?: number;
@@ -64,6 +67,7 @@ export async function buildApp(
   runReviewRoutes(app, deps);
   ledgerRoutes(app, deps);
   approvalRoutes(app, deps);
+  projectRoutes(app, deps);
   statusRoutes(app, deps);
   eventsRoutes(app, deps);
   app.get("/openapi.json", { schema: { hide: true } }, () => app.swagger());

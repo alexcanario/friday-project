@@ -13,6 +13,7 @@ export { nightDigestSchema, type NightDigest } from "@friday/contracts";
 export { toAgentRunOptions, type AgentRunOptions } from "./agent-run-options.ts";
 export { type AgentRuntime, type AgentRunRequest } from "./agent-runtime.ts";
 export { buildEffectsRun, type EffectsRun } from "./effects-run.ts";
+export type { ProjectListReader } from "./project-list-reader.ts";
 export { heldReasonFor } from "./held-reason-for.ts";
 export { FakeAgentRuntime } from "./fake-agent-runtime.ts";
 export type {

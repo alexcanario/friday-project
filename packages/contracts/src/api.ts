@@ -62,6 +62,9 @@ export const approvalItem = z.object({
   expiresAt: z.number().int(),
 });
 
+/** One project the daemon processes, as listed by `GET /projects`. */
+export const projectItem = z.object({ id: z.string().min(1) });
+
 /** Response of `GET /status`: the saved `enabled` flag (null when never saved) and the breaker state. */
 export const statusResponse = z.object({
   enabled: z.boolean().nullable(),
@@ -101,3 +104,4 @@ export type RunItem = z.infer<typeof runItem>;
 export type DaySum = z.infer<typeof daySum>;
 export type ErrorResponse = z.infer<typeof errorResponse>;
 export type ApprovalItem = z.infer<typeof approvalItem>;
+export type ProjectItem = z.infer<typeof projectItem>;
