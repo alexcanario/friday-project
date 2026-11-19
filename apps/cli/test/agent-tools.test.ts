@@ -122,6 +122,19 @@ describe("reader agents without Bash", () => {
     expect(bodyOf("---\nname: x\n---\nno phrase")).not.toContain(entryPhrase.qa);
   });
 
+  it("judge body says it is the night-factory contract and the daemon Judge uses registry/prompts/judge.md", () => {
+    const sentence =
+      "This file is the contract of the night factory only. The daemon Judge does not read it: it runs with registry/prompts/judge.md and receives the criteria of the last valid CriteriaSet and the QA report of the reviewed head, without CI status (D104, D105, D106).";
+    const withoutSentence =
+      "---\nname: judge\n---\n" + entryPhrase.judge + "\n\n" + verifyCheckRuns;
+    expect(bodyOf(withoutSentence)).not.toContain("registry/prompts/judge.md");
+    const body = bodyOf(agentText("judge"));
+    expect(body.split(/\r?\n/)).toContain(sentence);
+    expect(body).toContain("registry/prompts/judge.md");
+    for (const name of ["judge", "judge-strong"])
+      expect(agentText(name).split(/\r?\n/), name).toContain("tools: Read, Glob, Grep");
+  });
+
   it("each reader body states how it verifies without commands", () => {
     for (const name of ["qa", "judge"])
       expect(bodyOf(agentText(name)), name).toContain(verifyCheckRuns);
