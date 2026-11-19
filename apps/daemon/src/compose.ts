@@ -72,7 +72,7 @@ export interface ComposeOptions {
   createGitHub?: (token: string, repo: Repo) => GitHubPort;
   /** Author GitHub port that asks `auth` for the token on every request (`author_app`, D89). */
   createGitHubWithAuth?: (auth: () => Promise<string>, repo: Repo) => GitHubPort;
-  /** Installation-token provider of the author App; defaults to `createInstallationTokenProvider`. */
+  /** Installation-token provider factory for the author App and the review App (Judge); defaults to `createInstallationTokenProvider`. */
   createTokenProvider?: TokenProviderFactory;
   /** Home directory used when FRIDAY_HOME is not set; defaults to os.homedir(). */
   homeDir?: string;
