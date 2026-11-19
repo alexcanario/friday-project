@@ -94,6 +94,7 @@ export interface ComposeOptions {
 export interface Daemon {
   ticker: Ticker;
   db: FridayDatabase;
+  github: GitHubPort;
   report: ReconcileReport;
   /** Releases the process lock and closes the database. */
   release(): void;
@@ -263,21 +264,21 @@ export async function composeDaemon(opts: ComposeOptions): Promise<Daemon> {
   const lock = acquireProcessLock(opts.root, opts.lock);
   let db: FridayDatabase | undefined;
   try {
-    db = openDatabase(opts.dbPath);
+    const opened = (db = openDatabase(opts.dbPath));
     const github = wiring.github();
     const runtimeFor = buildRuntimeFor({
-      db,
+      db: opened,
       github,
       gitHost,
       env: opts.env,
       ...(opts.createRuntime === undefined ? {} : { createRuntime: opts.createRuntime }),
     });
     const redact = createRedactor(opts.env, author.tokenEnvNames);
-    const { ticker, report } = await assemble(opts, db, github, runtimeFor, repo, redact);
-    const opened = db;
+    const { ticker, report } = await assemble(opts, opened, github, runtimeFor, repo, redact);
     return {
       ticker,
       db: opened,
+      github,
       report,
       release() {
         try {

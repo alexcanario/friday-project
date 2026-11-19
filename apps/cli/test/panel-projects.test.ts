@@ -12,6 +12,6 @@ describe("apiDepsOf", () => {
   it("apiDepsOf exposes the project list", () => {
     db = openDatabase(join(mkdtempSync(join(tmpdir(), "friday-panel-projects-")), "friday.db"));
     db.sqlite.prepare("INSERT INTO projects (id) VALUES ('p1')").run();
-    expect(apiDepsOf(db).projects.list()).toEqual(["p1"]);
+    expect(apiDepsOf({ db, github: {} as never }, {}).projects.list()).toEqual(["p1"]);
   });
 });

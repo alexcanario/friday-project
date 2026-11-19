@@ -11,6 +11,7 @@ import {
   createProjectListReader,
   createRunLedgerReader,
   createRunRepository,
+  createUnitOfWork,
   openDatabase,
   type FridayDatabase,
 } from "@friday/infrastructure";
@@ -37,6 +38,16 @@ export function openFixture(): Fixture {
     breaker: createBreakerStateRepository(db),
     enabled: createProjectEnabledRepository(db),
     projects: createProjectListReader(db),
+    panelToken: undefined,
+    unitOfWork: createUnitOfWork(db),
+    github: {
+      squashMerge: async () => {
+        throw new Error("github não configurado no teste");
+      },
+    },
+    readPrHead: async () => {
+      throw new Error("github não configurado no teste");
+    },
     now: () => clock.now,
   };
   return { db, deps, clock };
@@ -94,4 +105,41 @@ export function countRows(db: FridayDatabase): Record<string, number> {
     out[t] = r.n;
   }
   return out;
+}
+
+export const HEAD = "a".repeat(40);
+
+/** Seeds one pending approval for issue 14 of p1 (id `00000001`, pr 30) and the issue in AwaitingApproval. */
+export function seedApproval(f: Fixture, id = "00000001", issueId = 14): void {
+  f.deps.approvals.insert({
+    id,
+    projectId: "p1",
+    issueId,
+    pr: 30,
+    headSha: HEAD,
+    tier: "high",
+    requestedAt: f.clock.now,
+    expiresAt: f.clock.now + 1_800_000,
+    decision: null,
+    decidedAt: null,
+    decidedBy: null,
+  });
+  f.deps.events.append({
+    projectId: "p1",
+    issueId,
+    runId: null,
+    type: "ApprovalRequested",
+    payload: {
+      id,
+      pr: 30,
+      headSha: HEAD,
+      tier: "high",
+      requestedAt: f.clock.now,
+      expiresAt: f.clock.now + 1_800_000,
+    },
+    actor: "daemon",
+    at: "2026-11-05T10:00:00.000Z",
+  });
+  f.deps.events.append(stateChanged("p1", issueId, "RiskCheck", "AwaitingApproval"));
+  f.deps.issues.rebuild("p1");
 }

@@ -10,7 +10,7 @@ import {
   createProjectListReader,
   createRunLedgerReader,
   createRunRepository,
-  type FridayDatabase,
+  createUnitOfWork,
 } from "@friday/infrastructure";
 
 /** Default panel port, used when factory.yaml has no panel block. */
@@ -18,8 +18,12 @@ export const DEFAULT_PANEL_PORT = 7777;
 
 export type StartApi = typeof startApi;
 
-/** The read-side dependencies of the panel API, built over the daemon's own database connection. */
-export function apiDepsOf(db: FridayDatabase): ApiDeps {
+/** The dependencies of the panel API, built over the daemon's own database connection. */
+export function apiDepsOf(
+  daemon: Pick<Daemon, "db" | "github">,
+  env: Record<string, string | undefined>,
+): ApiDeps {
+  const { db } = daemon;
   return {
     events: createEventStore(db),
     issues: createIssueRepository(db),
@@ -30,6 +34,10 @@ export function apiDepsOf(db: FridayDatabase): ApiDeps {
     breaker: createBreakerStateRepository(db),
     enabled: createProjectEnabledRepository(db),
     projects: createProjectListReader(db),
+    panelToken: env.FRIDAY_PANEL_TOKEN,
+    unitOfWork: createUnitOfWork(db),
+    github: { squashMerge: (pr, sha) => daemon.github.squashMerge(pr, sha) },
+    readPrHead: async (pr) => (await daemon.github.getPrMergeState(pr)).headSha,
     now: Date.now,
   };
 }
@@ -45,10 +53,11 @@ export async function startPanel(
   start: StartApi,
   port: number,
   log: (message: string) => void,
+  env: Record<string, string | undefined>,
 ): Promise<RunningApi> {
   let api: RunningApi;
   try {
-    api = await start({ deps: apiDepsOf(daemon.db), port });
+    api = await start({ deps: apiDepsOf(daemon, env), port });
   } catch (error) {
     daemon.release();
     throw panelErrorOf(error, port);
