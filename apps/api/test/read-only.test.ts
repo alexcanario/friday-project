@@ -6,7 +6,7 @@ let f: Fixture;
 afterEach(() => f.db.close());
 
 describe("read-only API", () => {
-  it("leaves events, runs and ledger rows unchanged and rejects write methods with 404", async () => {
+  it("rejects writes on issues routes with 404 and leaves rows unchanged after reads", async () => {
     f = openFixture();
     seedIssues(f);
     const app = await buildApp(f.deps);
@@ -36,6 +36,9 @@ describe("read-only API", () => {
       expect(res.statusCode, `${method} ${url}`).toBe(404);
     }
     expect(countRows(f.db)).toEqual(countsBefore);
+    // the two /approvals/:id routes are the write exceptions and need the panel token
+    const unauthorized = await app.inject({ method: "POST", url: "/approvals/x/approve" });
+    expect(unauthorized.statusCode).toBe(401);
     await app.close();
   });
 });

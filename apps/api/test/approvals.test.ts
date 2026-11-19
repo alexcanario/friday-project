@@ -97,7 +97,7 @@ describe("GET /approvals", () => {
     expect(res.json()[0].tier).toBe("unclassified");
   });
 
-  it("documents only GET /approvals and exposes no write route", async () => {
+  it("documents GET /approvals and only the two token-protected decision routes", async () => {
     f = openFixture();
     f.deps.approvals.insert(record({ id: "00000001" }));
     app = await buildApp(f.deps);
@@ -105,11 +105,15 @@ describe("GET /approvals", () => {
     const item = spec.paths["/approvals"];
     expect(item.get.responses["200"]).toBeDefined();
     for (const m of ["post", "put", "patch", "delete"]) expect(item[m]).toBeUndefined();
-    expect(Object.keys(spec.paths).filter((p) => p.startsWith("/approvals/"))).toEqual([]);
+    expect(
+      Object.keys(spec.paths)
+        .filter((p) => p.startsWith("/approvals/"))
+        .sort(),
+    ).toEqual(["/approvals/{id}/approve", "/approvals/{id}/deny"]);
     expect((await app.inject({ method: "POST", url: "/approvals" })).statusCode).toBe(404);
     expect(
       (await app.inject({ method: "POST", url: "/approvals/00000001/approve" })).statusCode,
-    ).toBe(404);
+    ).toBe(401);
     expect(f.deps.approvals.get("00000001")?.decision).toBeNull();
   });
 });
