@@ -10,7 +10,7 @@ describe("defaultClientFor", () => {
       "friday.panelToken.h2": "t2",
     };
     vi.stubGlobal("sessionStorage", { getItem: (k: string) => data[k] ?? null });
-    const fetchFn = vi.fn(() =>
+    const fetchFn = vi.fn<(url: string, init?: RequestInit) => Promise<Response>>(() =>
       Promise.resolve(new Response(JSON.stringify({ status: "ok" }), { status: 200 })),
     );
     vi.stubGlobal("fetch", fetchFn);
