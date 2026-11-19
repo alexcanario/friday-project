@@ -55,3 +55,4 @@ export {
   type ErrorResponse,
   type ApprovalItem,
 } from "./api.ts";
+export { hostEntry, hostsFile, type HostEntry, type HostsFile } from "./hosts.ts";

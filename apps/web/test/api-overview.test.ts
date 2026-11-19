@@ -35,7 +35,8 @@ function stub(
   enabled: boolean | null,
   override?: { match: string; status: number; body?: unknown },
 ) {
-  const fn = vi.fn((url: string) => {
+  const fn = vi.fn((...args: [url: string, init?: unknown]) => {
+    const url = args[0];
     let body: unknown = day;
     if (url.includes("/status")) body = status(enabled);
     else if (url.includes("/runs")) body = runs;
