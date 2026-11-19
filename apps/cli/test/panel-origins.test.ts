@@ -6,8 +6,8 @@ import { openDatabase, type FridayDatabase } from "@friday/infrastructure";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { parseOrigins, startPanel, type StartApi } from "../src/daemon-panel.ts";
 
-let db: FridayDatabase;
-afterEach(() => db.close());
+let db: FridayDatabase | undefined;
+afterEach(() => db?.close());
 
 const WARNING =
   "Aviso: FRIDAY_PANEL_TOKEN ausente; a leitura do painel fica aberta em 127.0.0.1. Não exponha a porta por túnel ou proxy sem o token.";
@@ -49,7 +49,7 @@ describe("panel origins", () => {
     for (const env of [{}, { FRIDAY_PANEL_TOKEN: "" }]) {
       const { logs } = await run(env);
       expect(logs).toContain(WARNING);
-      db.close();
+      db?.close();
     }
     const { logs } = await run({ FRIDAY_PANEL_TOKEN: "tok" });
     expect(logs).not.toContain(WARNING);

@@ -15,10 +15,7 @@ function corsHeaders(headers: Record<string, unknown>): string[] {
 describe("CORS by origin list", () => {
   it("allows the configured origin and answers the preflight without a token", async () => {
     f = openFixture();
-    const app = await buildApp(
-      { ...f.deps, panelToken: "s3cret" },
-      { allowedOrigins: [ORIGIN] },
-    );
+    const app = await buildApp({ ...f.deps, panelToken: "s3cret" }, { allowedOrigins: [ORIGIN] });
     try {
       const health = await app.inject({
         method: "GET",
