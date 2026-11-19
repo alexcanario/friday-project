@@ -143,6 +143,7 @@ describe("validateContract", () => {
         "experimentRunsSchema",
         "experimentVariantsSchema",
         "nightDigestSchema",
+        "projectItem",
         "parseAndValidateContract",
         "qaReportSchema",
         "reviewVerdictSchema",
