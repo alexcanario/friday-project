@@ -41,7 +41,7 @@ import { assertQaAgentConfig, type QaCompose } from "./qa-wiring.ts";
 import { assertSpecialistAgentConfig, type SpecialistCompose } from "./specialist-wiring.ts";
 import { createPrOf } from "./pr-of.ts";
 import { createIntake } from "./intake.ts";
-import type { JudgeCompose } from "./judge-wiring.ts";
+import type { JudgeCompose, TokenProviderFactory } from "./judge-wiring.ts";
 import { acquireProcessLock, type ProcessLockDeps } from "./process-lock.ts";
 import { reconcile, type ReconcileReport } from "./reconcile.ts";
 import { createRedactor, withRedactedLog } from "./redact.ts";
@@ -73,11 +73,7 @@ export interface ComposeOptions {
   /** Author GitHub port that asks `auth` for the token on every request (`author_app`, D89). */
   createGitHubWithAuth?: (auth: () => Promise<string>, repo: Repo) => GitHubPort;
   /** Installation-token provider of the author App; defaults to `createInstallationTokenProvider`. */
-  createTokenProvider?: (input: {
-    appId: number;
-    installationId: number;
-    privateKeyPath: string;
-  }) => { getToken(): Promise<string> };
+  createTokenProvider?: TokenProviderFactory;
   /** Home directory used when FRIDAY_HOME is not set; defaults to os.homedir(). */
   homeDir?: string;
   createRuntime?: (deps: ClaudeAgentSdkRuntimeDeps) => AgentRuntime;
