@@ -6,6 +6,7 @@ export interface ApprovalsViewProps {
   status: StatusResponse;
   hasToken: boolean;
   message: string | null;
+  busy?: boolean;
   onApprove: (id: string) => void;
   onDeny: (id: string) => void;
 }
@@ -15,8 +16,13 @@ function enabledText(enabled: boolean | null): string {
   return enabled ? "ligado" : "desligado";
 }
 
+export function buttonsDisabled(hasToken: boolean, busy: boolean): boolean {
+  return !hasToken || busy;
+}
+
 export function ApprovalsView(props: ApprovalsViewProps): React.JSX.Element {
   const { approvals, status, hasToken, message, onApprove, onDeny } = props;
+  const disabled = buttonsDisabled(hasToken, props.busy ?? false);
   return (
     <div>
       {message === null ? null : <p data-field="message">{message}</p>}
@@ -26,10 +32,10 @@ export function ApprovalsView(props: ApprovalsViewProps): React.JSX.Element {
           <li key={a.id} data-approval-id={a.id}>
             <span>{`#${a.issueId}`}</span> <span>{`PR #${a.pr}`}</span>{" "}
             <span data-field="head-sha">{a.headSha}</span> <span data-field="tier">{a.tier}</span>{" "}
-            <button data-action="approve" disabled={!hasToken} onClick={() => onApprove(a.id)}>
+            <button data-action="approve" disabled={disabled} onClick={() => onApprove(a.id)}>
               Aprovar
             </button>
-            <button data-action="deny" disabled={!hasToken} onClick={() => onDeny(a.id)}>
+            <button data-action="deny" disabled={disabled} onClick={() => onDeny(a.id)}>
               Rejeitar
             </button>
           </li>

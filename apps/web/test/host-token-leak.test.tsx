@@ -77,7 +77,15 @@ describe("token on the approvals section", () => {
     });
     const qc = new QueryClient();
     qc.setQueryData(queryKeys.approvals("a/b", "h1"), [
-      { id: "a1", issueId: 14, pr: 5, headSha: "abc123", tier: "low", requestedAt: 1, expiresAt: 2 },
+      {
+        id: "a1",
+        issueId: 14,
+        pr: 5,
+        headSha: "abc123",
+        tier: "low",
+        requestedAt: 1,
+        expiresAt: 2,
+      },
     ]);
     qc.setQueryData(queryKeys.status("a/b", "h1"), {
       enabled: true,
