@@ -22,6 +22,7 @@ import {
   validatorCompiler,
   type ZodTypeProvider,
 } from "fastify-type-provider-zod";
+import { registerAttemptLimit, type AttemptLimit } from "./attempt-limit.ts";
 import { registerCors } from "./cors.ts";
 import { registerErrorHandler } from "./error-handler.ts";
 import { registerHostCheck } from "./host-check.ts";
@@ -66,6 +67,8 @@ export interface BuildAppOptions {
   allowedOrigins?: readonly string[];
   /** `Host` values accepted (lowercase); when omitted no host check is registered. Runs before CORS. */
   allowedHosts?: () => readonly string[];
+  /** Refusal counter (401 and 403): at the limit every request but `/health` gets 429. Off when omitted. */
+  attemptLimit?: AttemptLimit;
   /** Called for every route registered, so a test can walk all of them. */
   onRoute?: (route: { method: string | string[]; url: string }) => void;
 }
@@ -100,6 +103,9 @@ export async function buildApp(
   app.addHook("onRoute", (r) => options.onRoute?.({ method: r.method, url: r.url }));
   if (options.allowedHosts !== undefined) registerHostCheck(app, options.allowedHosts);
   registerCors(app, options.allowedOrigins ?? []);
+  if (options.attemptLimit !== undefined) {
+    registerAttemptLimit(app, options.attemptLimit, deps.now, deps.log);
+  }
   app.setValidatorCompiler(validatorCompiler);
   app.setSerializerCompiler(serializerCompiler);
   await app.register(swagger, {
