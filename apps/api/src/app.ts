@@ -24,6 +24,7 @@ import {
 } from "fastify-type-provider-zod";
 import { registerCors } from "./cors.ts";
 import { registerErrorHandler } from "./error-handler.ts";
+import { registerHostCheck } from "./host-check.ts";
 import { isPanelTokenValid } from "./panel-token.ts";
 import { approvalRoutes } from "./routes/approvals.ts";
 import { eventsRoutes } from "./routes/events.ts";
@@ -61,6 +62,8 @@ export interface BuildAppOptions {
   webRoot?: string;
   /** Origins that receive CORS headers (exact match; `*` and `null` never match). */
   allowedOrigins?: readonly string[];
+  /** `Host` values accepted (lowercase); when omitted no host check is registered. Runs before CORS. */
+  allowedHosts?: () => readonly string[];
   /** Called for every route registered, so a test can walk all of them. */
   onRoute?: (route: { method: string | string[]; url: string }) => void;
 }
@@ -93,6 +96,7 @@ export async function buildApp(
 ): Promise<FastifyInstance> {
   const app = Fastify().withTypeProvider<ZodTypeProvider>();
   app.addHook("onRoute", (r) => options.onRoute?.({ method: r.method, url: r.url }));
+  if (options.allowedHosts !== undefined) registerHostCheck(app, options.allowedHosts);
   registerCors(app, options.allowedOrigins ?? []);
   app.setValidatorCompiler(validatorCompiler);
   app.setSerializerCompiler(serializerCompiler);
