@@ -22,12 +22,91 @@ describe("secure base", () => {
     const http = { protocol: "http:", hostname: "painel.exemplo.com" };
     const https = { protocol: "https:", hostname: "painel.exemplo.com" };
     const local = { protocol: "http:", hostname: "localhost" };
-    for (const base of ["", "::"]) {
+    for (const base of ["", "::", "/api", "api"]) {
       expect(isInsecureBase(base, http)).toBe(true);
       expect(isInsecureBase(base, https)).toBe(false);
       expect(isInsecureBase(base, local)).toBe(false);
       expect(isInsecureBase(base, undefined)).toBe(false);
     }
+    expect(isInsecureBase("http:", https)).toBe(true);
+    for (const ok of ["http://127.0.0.1:7777", "http://localhost:7777", "http://[::1]:7777"]) {
+      expect(isInsecureBase(ok, undefined)).toBe(false);
+    }
+    for (const bad of [
+      "http:painel.exemplo.com",
+      "http:\\\\painel.exemplo.com",
+      " http://painel.exemplo.com",
+    ]) {
+      expect(isInsecureBase(bad, undefined)).toBe(true);
+    }
+  });
+
+  it("flags a base without protocol whatever the page", () => {
+    for (const base of [
+      "//host.remoto",
+      "//host.remoto:7777",
+      "\\\\host.remoto",
+      "/\\host.remoto",
+      "\\/host.remoto",
+      "  //host.remoto",
+      "/\t/host.remoto",
+      "//",
+      "http:",
+      "http:/",
+      "https:",
+    ]) {
+      expect(isInsecureBase(base, undefined)).toBe(true);
+    }
+    const local = { protocol: "http:", hostname: "localhost" };
+    const https = { protocol: "https:", hostname: "painel.exemplo.com" };
+    expect(isInsecureBase("//host.remoto", local)).toBe(true);
+    expect(isInsecureBase("//host.remoto", https)).toBe(true);
+  });
+
+  it("never sends the token to a protocol-relative base", async () => {
+    vi.stubGlobal("location", { protocol: "http:", hostname: "localhost" });
+    const fn = vi.fn(() =>
+      Promise.resolve(new Response(JSON.stringify({ status: "ok" }), { status: 200 })),
+    );
+    vi.stubGlobal("fetch", fn);
+    const client = createApiClient("//host.remoto", () => "tok");
+    await expect(client.fetchHealth()).rejects.toBeInstanceOf(ApiInsecureError);
+    await expect(client.postDecision("a1", "approve")).rejects.toBeInstanceOf(ApiInsecureError);
+    expect(fn).toHaveBeenCalledTimes(0);
+
+    await createApiClient("//host.remoto", () => "").fetchHealth();
+    expect(fn).toHaveBeenCalledTimes(1);
+
+    const fn2 = vi.fn(() =>
+      Promise.resolve(new Response(JSON.stringify({ status: "ok" }), { status: 200 })),
+    );
+    vi.stubGlobal("fetch", fn2);
+    await createApiClient("", () => "tok").fetchHealth();
+    expect(fn2).toHaveBeenCalledTimes(1);
+    expect(fn2).toHaveBeenCalledWith(
+      "/health",
+      expect.objectContaining({
+        headers: { "x-friday-token": "tok" },
+        redirect: "manual",
+      }),
+    );
+  });
+
+  it("opens no live stream to a protocol-relative base", () => {
+    vi.stubGlobal("location", { protocol: "http:", hostname: "localhost" });
+    vi.stubGlobal("sessionStorage", {
+      getItem: () => "tok",
+      setItem: () => undefined,
+    });
+    const target = (baseUrl: string) =>
+      liveTarget({ kind: "selected", host: { name: "h1", baseUrl }, project: "o/r" });
+    expect(target("//host.remoto")).toBeNull();
+    expect(target("http://localhost:7777")).toEqual({
+      baseUrl: "http://localhost:7777",
+      project: "o/r",
+      token: "tok",
+      host: "h1",
+    });
   });
 
   it("never sends the token to an insecure host", async () => {
