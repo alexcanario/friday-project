@@ -14,6 +14,8 @@ const client: ApiClient = {
   fetchApprovals: never,
   fetchStatus: never,
   postDecision: never,
+  fetchIssues: never,
+  fetchRuns: never,
 };
 const item = {
   id: "a1",
