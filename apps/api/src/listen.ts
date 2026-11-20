@@ -28,6 +28,7 @@ export async function startApi(options: StartApiOptions): Promise<RunningApi> {
     webRoot: options.webRoot ?? DEFAULT_WEB_ROOT,
     allowedOrigins: options.allowedOrigins,
     attemptLimit: options.attemptLimit ?? DEFAULT_ATTEMPT_LIMIT,
+    requireHttps: true,
     allowedHosts: () => allowedHostsOf(boundPort, options.allowedOrigins ?? []),
   });
   await app.listen({ host: HOST, port: boundPort });

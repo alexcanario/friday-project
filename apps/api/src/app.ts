@@ -26,6 +26,7 @@ import { registerAttemptLimit, type AttemptLimit } from "./attempt-limit.ts";
 import { registerCors } from "./cors.ts";
 import { registerErrorHandler } from "./error-handler.ts";
 import { registerHostCheck } from "./host-check.ts";
+import { registerHttpsCheck } from "./https-check.ts";
 import { isPanelTokenValid } from "./panel-token.ts";
 import { approvalRoutes } from "./routes/approvals.ts";
 import { eventsRoutes } from "./routes/events.ts";
@@ -67,6 +68,8 @@ export interface BuildAppOptions {
   allowedOrigins?: readonly string[];
   /** `Host` values accepted (lowercase); when omitted no host check is registered. Runs before CORS. */
   allowedHosts?: () => readonly string[];
+  /** Outside loopback refuses requests the proxy did not mark `https` in `x-forwarded-proto`. Runs after the host check. */
+  requireHttps?: boolean;
   /** Refusal counter (401 and 403): at the limit every request but `/health` gets 429. Off when omitted. */
   attemptLimit?: AttemptLimit;
   /** Called for every route registered, so a test can walk all of them. */
@@ -102,6 +105,7 @@ export async function buildApp(
   const app = Fastify().withTypeProvider<ZodTypeProvider>();
   app.addHook("onRoute", (r) => options.onRoute?.({ method: r.method, url: r.url }));
   if (options.allowedHosts !== undefined) registerHostCheck(app, options.allowedHosts);
+  if (options.requireHttps === true) registerHttpsCheck(app);
   registerCors(app, options.allowedOrigins ?? []);
   if (options.attemptLimit !== undefined) {
     registerAttemptLimit(app, options.attemptLimit, deps.now, deps.log);

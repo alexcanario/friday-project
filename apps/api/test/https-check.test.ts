@@ -9,11 +9,11 @@ const HSTS = "strict-transport-security";
 let f: Fixture;
 afterEach(() => f.db.close());
 
-async function appWith(requireHttps: boolean | undefined = true) {
+async function appWith(options: { requireHttps?: boolean } = { requireHttps: true }) {
   f = openFixture();
   return buildApp(f.deps, {
     allowedHosts: () => ["painel.exemplo.com", "127.0.0.1:7777"],
-    requireHttps,
+    ...options,
   });
 }
 
@@ -80,7 +80,7 @@ describe("https check", () => {
   });
 
   it("does nothing without the requireHttps option", async () => {
-    const app = await appWith(undefined);
+    const app = await appWith({});
     const res = await app.inject({ url: "/health", headers: { host: "painel.exemplo.com" } });
     expect(res.statusCode).toBe(200);
     await app.close();
