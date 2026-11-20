@@ -9,6 +9,8 @@ const client: ApiClient = {
   fetchHealth: () => Promise.resolve({ status: "ok" }),
   fetchProjects: () => Promise.resolve([]),
   fetchProjectOverview: () => Promise.reject(new Error("unused")),
+  fetchIssues: () => Promise.resolve([]),
+  fetchRuns: () => Promise.resolve([]),
 };
 const clientFor = () => client;
 const hosts = [

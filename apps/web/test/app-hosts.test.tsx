@@ -8,6 +8,13 @@ const client: ApiClient = {
   fetchHealth: () => Promise.resolve({ status: "ok" }),
   fetchProjects: () => Promise.resolve([]),
   fetchProjectOverview: () => Promise.reject(new Error("unused")),
+  fetchIssues: () => Promise.resolve([]),
+  fetchRuns: () => Promise.resolve([]),
+};
+const hostClient: ApiClient = {
+  ...client,
+  fetchIssues: () => new Promise(() => undefined),
+  fetchRuns: () => new Promise(() => undefined),
 };
 const hosts = [
   { name: "h1", baseUrl: "" },
@@ -15,7 +22,7 @@ const hosts = [
 ];
 
 function render(search: string, hostList: typeof hosts | null = hosts) {
-  const clientFor = vi.fn(() => client);
+  const clientFor = vi.fn(() => hostClient);
   const html = renderToString(
     <QueryClientProvider client={new QueryClient()}>
       <App client={client} hosts={hostList} search={search} clientFor={clientFor} />
@@ -25,17 +32,22 @@ function render(search: string, hostList: typeof hosts | null = hosts) {
 }
 
 describe("app with hosts", () => {
-  it("selects host and project from the URL and makes no client for an unknown host", () => {
+  it("selects host and project from the URL and renders the project screen with the host client", () => {
     let r = render("?host=h1&project=a%2Fb");
+    expect(r.html).toContain('data-view="project"');
     expect(r.html).toContain("Projeto a/b em h1");
     expect(r.html).toContain('data-action="back"');
+    expect(r.html).toContain('data-slot="approvals"');
     expect(r.html).not.toContain("data-host-card=");
-    expect(r.clientFor).toHaveBeenCalledTimes(0);
+    expect(r.clientFor).toHaveBeenCalledTimes(1);
+    expect(r.clientFor).toHaveBeenCalledWith(hosts[0]);
     r = render("?host=zzz&project=a%2Fb");
     expect(r.html).toContain("Host desconhecido: zzz.");
+    expect(r.html).not.toContain('data-view="project"');
     expect(r.html).not.toContain("data-host-card=");
     expect(r.clientFor).toHaveBeenCalledTimes(0);
     r = render("");
+    expect(r.html).not.toContain('data-view="project"');
     expect(r.clientFor).toHaveBeenCalledTimes(2);
     expect(render("", null).html).toContain("Não foi possível ler a lista de hosts.");
   });
