@@ -9,6 +9,7 @@ import { parseOrigins, startPanel, type StartApi } from "../src/daemon-panel.ts"
 let db: FridayDatabase | undefined;
 afterEach(() => db?.close());
 
+const VALID_TOKEN = "A1b2C3d4E5f6G7h8I9j0K1l2M3n4O5p6";
 const WARNING =
   "Aviso: FRIDAY_PANEL_TOKEN ausente; a leitura do painel fica aberta em 127.0.0.1. Não exponha a porta por túnel ou proxy sem o token.";
 
@@ -37,12 +38,14 @@ describe("panel origins", () => {
 
   it("startPanel passes the origins and the token and logs no secret", async () => {
     const { options, logs } = await run({
-      FRIDAY_PANEL_TOKEN: "tok",
+      FRIDAY_PANEL_TOKEN: VALID_TOKEN,
+      FRIDAY_PANEL_TOKEN_EXPIRES_AT:
+        new Date(Date.now() + 86_400_000).toISOString().slice(0, 19) + "Z",
       FRIDAY_PANEL_ORIGINS: "https://a.local",
     });
     expect(options.allowedOrigins).toEqual(["https://a.local"]);
-    expect(options.deps.panelToken).toBe("tok");
-    expect(logs.some((m) => m.includes("tok"))).toBe(false);
+    expect(options.deps.panelToken).toBe(VALID_TOKEN);
+    expect(logs.some((m) => m.includes(VALID_TOKEN))).toBe(false);
   });
 
   it("startPanel warns when the panel token is missing", async () => {
@@ -51,7 +54,7 @@ describe("panel origins", () => {
       expect(logs).toContain(WARNING);
       db?.close();
     }
-    const { logs } = await run({ FRIDAY_PANEL_TOKEN: "tok" });
+    const { logs } = await run({ FRIDAY_PANEL_TOKEN: VALID_TOKEN });
     expect(logs).not.toContain(WARNING);
   });
 });

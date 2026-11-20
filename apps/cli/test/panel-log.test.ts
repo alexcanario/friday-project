@@ -56,9 +56,10 @@ describe("panel log", () => {
         await p;
         return lines;
       };
-      const masked = await run("tok-secret-123", "erro tok-secret-123 ghp_abc123DEF fim");
+      const token = "A1b2C3d4E5f6G7h8I9j0K1l2M3n4O5p6";
+      const masked = await run(token, `erro ${token} ghp_abc123DEF fim`);
       expect(masked).toContain("erro *** *** fim");
-      expect(masked.join("\n")).not.toContain("tok-secret-123");
+      expect(masked.join("\n")).not.toContain(token);
       expect(masked).toContain("Painel em http://127.0.0.1:7777");
       for (const token of [undefined, ""]) {
         expect(await run(token, "erro sem segredo")).toContain("erro sem segredo");

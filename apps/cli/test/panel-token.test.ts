@@ -25,11 +25,13 @@ function open() {
   return { github, getPrMergeState };
 }
 
+const VALID_TOKEN = "A1b2C3d4E5f6G7h8I9j0K1l2M3n4O5p6";
+
 describe("panel token wiring", () => {
   it("wires the panel token from the environment and fails closed without it", async () => {
     const { github, getPrMergeState } = open();
-    const deps = apiDepsOf({ db, github }, { FRIDAY_PANEL_TOKEN: "tok" });
-    expect(deps.panelToken).toBe("tok");
+    const deps = apiDepsOf({ db, github }, { FRIDAY_PANEL_TOKEN: VALID_TOKEN });
+    expect(deps.panelToken).toBe(VALID_TOKEN);
     expect(await deps.readPrHead(7)).toBe("h7");
     expect(getPrMergeState).toHaveBeenCalledWith(7);
     expect(Object.keys(deps.github)).toEqual(["squashMerge"]);
@@ -53,10 +55,10 @@ describe("panel token wiring", () => {
     const logs: string[] = [];
     const daemon = { db, github, release: () => {} } as unknown as Daemon;
     await startPanel(daemon, start as unknown as StartApi, 7777, (m) => logs.push(m), {
-      FRIDAY_PANEL_TOKEN: "tok",
+      FRIDAY_PANEL_TOKEN: VALID_TOKEN,
     });
     const call = start.mock.calls[0] as unknown as [{ deps: { panelToken: string } }];
-    expect(call[0].deps.panelToken).toBe("tok");
-    expect(logs.some((m) => m.includes("tok"))).toBe(false);
+    expect(call[0].deps.panelToken).toBe(VALID_TOKEN);
+    expect(logs.some((m) => m.includes(VALID_TOKEN))).toBe(false);
   });
 });
