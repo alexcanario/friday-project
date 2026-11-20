@@ -15,7 +15,10 @@ const mk = (id: string, headSha: string, pr: number): ApprovalItem => ({
   requestedAt: 1,
   expiresAt: 2,
 });
-const closed: StatusResponse = { enabled: null, breaker: { open: false, openedAt: null, failures: [] } };
+const closed: StatusResponse = {
+  enabled: null,
+  breaker: { open: false, openedAt: null, failures: [] },
+};
 const base: Props = {
   approvals: [mk("a2", "def456", 6), mk("a1", "abc123", 5)],
   status: closed,
@@ -47,8 +50,12 @@ describe("ApprovalsView", () => {
   it("disables both buttons without a token", () => {
     const off = html({ hasToken: false });
     for (const id of ["a1", "a2"]) {
-      expect(row(off, id)).toMatch(/<button[^>]*disabled[^>]*data-action="approve"|<button[^>]*data-action="approve"[^>]*disabled/);
-      expect(row(off, id)).toMatch(/<button[^>]*disabled[^>]*data-action="deny"|<button[^>]*data-action="deny"[^>]*disabled/);
+      expect(row(off, id)).toMatch(
+        /<button[^>]*disabled[^>]*data-action="approve"|<button[^>]*data-action="approve"[^>]*disabled/,
+      );
+      expect(row(off, id)).toMatch(
+        /<button[^>]*disabled[^>]*data-action="deny"|<button[^>]*data-action="deny"[^>]*disabled/,
+      );
     }
     expect(count(off, "disabled")).toBe(4);
     expect(count(html(), "disabled")).toBe(0);
@@ -90,7 +97,9 @@ describe("ApprovalsView", () => {
       },
     });
     for (const t of ["ligado", "aberto", "2026-11-05T01:00:00.000Z"]) expect(open).toContain(t);
-    expect(count(section(open).slice(section(open).indexOf('data-list="failures"')), "<li")).toBe(2);
+    expect(count(section(open).slice(section(open).indexOf('data-list="failures"')), "<li")).toBe(
+      2,
+    );
     const off = html({ status: { enabled: false, breaker: closed.breaker } });
     for (const t of ["desligado", "fechado", '<span data-field="opened-at">—</span>'])
       expect(off).toContain(t);

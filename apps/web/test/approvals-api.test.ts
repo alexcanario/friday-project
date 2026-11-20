@@ -12,7 +12,15 @@ function stub(body: unknown, status = 200) {
   return fn;
 }
 
-const item = { id: "a1", issueId: 14, pr: 5, headSha: "abc123", tier: "low", requestedAt: 1, expiresAt: 2 };
+const item = {
+  id: "a1",
+  issueId: 14,
+  pr: 5,
+  headSha: "abc123",
+  tier: "low",
+  requestedAt: 1,
+  expiresAt: 2,
+};
 const status = { enabled: null, breaker: { open: false, openedAt: null, failures: [] } };
 
 describe("approvals api", () => {
@@ -52,7 +60,7 @@ describe("approvals api", () => {
     expect(Object.keys(init.headers as object)).toEqual(["x-friday-token"]);
     fn = stub({ outcome: "denied" });
     await client.postDecision("a1", "deny");
-    expect(fn.mock.calls[0]?.[0]).toBe("/approvals/a1/deny");
+    expect((fn.mock.calls[0] as unknown as [string])[0]).toBe("/approvals/a1/deny");
     stub({ outcome: "head_changed" }, 409);
     await expect(client.postDecision("a1", "approve")).resolves.toEqual({
       status: 409,
@@ -63,12 +71,18 @@ describe("approvals api", () => {
       status: 401,
       outcome: null,
     });
-    vi.stubGlobal("fetch", vi.fn(() => Promise.resolve(new Response("", { status: 401 }))));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() => Promise.resolve(new Response("", { status: 401 }))),
+    );
     await expect(client.postDecision("a1", "approve")).resolves.toEqual({
       status: 401,
       outcome: null,
     });
-    vi.stubGlobal("fetch", vi.fn(() => Promise.reject(new Error("net"))));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() => Promise.reject(new Error("net"))),
+    );
     await expect(client.postDecision("a1", "approve")).rejects.toThrow("net");
   });
 });

@@ -15,7 +15,15 @@ const client: ApiClient = {
   fetchStatus: never,
   postDecision: never,
 };
-const item = { id: "a1", issueId: 14, pr: 5, headSha: "abc123", tier: "low" as const, requestedAt: 1, expiresAt: 2 };
+const item = {
+  id: "a1",
+  issueId: 14,
+  pr: 5,
+  headSha: "abc123",
+  tier: "low" as const,
+  requestedAt: 1,
+  expiresAt: 2,
+};
 const status = { enabled: true, breaker: { open: false, openedAt: null, failures: [] } };
 
 function render(qc: QueryClient): string {
