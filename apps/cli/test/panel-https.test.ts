@@ -62,6 +62,8 @@ describe("panel https", () => {
     ];
     const { api, start, logs, returned } = await run({
       FRIDAY_PANEL_TOKEN: TOKEN,
+      FRIDAY_PANEL_TOKEN_EXPIRES_AT:
+        new Date(Date.now() + 86_400_000).toISOString().slice(0, 19) + "Z",
       FRIDAY_PANEL_ORIGINS: origins.join(", "),
     });
     expect(start).toHaveBeenCalledTimes(1);

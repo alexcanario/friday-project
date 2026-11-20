@@ -53,7 +53,7 @@ describe("daemon panel", () => {
   it("starts the api between compose and the ticker and logs the panel url without secrets", async () => {
     const lines: string[] = [];
     const s = setup(
-      { FRIDAY_HOME: validRoot(), FRIDAY_PANEL_TOKEN: "tok-secret-123" },
+      { FRIDAY_HOME: validRoot(), FRIDAY_PANEL_TOKEN: "A1b2C3d4E5f6G7h8I9j0K1l2M3n4O5p6" },
       { log: (m: string) => void lines.push(m) },
     );
     s.compose.mockImplementation(async () => {
@@ -72,7 +72,7 @@ describe("daemon panel", () => {
     expect(s.order.slice(0, 3)).toEqual(["compose", "api-start", "ticker-start"]);
     expect(lines.filter((l) => /^Painel em http:\/\/127\.0\.0\.1:\d+$/.test(l))).toHaveLength(1);
     expect(lines.filter((l) => l.startsWith("Painel"))).toHaveLength(1);
-    expect(lines.some((l) => l.includes("tok-secret-123"))).toBe(false);
+    expect(lines.some((l) => l.includes("A1b2C3d4E5f6G7h8I9j0K1l2M3n4O5p6"))).toBe(false);
   });
 
   it("names the port on EADDRINUSE and releases without starting the ticker", async () => {

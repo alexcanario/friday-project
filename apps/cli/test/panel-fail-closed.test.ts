@@ -11,6 +11,8 @@ import { setup, validRoot } from "./daemon-helpers.ts";
 let db: FridayDatabase | undefined;
 afterEach(() => db?.close());
 
+const VALID_TOKEN = "A1b2C3d4E5f6G7h8I9j0K1l2M3n4O5p6";
+const EXPIRES_AT = new Date(Date.now() + 86_400_000).toISOString().slice(0, 19) + "Z";
 const REFUSAL =
   "Painel não iniciado: FRIDAY_PANEL_ORIGINS está definida, mas FRIDAY_PANEL_TOKEN está ausente ou vazia. Defina FRIDAY_PANEL_TOKEN e reinicie o daemon; o daemon continua rodando sem o painel.";
 const WARNING =
@@ -63,7 +65,8 @@ describe("panel fails closed", () => {
 
   it("starts the panel with origins and a token", async () => {
     const { api, start, logs } = await run({
-      FRIDAY_PANEL_TOKEN: "tok",
+      FRIDAY_PANEL_TOKEN: VALID_TOKEN,
+      FRIDAY_PANEL_TOKEN_EXPIRES_AT: EXPIRES_AT,
       FRIDAY_PANEL_ORIGINS: "https://a.local",
     });
     expect(start).toHaveBeenCalledTimes(1);
@@ -97,7 +100,8 @@ describe("daemon with a refused panel", () => {
     const s = setup(
       {
         FRIDAY_HOME: validRoot(),
-        FRIDAY_PANEL_TOKEN: "tok",
+        FRIDAY_PANEL_TOKEN: VALID_TOKEN,
+        FRIDAY_PANEL_TOKEN_EXPIRES_AT: EXPIRES_AT,
         FRIDAY_PANEL_ORIGINS: "https://a.local",
       },
       { log: (m) => void lines.push(m) },
