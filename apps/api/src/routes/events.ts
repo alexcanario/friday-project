@@ -86,7 +86,11 @@ export function eventsRoutes(app: App, deps: ApiDeps): void {
       const cursor = resumeFrom ?? deps.events.listSince(project, 0).at(-1)?.seq ?? 0;
       reply.hijack();
       const raw = reply.raw;
-      raw.writeHead(200, { "Content-Type": "text/event-stream", "Cache-Control": "no-cache" });
+      raw.writeHead(200, {
+        ...reply.getHeaders(),
+        "Content-Type": "text/event-stream",
+        "Cache-Control": "no-cache",
+      });
       raw.flushHeaders();
       const poll = createPoll(deps, project, raw, cursor);
       const tick = (): void => {

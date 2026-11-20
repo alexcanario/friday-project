@@ -15,7 +15,7 @@ export function registerCors(app: FastifyInstance, allowedOrigins: readonly stri
     if (req.method !== "OPTIONS") return;
     if (!isAllowed) return reply.code(403).send({ message: "Origem não permitida." });
     return reply
-      .header("access-control-allow-headers", "x-friday-token")
+      .header("access-control-allow-headers", "x-friday-token, last-event-id")
       .header("access-control-allow-methods", "GET, POST, OPTIONS")
       .code(204)
       .send();
