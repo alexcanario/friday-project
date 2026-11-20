@@ -1,6 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { afterEach, describe, expect, it } from "vitest";
 import { buildApp } from "../src/index.ts";
+import { streamCorsHeaders } from "../src/routes/events.ts";
 import { openFixture, type Fixture } from "./helpers.ts";
 
 const ORIGIN = "http://painel.local";
@@ -46,10 +47,30 @@ describe("GET /events/stream CORS", () => {
     const other = await openStream(port, { origin: OTHER });
     expect(other.status).toBe(200);
     expect(other.headers.get("access-control-allow-origin")).toBeNull();
+    expect(other.headers.get("vary")).toContain("Origin");
 
     const none = await openStream(port, {});
     expect(none.status).toBe(200);
     expect(none.headers.get("access-control-allow-origin")).toBeNull();
+  });
+
+  it("passes only vary and access-control-allow-origin to the stream response", async () => {
+    expect(
+      streamCorsHeaders({
+        vary: "Origin",
+        "access-control-allow-origin": ORIGIN,
+        "content-length": "5",
+        "set-cookie": "a=1",
+        "content-type": "application/json",
+      }),
+    ).toEqual({ vary: "Origin", "access-control-allow-origin": ORIGIN });
+    expect(streamCorsHeaders({ "content-length": "5" })).toEqual({});
+
+    const port = await boot();
+    const res = await openStream(port, { origin: ORIGIN });
+    expect(res.status).toBe(200);
+    expect(res.headers.get("content-type")).toBe("text/event-stream");
+    expect(res.headers.get("content-length")).toBeNull();
   });
 
   it("stream keeps the token guard and CORS together", async () => {
