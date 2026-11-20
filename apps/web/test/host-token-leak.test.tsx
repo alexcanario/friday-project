@@ -67,7 +67,12 @@ describe("token on the project screen", () => {
     });
     const app = renderToString(
       <QueryClientProvider client={new QueryClient()}>
-        <App client={client} hosts={[host]} search="?host=h1&project=a%2Fb" clientFor={() => client} />
+        <App
+          client={client}
+          hosts={[host]}
+          search="?host=h1&project=a%2Fb"
+          clientFor={() => client}
+        />
       </QueryClientProvider>,
     );
     const states: ProjectState[] = ["loading", "offline", "unauthorized", "error", "ready"];

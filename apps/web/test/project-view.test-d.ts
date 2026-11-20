@@ -8,11 +8,11 @@ type Props = ComponentProps<typeof ProjectScreenView>;
 it("view props use the contracts types", () => {
   expectTypeOf<Props["issues"]>().toEqualTypeOf<IssueItem[]>();
   expectTypeOf<Props["runs"]>().toEqualTypeOf<RunItem[]>();
-  // @ts-expect-error issueId is a number
   const bad: Props = {
     host: { name: "h1", baseUrl: "" },
     project: "o/r",
     state: "ready",
+    // @ts-expect-error issueId is a number
     issues: [{ issueId: "14" }],
     runs: [],
   };

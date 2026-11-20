@@ -1,11 +1,14 @@
 import {
   daySum,
   healthResponse,
+  issueItem,
   projectItem,
   runItem,
   statusResponse,
   type HealthResponse,
+  type IssueItem,
   type ProjectItem,
+  type RunItem,
 } from "@friday/contracts";
 import { ApiHttpError } from "./api-errors.ts";
 
@@ -21,6 +24,8 @@ export interface ApiClient {
   fetchHealth(): Promise<HealthResponse>;
   fetchProjects(): Promise<ProjectItem[]>;
   fetchProjectOverview(project: string, day: string): Promise<ProjectOverview>;
+  fetchIssues(project: string): Promise<IssueItem[]>;
+  fetchRuns(project: string): Promise<RunItem[]>;
 }
 
 /** Builds the API client for one base URL; `""` means the same origin as the page. */
@@ -42,6 +47,12 @@ export function createApiClient(baseUrl: string, getToken?: () => string): ApiCl
     },
     async fetchProjects() {
       return projectItem.array().parse(await get("/projects"));
+    },
+    async fetchIssues(project) {
+      return issueItem.array().parse(await get(`/issues?project=${encodeURIComponent(project)}`));
+    },
+    async fetchRuns(project) {
+      return runItem.array().parse(await get(`/runs?project=${encodeURIComponent(project)}`));
     },
     async fetchProjectOverview(project, day) {
       const q = `project=${encodeURIComponent(project)}`;

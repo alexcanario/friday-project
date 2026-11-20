@@ -32,9 +32,9 @@ describe("api client project lists", () => {
     expect(fn.mock.calls[0]).toEqual(["/issues?project=p1"]);
 
     fn = stub([run]);
-    await expect(createApiClient("http://h:1/", () => "s3cret").fetchRuns("p 1")).resolves.toEqual(
-      [run],
-    );
+    await expect(createApiClient("http://h:1/", () => "s3cret").fetchRuns("p 1")).resolves.toEqual([
+      run,
+    ]);
     expect(fn).toHaveBeenCalledWith("http://h:1/runs?project=p%201", {
       headers: { "x-friday-token": "s3cret" },
     });

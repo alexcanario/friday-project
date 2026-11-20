@@ -10,14 +10,7 @@ type Props = ComponentProps<typeof ProjectScreenView>;
 
 function view(over: Partial<Props> = {}): string {
   return renderToString(
-    <ProjectScreenView
-      host={host}
-      project="o/r"
-      state="ready"
-      issues={[]}
-      runs={[]}
-      {...over}
-    />,
+    <ProjectScreenView host={host} project="o/r" state="ready" issues={[]} runs={[]} {...over} />,
   );
 }
 
