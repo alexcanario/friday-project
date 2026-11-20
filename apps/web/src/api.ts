@@ -15,7 +15,14 @@ import {
   type RunReview,
   type StatusResponse,
 } from "@friday/contracts";
-import { ApiHttpError } from "./api-errors.ts";
+import { ApiHttpError, ApiRedirectError } from "./api-errors.ts";
+import { assertUtcDay } from "./utc-day.ts";
+
+function throwIfRedirect(res: Response): void {
+  if (res.type === "opaqueredirect" || (res.status >= 300 && res.status <= 399)) {
+    throw new ApiRedirectError(res.status);
+  }
+}
 
 export interface ProjectOverview {
   enabled: boolean | null;
@@ -52,7 +59,8 @@ async function postDecision(
   const token = getToken?.() ?? "";
   const headers: Record<string, string> = token === "" ? {} : { "x-friday-token": token };
   const url = `${base}/approvals/${encodeURIComponent(id)}/${action}`;
-  const res = await fetch(url, { method: "POST", headers });
+  const res = await fetch(url, { method: "POST", headers, redirect: "manual" });
+  throwIfRedirect(res);
   let outcome: string | null = null;
   try {
     const body: unknown = await res.json();
@@ -106,7 +114,8 @@ export function createApiClient(baseUrl: string, getToken?: () => string): ApiCl
     const token = getToken?.() ?? "";
     const res = await (token === ""
       ? fetch(`${base}${path}`)
-      : fetch(`${base}${path}`, { headers: { "x-friday-token": token } }));
+      : fetch(`${base}${path}`, { headers: { "x-friday-token": token }, redirect: "manual" }));
+    throwIfRedirect(res);
     if (!res.ok) throw new ApiHttpError(res.status);
     return res.json();
   }
@@ -127,6 +136,7 @@ export function createApiClient(baseUrl: string, getToken?: () => string): ApiCl
       return runItem.array().parse(await get(`/runs?project=${encodeURIComponent(project)}`));
     },
     async fetchProjectOverview(project, day) {
+      assertUtcDay(day);
       const q = `project=${encodeURIComponent(project)}`;
       const [status, runs, sum] = await Promise.all([
         get(`/status?${q}`),
