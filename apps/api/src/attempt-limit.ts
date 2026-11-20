@@ -27,7 +27,8 @@ function writeWarn(log: ((message: string) => void) | undefined, entry: Record<s
 }
 
 /**
- * Counts 401 and 403 responses in one window (state lives in this closure); once `maxFailures` is reached
+ * Counts 401 and 403 responses in one window (state lives in this closure) when they are sent, not when they
+ * finish, so a parallel burst cannot slip past the limit; once `maxFailures` is reached
  * every request except `/health` gets 429 until the window ends. Each refusal and the limit itself are logged once
  * (never the token or the query), so the limit also caps the log.
  */
@@ -58,8 +59,8 @@ export function registerAttemptLimit(
     return reply.code(429).header("retry-after", String(seconds)).send(LIMITED_BODY);
   });
 
-  app.addHook("onResponse", async (req, reply) => {
-    if (reply.statusCode !== 401 && reply.statusCode !== 403) return;
+  app.addHook("onSend", async (req, reply, payload) => {
+    if (reply.statusCode !== 401 && reply.statusCode !== 403) return payload;
     refresh();
     if (count === 0) start = now();
     count += 1;
@@ -81,5 +82,6 @@ export function registerAttemptLimit(
         windowMs: limit.windowMs,
       });
     }
+    return payload;
   });
 }
