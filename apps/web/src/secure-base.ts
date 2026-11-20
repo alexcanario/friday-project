@@ -29,7 +29,8 @@ function normalizeLikeFetch(baseUrl: string): string {
 // A base the URL constructor refuses may still resolve to another host (or scheme) in fetch.
 function escapesPage(baseUrl: string): boolean {
   const text = normalizeLikeFetch(baseUrl);
-  return /^[/\\]{2}/.test(text) || /^[A-Za-z][A-Za-z0-9+.-]*:/.test(text);
+  // Callers append a path that starts with a slash, so a lone slash becomes two.
+  return /^[/\\]{2}/.test(text + "/") || /^[A-Za-z][A-Za-z0-9+.-]*:/.test(text);
 }
 
 /** True when a token sent to `baseUrl` would travel over http outside the loopback. */
