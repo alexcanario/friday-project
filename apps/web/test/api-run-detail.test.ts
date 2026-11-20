@@ -28,13 +28,13 @@ describe("run detail api", () => {
   it("fetchRun and fetchRunReview call the run routes, validate the body and reject 404", async () => {
     let fn = stub(run);
     await expect(createApiClient("").fetchRun("o/r", "r1")).resolves.toEqual(run);
-    expect(fn).toHaveBeenCalledWith("/runs/r1?project=o%2Fr");
+    expect(fn).toHaveBeenCalledWith("/runs/r1?project=o%2Fr", { redirect: "manual" });
     await createApiClient("").fetchRun("o/r", "a/b");
-    expect(fn).toHaveBeenLastCalledWith("/runs/a%2Fb?project=o%2Fr");
+    expect(fn).toHaveBeenLastCalledWith("/runs/a%2Fb?project=o%2Fr", { redirect: "manual" });
 
     fn = stub(review);
     await expect(createApiClient("").fetchRunReview("o/r", "r1")).resolves.toEqual(review);
-    expect(fn).toHaveBeenCalledWith("/runs/r1/review?project=o%2Fr");
+    expect(fn).toHaveBeenCalledWith("/runs/r1/review?project=o%2Fr", { redirect: "manual" });
 
     fn = stub(run);
     await createApiClient("", () => "tok").fetchRun("o/r", "r1");

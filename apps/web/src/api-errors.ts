@@ -14,7 +14,18 @@ export class ApiRedirectError extends ApiHttpError {
   }
 }
 
-export function classifyHostError(error: unknown): "unauthorized" | "offline" | "error" {
+export const LOGIN_EXPIRED_MESSAGE =
+  "Sessão de login expirada. Recarregue a página para entrar de novo.";
+
+export class ApiInsecureError extends Error {
+  constructor() {
+    super("O host usa http fora do loopback; o token não foi enviado. Use https://.");
+    this.name = "ApiInsecureError";
+  }
+}
+
+export function classifyHostError(error: unknown): "unauthorized" | "offline" | "error" | "login" {
+  if (error instanceof ApiRedirectError) return "login";
   if (error instanceof ApiHttpError) return error.status === 401 ? "unauthorized" : "error";
   if (error instanceof TypeError) return "offline";
   return "error";

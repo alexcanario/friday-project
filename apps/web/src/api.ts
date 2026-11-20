@@ -15,7 +15,8 @@ import {
   type RunReview,
   type StatusResponse,
 } from "@friday/contracts";
-import { ApiHttpError, ApiRedirectError } from "./api-errors.ts";
+import { ApiHttpError, ApiInsecureError, ApiRedirectError } from "./api-errors.ts";
+import { isInsecureBase } from "./secure-base.ts";
 import { assertUtcDay } from "./utc-day.ts";
 
 function throwIfRedirect(res: Response): void {
@@ -57,6 +58,7 @@ async function postDecision(
   getToken?: () => string,
 ): Promise<DecisionResult> {
   const token = getToken?.() ?? "";
+  assertSecure(base, token);
   const headers: Record<string, string> = token === "" ? {} : { "x-friday-token": token };
   const url = `${base}/approvals/${encodeURIComponent(id)}/${action}`;
   const res = await fetch(url, { method: "POST", headers, redirect: "manual" });
@@ -106,19 +108,30 @@ function runMethods(get: Get): Pick<ApiClient, "fetchRun" | "fetchRunReview"> {
   };
 }
 
+function assertSecure(base: string, token: string): void {
+  if (token !== "" && isInsecureBase(base, globalThis.location)) throw new ApiInsecureError();
+}
+
+function makeGet(base: string, getToken?: () => string): Get {
+  return async (path) => {
+    const token = getToken?.() ?? "";
+    assertSecure(base, token);
+    const init: RequestInit =
+      token === ""
+        ? { redirect: "manual" }
+        : { headers: { "x-friday-token": token }, redirect: "manual" };
+    const res = await fetch(`${base}${path}`, init);
+    throwIfRedirect(res);
+    if (!res.ok) throw new ApiHttpError(res.status);
+    return res.json();
+  };
+}
+
 /** Builds the API client for one base URL; `""` means the same origin as the page. */
 export function createApiClient(baseUrl: string, getToken?: () => string): ApiClient {
   const base = baseUrl.replace(/\/+$/, "");
 
-  async function get(path: string): Promise<unknown> {
-    const token = getToken?.() ?? "";
-    const res = await (token === ""
-      ? fetch(`${base}${path}`)
-      : fetch(`${base}${path}`, { headers: { "x-friday-token": token }, redirect: "manual" }));
-    throwIfRedirect(res);
-    if (!res.ok) throw new ApiHttpError(res.status);
-    return res.json();
-  }
+  const get = makeGet(base, getToken);
 
   return {
     async fetchHealth() {

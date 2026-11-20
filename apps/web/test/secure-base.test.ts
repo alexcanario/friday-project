@@ -1,0 +1,72 @@
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { createApiClient } from "../src/api.ts";
+import { ApiInsecureError } from "../src/api-errors.ts";
+import { liveTarget } from "../src/live-target.ts";
+import { isInsecureBase } from "../src/secure-base.ts";
+
+afterEach(() => vi.unstubAllGlobals());
+
+const BAD = "http://painel.exemplo.com";
+
+describe("secure base", () => {
+  it("flags http outside loopback only and judges a non-URL base by the page", () => {
+    expect(isInsecureBase(BAD, undefined)).toBe(true);
+    for (const ok of [
+      "https://painel.exemplo.com",
+      "http://127.0.0.1:7778",
+      "http://localhost:7778",
+      "http://[::1]:7778",
+    ]) {
+      expect(isInsecureBase(ok, undefined)).toBe(false);
+    }
+    const http = { protocol: "http:", hostname: "painel.exemplo.com" };
+    const https = { protocol: "https:", hostname: "painel.exemplo.com" };
+    const local = { protocol: "http:", hostname: "localhost" };
+    for (const base of ["", "::"]) {
+      expect(isInsecureBase(base, http)).toBe(true);
+      expect(isInsecureBase(base, https)).toBe(false);
+      expect(isInsecureBase(base, local)).toBe(false);
+      expect(isInsecureBase(base, undefined)).toBe(false);
+    }
+  });
+
+  it("never sends the token to an insecure host", async () => {
+    const fn = vi.fn(() =>
+      Promise.resolve(new Response(JSON.stringify({ status: "ok" }), { status: 200 })),
+    );
+    vi.stubGlobal("fetch", fn);
+    const client = createApiClient(BAD, () => "tok");
+    await expect(client.fetchHealth()).rejects.toBeInstanceOf(ApiInsecureError);
+    await expect(client.postDecision("a1", "approve")).rejects.toBeInstanceOf(ApiInsecureError);
+    expect(fn).toHaveBeenCalledTimes(0);
+
+    await createApiClient(BAD, () => "").fetchHealth();
+    expect(fn).toHaveBeenCalledTimes(1);
+    expect(fn.mock.calls[0]).toEqual([`${BAD}/health`, { redirect: "manual" }]);
+
+    await createApiClient("https://painel.exemplo.com", () => "tok").fetchHealth();
+    expect(fn).toHaveBeenCalledTimes(2);
+  });
+
+  it("opens no live stream to an insecure host", () => {
+    vi.stubGlobal("sessionStorage", {
+      getItem: () => "tok",
+      setItem: () => undefined,
+    });
+    const target = (baseUrl: string) =>
+      liveTarget({ kind: "selected", host: { name: "h1", baseUrl }, project: "o/r" });
+    expect(target(BAD)).toBeNull();
+    expect(target("https://painel.exemplo.com")).toEqual({
+      baseUrl: "https://painel.exemplo.com",
+      project: "o/r",
+      token: "tok",
+      host: "h1",
+    });
+    expect(target("http://127.0.0.1:7778")).toEqual({
+      baseUrl: "http://127.0.0.1:7778",
+      project: "o/r",
+      token: "tok",
+      host: "h1",
+    });
+  });
+});

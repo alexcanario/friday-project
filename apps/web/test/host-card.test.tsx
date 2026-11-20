@@ -1,7 +1,7 @@
 import { QueryClient } from "@tanstack/react-query";
 import { renderToString } from "react-dom/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { ApiHttpError } from "../src/api-errors.ts";
+import { ApiHttpError, ApiRedirectError } from "../src/api-errors.ts";
 import { HostCardView, saveHostToken } from "../src/HostCard.tsx";
 import { hostCardStateOf, type HostCardState } from "../src/host-card-state.ts";
 
@@ -60,6 +60,17 @@ describe("host card", () => {
     expect(html).toContain('data-field="token"');
     expect(html).toContain("Salvar token");
     expect(html).not.toContain("value=");
+  });
+
+  it("shows the login message without the token form", () => {
+    expect(hostCardStateOf({ status: "error", error: new ApiRedirectError(302) })).toEqual({
+      kind: "login",
+    });
+    const html = view({ kind: "login" });
+    expect(html).toContain("Sessão de login expirada. Recarregue a página para entrar de novo.");
+    expect(html).not.toContain('type="password"');
+    expect(html).not.toContain('data-field="token"');
+    expect(view({ kind: "unauthorized" })).toContain('type="password"');
   });
 
   it("renders breaker, active runs, day cost and projects, with partial cost", () => {

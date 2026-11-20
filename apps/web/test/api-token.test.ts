@@ -16,7 +16,7 @@ describe("api client with token", () => {
   it("sends the token header only when there is a token", async () => {
     let fn = stub({ status: "ok" });
     await createApiClient("").fetchHealth();
-    expect(fn.mock.calls[0]).toEqual(["/health"]);
+    expect(fn.mock.calls[0]).toEqual(["/health", { redirect: "manual" }]);
     fn = stub({ status: "ok" });
     await createApiClient("", () => "s3cret").fetchHealth();
     expect(fn).toHaveBeenCalledWith("/health", {
@@ -25,14 +25,14 @@ describe("api client with token", () => {
     });
     fn = stub({ status: "ok" });
     await createApiClient("", () => "").fetchHealth();
-    expect(fn.mock.calls[0]).toEqual(["/health"]);
+    expect(fn.mock.calls[0]).toEqual(["/health", { redirect: "manual" }]);
   });
 
   it("fetchProjects reads the projects and rejects HTTP 500 and invalid bodies", async () => {
-    const client = createApiClient("http://h:1/", () => "t");
+    const client = createApiClient("https://h:1/", () => "t");
     const fn = stub([{ id: "a/b" }]);
     await expect(client.fetchProjects()).resolves.toEqual([{ id: "a/b" }]);
-    expect(fn).toHaveBeenCalledWith("http://h:1/projects", {
+    expect(fn).toHaveBeenCalledWith("https://h:1/projects", {
       headers: { "x-friday-token": "t" },
       redirect: "manual",
     });
