@@ -22,6 +22,8 @@ import {
   validatorCompiler,
   type ZodTypeProvider,
 } from "fastify-type-provider-zod";
+import { registerCors } from "./cors.ts";
+import { isPanelTokenValid } from "./panel-token.ts";
 import { approvalRoutes } from "./routes/approvals.ts";
 import { eventsRoutes } from "./routes/events.ts";
 import { healthRoutes } from "./routes/health.ts";
@@ -31,6 +33,7 @@ import { projectRoutes } from "./routes/projects.ts";
 import { runReviewRoutes } from "./routes/run-review.ts";
 import { runRoutes } from "./routes/runs.ts";
 import { statusRoutes } from "./routes/status.ts";
+import type { App } from "./routes/types.ts";
 
 export interface ApiDeps {
   events: EventStore;
@@ -55,6 +58,32 @@ export interface ApiDeps {
 export interface BuildAppOptions {
   /** Folder with the built panel (`index.html` and `assets/`); nothing is served when it has no `index.html`. */
   webRoot?: string;
+  /** Origins that receive CORS headers (exact match; `*` never matches). */
+  allowedOrigins?: readonly string[];
+  /** Called for every route registered, so a test can walk all of them. */
+  onRoute?: (route: { method: string | string[]; url: string }) => void;
+}
+
+/** Registers every API route in an encapsulated plugin guarded by the panel token (health stays outside). */
+async function registerApiRoutes(app: App, deps: ApiDeps): Promise<void> {
+  await app.register(async (api) => {
+    api.addHook("onRequest", async (req, reply) => {
+      if (deps.panelToken === undefined || deps.panelToken === "") return;
+      if (!isPanelTokenValid(req.headers["x-friday-token"], deps.panelToken)) {
+        return reply.code(401).send({ message: "Token do painel inválido." });
+      }
+    });
+    const typed = api.withTypeProvider<ZodTypeProvider>() as unknown as App;
+    issueRoutes(typed, deps);
+    runRoutes(typed, deps);
+    runReviewRoutes(typed, deps);
+    ledgerRoutes(typed, deps);
+    approvalRoutes(typed, deps);
+    projectRoutes(typed, deps);
+    statusRoutes(typed, deps);
+    eventsRoutes(typed, deps);
+    typed.get("/openapi.json", { schema: { hide: true } }, () => app.swagger());
+  });
 }
 
 export async function buildApp(
@@ -62,6 +91,8 @@ export async function buildApp(
   options: BuildAppOptions = {},
 ): Promise<FastifyInstance> {
   const app = Fastify().withTypeProvider<ZodTypeProvider>();
+  app.addHook("onRoute", (r) => options.onRoute?.({ method: r.method, url: r.url }));
+  registerCors(app, options.allowedOrigins ?? []);
   app.setValidatorCompiler(validatorCompiler);
   app.setSerializerCompiler(serializerCompiler);
   await app.register(swagger, {
@@ -69,15 +100,7 @@ export async function buildApp(
     transform: jsonSchemaTransform,
   });
   healthRoutes(app);
-  issueRoutes(app, deps);
-  runRoutes(app, deps);
-  runReviewRoutes(app, deps);
-  ledgerRoutes(app, deps);
-  approvalRoutes(app, deps);
-  projectRoutes(app, deps);
-  statusRoutes(app, deps);
-  eventsRoutes(app, deps);
-  app.get("/openapi.json", { schema: { hide: true } }, () => app.swagger());
+  await registerApiRoutes(app, deps);
   if (options.webRoot !== undefined && existsSync(join(options.webRoot, "index.html"))) {
     await app.register(fastifyStatic, { root: options.webRoot, schemaHide: true });
   }

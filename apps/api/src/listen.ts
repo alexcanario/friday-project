@@ -9,6 +9,7 @@ export interface StartApiOptions {
   deps: ApiDeps;
   port?: number;
   webRoot?: string;
+  allowedOrigins?: readonly string[];
 }
 
 export interface RunningApi {
@@ -18,7 +19,10 @@ export interface RunningApi {
 }
 
 export async function startApi(options: StartApiOptions): Promise<RunningApi> {
-  const app = await buildApp(options.deps, { webRoot: options.webRoot ?? DEFAULT_WEB_ROOT });
+  const app = await buildApp(options.deps, {
+    webRoot: options.webRoot ?? DEFAULT_WEB_ROOT,
+    allowedOrigins: options.allowedOrigins,
+  });
   await app.listen({ host: HOST, port: options.port ?? DEFAULT_PORT });
   const addr = app.server.address();
   const port = typeof addr === "object" && addr !== null ? addr.port : 0;

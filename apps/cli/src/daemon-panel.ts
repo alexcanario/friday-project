@@ -42,6 +42,17 @@ export function apiDepsOf(
   };
 }
 
+const MISSING_TOKEN_WARNING =
+  "Aviso: FRIDAY_PANEL_TOKEN ausente; a leitura do painel fica aberta em 127.0.0.1. Não exponha a porta por túnel ou proxy sem o token.";
+
+/** Splits `FRIDAY_PANEL_ORIGINS` by comma, trimming spaces and dropping empty items. */
+export function parseOrigins(value: string | undefined): string[] {
+  return (value ?? "")
+    .split(",")
+    .map((o) => o.trim())
+    .filter((o) => o !== "");
+}
+
 function panelErrorOf(error: unknown, port: number): unknown {
   const code = (error as { code?: unknown } | null)?.code;
   return code === "EADDRINUSE" ? new Error(`A porta ${port} do painel já está em uso.`) : error;
@@ -57,10 +68,17 @@ export async function startPanel(
 ): Promise<RunningApi> {
   let api: RunningApi;
   try {
-    api = await start({ deps: apiDepsOf(daemon, env), port });
+    api = await start({
+      deps: apiDepsOf(daemon, env),
+      port,
+      allowedOrigins: parseOrigins(env.FRIDAY_PANEL_ORIGINS),
+    });
   } catch (error) {
     daemon.release();
     throw panelErrorOf(error, port);
+  }
+  if (env.FRIDAY_PANEL_TOKEN === undefined || env.FRIDAY_PANEL_TOKEN === "") {
+    log(MISSING_TOKEN_WARNING);
   }
   log(`Painel em http://${api.address}:${api.port}`);
   return api;
