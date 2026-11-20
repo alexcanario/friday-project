@@ -18,9 +18,23 @@ function isInsecurePage(page: PageLocation | undefined): boolean {
   return page !== undefined && page.protocol === "http:" && !LOOPBACK.has(page.hostname);
 }
 
+// Same normalisation fetch applies before resolving: no tab/LF/CR, no leading controls or spaces.
+function normalizeLikeFetch(baseUrl: string): string {
+  const clean = baseUrl.replace(/[\t\n\r]/g, "");
+  let start = 0;
+  while (start < clean.length && clean.charCodeAt(start) <= 0x20) start += 1;
+  return clean.slice(start);
+}
+
+// A base the URL constructor refuses may still resolve to another host (or scheme) in fetch.
+function escapesPage(baseUrl: string): boolean {
+  const text = normalizeLikeFetch(baseUrl);
+  return /^[/\\]{2}/.test(text) || /^[A-Za-z][A-Za-z0-9+.-]*:/.test(text);
+}
+
 /** True when a token sent to `baseUrl` would travel over http outside the loopback. */
 export function isInsecureBase(baseUrl: string, page: PageLocation | undefined): boolean {
   const url = baseUrl === "" ? null : parse(baseUrl);
-  if (url === null) return isInsecurePage(page);
+  if (url === null) return (baseUrl !== "" && escapesPage(baseUrl)) || isInsecurePage(page);
   return url.protocol === "http:" && !LOOPBACK.has(url.hostname);
 }
