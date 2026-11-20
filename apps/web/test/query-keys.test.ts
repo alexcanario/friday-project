@@ -7,4 +7,9 @@ describe("query keys", () => {
     expect(queryKeys.issues("p1")).toEqual(["issues", "p1"]);
     expect(queryKeys.issue("p1", 7)).toEqual(["issues", "p1", 7]);
   });
+
+  it("builds the approvals and status keys", () => {
+    expect(queryKeys.approvals("o/r")).toEqual(["approvals", "o/r"]);
+    expect(queryKeys.status("o/r")).toEqual(["status", "o/r"]);
+  });
 });

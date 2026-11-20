@@ -10,6 +10,9 @@ const client: ApiClient = {
   fetchHealth: () => Promise.resolve({ status: "ok" }),
   fetchProjects: () => Promise.resolve([]),
   fetchProjectOverview: () => Promise.reject(new Error("unused")),
+  fetchApprovals: () => Promise.reject(new Error("unused")),
+  fetchStatus: () => Promise.reject(new Error("unused")),
+  postDecision: () => Promise.reject(new Error("unused")),
 };
 const TEXTS = ["Carregando…", "Conectado", "Sem conexão"];
 
