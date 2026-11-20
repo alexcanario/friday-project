@@ -38,9 +38,9 @@ describe("panel origins", () => {
   it("startPanel passes the origins and the token and logs no secret", async () => {
     const { options, logs } = await run({
       FRIDAY_PANEL_TOKEN: "tok",
-      FRIDAY_PANEL_ORIGINS: "http://a.local",
+      FRIDAY_PANEL_ORIGINS: "https://a.local",
     });
-    expect(options.allowedOrigins).toEqual(["http://a.local"]);
+    expect(options.allowedOrigins).toEqual(["https://a.local"]);
     expect(options.deps.panelToken).toBe("tok");
     expect(logs.some((m) => m.includes("tok"))).toBe(false);
   });

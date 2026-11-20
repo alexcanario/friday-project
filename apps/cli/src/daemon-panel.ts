@@ -12,6 +12,7 @@ import {
   createRunRepository,
   createUnitOfWork,
 } from "@friday/infrastructure";
+import { panelRefusalOf } from "./panel-checks.ts";
 
 /** Default panel port, used when factory.yaml has no panel block. */
 export const DEFAULT_PANEL_PORT = 7777;
@@ -79,6 +80,11 @@ export async function startPanel(
   const noToken = env.FRIDAY_PANEL_TOKEN === undefined || env.FRIDAY_PANEL_TOKEN === "";
   if (noToken && origins.length > 0) {
     log(MISSING_TOKEN_REFUSAL);
+    return null;
+  }
+  const refusal = panelRefusalOf(env);
+  if (refusal !== null) {
+    log(refusal);
     return null;
   }
   let api: RunningApi;
