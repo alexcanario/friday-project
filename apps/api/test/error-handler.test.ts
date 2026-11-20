@@ -74,6 +74,24 @@ describe("global error handler", () => {
     expect(db.body).not.toContain("segredo-xyz");
   });
 
+  it("answers the fixed 500 when an error carries a non-error statusCode", async () => {
+    for (const statusCode of [302, 0]) {
+      f = openFixture();
+      seedApproval(f);
+      f.deps.panelToken = "s3cret";
+      f.deps.issues.get = () => {
+        throw Object.assign(new Error("SQLITE_BUSY segredo-db"), { statusCode });
+      };
+      app = await buildApp(f.deps);
+      const res = await post("deny");
+      expect(res.statusCode).toBe(500);
+      expect(res.body).toBe('{"error":"Erro interno."}');
+      expect(res.body).not.toContain("segredo-db");
+      await app.close();
+      f.db.close();
+    }
+  });
+
   it("keeps 400, 404 and 401 untouched", async () => {
     await boot();
     const bad = await app.inject({ method: "GET", url: "/issues", headers });
