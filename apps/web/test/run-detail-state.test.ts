@@ -24,9 +24,7 @@ describe("run detail state", () => {
     expect(runDetailState(failed(new ApiHttpError(404)), failed(new TypeError("x")))).toBe(
       "offline",
     );
-    expect(runDetailState(failed(new Error("x")), failed(new ApiHttpError(404)))).toBe(
-      "not-found",
-    );
+    expect(runDetailState(failed(new Error("x")), failed(new ApiHttpError(404)))).toBe("not-found");
     expect(runDetailState(failed(new ApiHttpError(500)), pending)).toBe("error");
     expect(runDetailMessage("loading")).toBe("Carregando a run...");
     expect(runDetailMessage("offline")).toBe("Sem conexão com o host.");

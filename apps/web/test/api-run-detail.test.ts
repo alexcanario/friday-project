@@ -19,9 +19,7 @@ const review = {
 };
 
 function stub(body: unknown, status = 200) {
-  const fn = vi.fn(() =>
-    Promise.resolve(new Response(JSON.stringify(body), { status })),
-  );
+  const fn = vi.fn(() => Promise.resolve(new Response(JSON.stringify(body), { status })));
   vi.stubGlobal("fetch", fn);
   return fn;
 }

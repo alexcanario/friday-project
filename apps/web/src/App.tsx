@@ -9,6 +9,7 @@ import { selectionFromSearch } from "./host-selection.ts";
 import { Overview } from "./Overview.tsx";
 import { ProjectScreen } from "./ProjectScreen.tsx";
 import { queryKeys } from "./query-keys.ts";
+import { RunDetailScreen } from "./RunDetailScreen.tsx";
 import { useLiveEvents } from "./use-live-events.ts";
 
 function Hosts({
@@ -24,6 +25,16 @@ function Hosts({
   const selection = selectionFromSearch(search, hosts);
   if (selection.kind === "unknown-host") {
     return <p data-field="error">{`Host desconhecido: ${selection.host}.`}</p>;
+  }
+  if (selection.kind === "selected" && selection.run !== undefined) {
+    return (
+      <RunDetailScreen
+        host={selection.host}
+        project={selection.project}
+        runId={selection.run}
+        clientFor={clientFor}
+      />
+    );
   }
   if (selection.kind === "selected") {
     return (

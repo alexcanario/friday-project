@@ -42,7 +42,9 @@ describe("run detail view", () => {
     const html = view();
     expect(html).toContain('data-view="run"');
     expect(html).toContain('data-field="run-title">Run r2 de o/r em h1<');
-    expect(html).toContain('<a data-action="back" href="?host=h1&amp;project=o%2Fr">Voltar ao projeto</a>');
+    expect(html).toContain(
+      '<a data-action="back" href="?host=h1&amp;project=o%2Fr">Voltar ao projeto</a>',
+    );
     expect(html).toContain('data-field="status">running<');
     expect(html).toContain('data-field="cost">$0.50<');
     expect(html).toContain('data-field="turns">3<');
