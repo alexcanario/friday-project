@@ -121,10 +121,13 @@ describe("POST /approvals/:id/approve and /deny", () => {
 
   it("answers a fixed 502 without detail when github fails", async () => {
     await setup({ head: new Error("segredo-xyz") });
+    const total = () => f.deps.events.list("p1", 14).length;
+    const before = total();
     const res = await post("approve");
     expect(res.statusCode).toBe(502);
     expect(res.body).toBe('{"error":"Falha ao consultar o GitHub."}');
     expect(res.body).not.toContain("segredo-xyz");
+    expect(total()).toBe(before);
     expect(f.deps.approvals.get("00000001")?.decision).toBeNull();
     expect(f.deps.events.list("p1", 14).filter((e) => e.type === "ApprovalDecided")).toEqual([]);
     expect(changes()).toEqual([]);
@@ -132,7 +135,9 @@ describe("POST /approvals/:id/approve and /deny", () => {
     f.db.close();
 
     await setup({ merge: new Error("segredo-xyz") });
+    const beforeMerge = f.deps.events.list("p1", 14).length;
     const merge = await post("approve");
+    expect(f.deps.events.list("p1", 14).length).toBe(beforeMerge + 1);
     expect(merge.statusCode).toBe(502);
     expect(merge.body).toBe('{"error":"Falha ao consultar o GitHub."}');
     expect(f.deps.approvals.get("00000001")?.decision).toBe("approved");
