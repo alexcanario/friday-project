@@ -24,7 +24,11 @@ const corsKeys = (headers: Record<string, unknown>): string[] =>
 describe("CORS hardening", () => {
   it("never allows the null origin even when listed", async () => {
     await boot(["null", LISTED]);
-    const pre = await app.inject({ method: "OPTIONS", url: "/status", headers: { origin: "null" } });
+    const pre = await app.inject({
+      method: "OPTIONS",
+      url: "/status",
+      headers: { origin: "null" },
+    });
     expect(pre.statusCode).toBe(403);
     expect(pre.body).toBe('{"message":"Origem não permitida."}');
     expect(corsKeys(pre.headers)).toEqual([]);
@@ -36,7 +40,11 @@ describe("CORS hardening", () => {
 
   it("still allows a listed origin next to a listed null", async () => {
     await boot(["null", LISTED]);
-    const res = await app.inject({ method: "OPTIONS", url: "/status", headers: { origin: LISTED } });
+    const res = await app.inject({
+      method: "OPTIONS",
+      url: "/status",
+      headers: { origin: LISTED },
+    });
     expect(res.statusCode).toBe(204);
     expect(res.headers["access-control-allow-origin"]).toBe(LISTED);
   });

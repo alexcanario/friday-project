@@ -33,6 +33,15 @@ function eventFrame(e: StoredEvent): string | null {
   return null;
 }
 
+/** Only the CORS headers set by the `onRequest` hook may reach the hijacked stream response. */
+export function streamCorsHeaders(headers: OutgoingHttpHeaders): OutgoingHttpHeaders {
+  const out: OutgoingHttpHeaders = {};
+  for (const key of ["vary", "access-control-allow-origin"]) {
+    if (headers[key] !== undefined) out[key] = headers[key];
+  }
+  return out;
+}
+
 interface OpenStream {
   timer: NodeJS.Timeout;
   raw: ServerResponse;
@@ -87,7 +96,7 @@ export function eventsRoutes(app: App, deps: ApiDeps): void {
       reply.hijack();
       const raw = reply.raw;
       raw.writeHead(200, {
-        ...(reply.getHeaders() as OutgoingHttpHeaders),
+        ...streamCorsHeaders(reply.getHeaders() as OutgoingHttpHeaders),
         "Content-Type": "text/event-stream",
         "Cache-Control": "no-cache",
       });

@@ -1,11 +1,11 @@
 import type { FastifyInstance } from "fastify";
 
 /**
- * Hand-written CORS: exact origin match against `allowedOrigins`, `*` never matches.
+ * Hand-written CORS: exact origin match against `allowedOrigins`, `*` and `null` never match.
  * Every response to a request with `Origin` carries `vary: Origin`; only listed origins get `access-control-*`.
  */
 export function registerCors(app: FastifyInstance, allowedOrigins: readonly string[]): void {
-  const allowed = new Set(allowedOrigins.filter((o) => o !== "*"));
+  const allowed = new Set(allowedOrigins.filter((o) => o !== "*" && o !== "null"));
   app.addHook("onRequest", async (req, reply) => {
     const origin = req.headers.origin;
     if (typeof origin !== "string") return;

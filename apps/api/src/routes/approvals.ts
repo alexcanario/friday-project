@@ -1,4 +1,4 @@
-import { applyInputs, decideApproval } from "@friday/application";
+import { applyInputs, decideApproval, type DecideApprovalDeps } from "@friday/application";
 import { z } from "zod";
 import type { ApiDeps } from "../app.ts";
 import { approvalItem } from "@friday/contracts";
@@ -34,6 +34,24 @@ const OUTCOME_STATUS = {
   merge_blocked: 409,
 } as const;
 
+/** Marks a failure of the GitHub port; its message is never sent to the client. */
+export class GitHubFailure extends Error {}
+
+/** `github` and `readPrHead` of `deps` with every failure turned into a `GitHubFailure`. */
+function githubGuarded(deps: ApiDeps): Pick<DecideApprovalDeps, "github" | "readPrHead"> {
+  const wrap = async <T>(call: () => Promise<T>): Promise<T> => {
+    try {
+      return await call();
+    } catch {
+      throw new GitHubFailure("github call failed");
+    }
+  };
+  return {
+    github: { squashMerge: (pr, sha) => wrap(() => deps.github.squashMerge(pr, sha)) },
+    readPrHead: (pr) => wrap(() => deps.readPrHead(pr)),
+  };
+}
+
 function decideRoute(app: App, deps: ApiDeps, decision: "approve" | "deny"): void {
   app.post(
     `/approvals/:id/${decision}`,
@@ -55,13 +73,13 @@ function decideRoute(app: App, deps: ApiDeps, decision: "approve" | "deny"): voi
             store: deps.approvals,
             events: deps.events,
             unitOfWork: deps.unitOfWork,
-            github: deps.github,
-            readPrHead: deps.readPrHead,
+            ...githubGuarded(deps),
             now: deps.now,
           },
           { id, decision, actor: "human:panel" },
         );
-      } catch {
+      } catch (err) {
+        if (!(err instanceof GitHubFailure)) throw err;
         return reply.code(502).send({ error: "Falha ao consultar o GitHub." });
       }
       if (outcome.kind !== "unknown" && outcome.kind !== "already_decided") {

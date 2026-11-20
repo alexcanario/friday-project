@@ -23,6 +23,7 @@ import {
   type ZodTypeProvider,
 } from "fastify-type-provider-zod";
 import { registerCors } from "./cors.ts";
+import { registerErrorHandler } from "./error-handler.ts";
 import { isPanelTokenValid } from "./panel-token.ts";
 import { approvalRoutes } from "./routes/approvals.ts";
 import { eventsRoutes } from "./routes/events.ts";
@@ -58,7 +59,7 @@ export interface ApiDeps {
 export interface BuildAppOptions {
   /** Folder with the built panel (`index.html` and `assets/`); nothing is served when it has no `index.html`. */
   webRoot?: string;
-  /** Origins that receive CORS headers (exact match; `*` never matches). */
+  /** Origins that receive CORS headers (exact match; `*` and `null` never match). */
   allowedOrigins?: readonly string[];
   /** Called for every route registered, so a test can walk all of them. */
   onRoute?: (route: { method: string | string[]; url: string }) => void;
@@ -99,6 +100,7 @@ export async function buildApp(
     openapi: { info: { title: "Friday API", version: "0.0.0" } },
     transform: jsonSchemaTransform,
   });
+  registerErrorHandler(app);
   healthRoutes(app);
   await registerApiRoutes(app, deps);
   if (options.webRoot !== undefined && existsSync(join(options.webRoot, "index.html"))) {
