@@ -33,7 +33,10 @@ describe("approvals api", () => {
     });
     fn = stub(status);
     await expect(createApiClient("http://h:1/").fetchStatus("p1")).resolves.toEqual(status);
-    expect(fn.mock.calls[0]).toEqual(["http://h:1/status?project=p1"]);
+    expect(fn.mock.calls[0]).toEqual([
+      "http://h:1/status?project=p1",
+      { redirect: "manual" },
+    ]);
     const client = createApiClient("", () => "t");
     stub([item], 500);
     await expect(client.fetchApprovals("p")).rejects.toMatchObject({ status: 500 });

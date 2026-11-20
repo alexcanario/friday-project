@@ -2,6 +2,13 @@ import { describe, expect, it } from "vitest";
 import { decisionMessage } from "../src/decision-message.ts";
 
 describe("decisionMessage", () => {
+  it("explains 429 and keeps the other messages", () => {
+    const m = (status: number, outcome: string | null) => decisionMessage({ status, outcome });
+    expect(m(429, null)).toBe("Muitas tentativas recusadas. Tente de novo em instantes.");
+    expect(m(500, null)).toBe("Falha inesperada (HTTP 500).");
+    expect(m(401, null)).toBe("Token do painel inválido.");
+  });
+
   it("maps every outcome to its pt-BR message", () => {
     const m = (status: number, outcome: string | null) => decisionMessage({ status, outcome });
     expect(m(200, "merged")).toBe("Aprovado e mesclado.");

@@ -22,7 +22,7 @@ describe("api client", () => {
     for (const [base, url] of cases) {
       const fn = stubFetch(() => json({ status: "ok" }));
       await expect(createApiClient(base).fetchHealth()).resolves.toEqual({ status: "ok" });
-      expect(fn).toHaveBeenCalledWith(url);
+      expect(fn).toHaveBeenCalledWith(url, { redirect: "manual" });
     }
     const client = createApiClient("");
     stubFetch(() => json({ status: "down" }));

@@ -27,24 +27,52 @@ const redirects: Array<[string, () => Response, number]> = [
 ];
 
 describe("api client redirects", () => {
-  it("sends redirect manual only with a token", async () => {
+  it("sends redirect manual with and without a token", async () => {
     let fn = stubWith(() => ok({ status: "ok" }));
-    await createApiClient("http://h:1", () => "tok").fetchHealth();
+    await createApiClient("https://h:1", () => "tok").fetchHealth();
     expect(fn).toHaveBeenCalledTimes(1);
     expect(fn.mock.calls[0]).toEqual([
-      "http://h:1/health",
+      "https://h:1/health",
       { headers: { "x-friday-token": "tok" }, redirect: "manual" },
     ]);
     fn = stubWith(() => ok({ status: "ok" }));
     await createApiClient("").fetchHealth();
-    expect(fn.mock.calls[0]).toEqual(["/health"]);
+    expect(fn).toHaveBeenCalledTimes(1);
+    expect(fn.mock.calls[0]).toEqual(["/health", { redirect: "manual" }]);
     fn = stubWith(() => ok({ status: "ok" }));
     await createApiClient("", () => "").fetchHealth();
-    expect(fn.mock.calls[0]).toEqual(["/health"]);
+    expect(fn.mock.calls[0]).toEqual(["/health", { redirect: "manual" }]);
+    fn = stubWith(() => ok({ status: "ok" }));
+    await createApiClient("", () => "tok").fetchHealth();
+    expect(fn.mock.calls[0]).toEqual([
+      "/health",
+      { headers: { "x-friday-token": "tok" }, redirect: "manual" },
+    ]);
+  });
+
+  it("rejects a redirect on token-less reads without a second fetch", async () => {
+    const client = createApiClient("");
+    for (const [, make, status] of redirects) {
+      const fn = stubWith(make);
+      const res = make();
+      const json = vi.fn();
+      Object.assign(res, { json });
+      fn.mockImplementation(() => Promise.resolve(res));
+      const error: unknown = await client.fetchHealth().then(
+        () => null,
+        (e: unknown) => e,
+      );
+      expect(error).toBeInstanceOf(ApiRedirectError);
+      expect((error as ApiRedirectError).status).toBe(status);
+      expect(fn).toHaveBeenCalledTimes(1);
+      expect(json).not.toHaveBeenCalled();
+    }
+    stubWith(() => ok({ status: "ok" }));
+    await expect(client.fetchHealth()).resolves.toEqual({ status: "ok" });
   });
 
   it("rejects a redirect response on reads without a second fetch", async () => {
-    const client = createApiClient("http://h:1", () => "tok");
+    const client = createApiClient("https://h:1", () => "tok");
     for (const [, make, status] of redirects) {
       for (const call of [() => client.fetchHealth(), () => client.fetchProjects()]) {
         const fn = stubWith(make);
@@ -59,7 +87,7 @@ describe("api client redirects", () => {
           "Falha ao consultar a API: a resposta foi um redirecionamento e não foi seguida",
         );
         expect(fn).toHaveBeenCalledTimes(1);
-        expect(classifyHostError(error)).toBe("error");
+        expect(classifyHostError(error)).toBe("login");
       }
     }
     stubWith(() => ok({ status: "ok" }));
@@ -121,7 +149,7 @@ describe("api client redirects", () => {
     const client2 = createApiClient("", second);
     await client2.fetchHealth();
     await client2.fetchHealth();
-    expect(fn2.mock.calls[1]).toEqual(["/health"]);
+    expect(fn2.mock.calls[1]).toEqual(["/health", { redirect: "manual" }]);
 
     const third = vi.fn<() => string>().mockReturnValue("t");
     stubWith(() => ok({ outcome: "approved" }));

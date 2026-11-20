@@ -29,13 +29,13 @@ describe("api client project lists", () => {
     const issues = [{ issueId: 14, state: "Todo", heldReason: null }];
     let fn = stub(issues);
     await expect(createApiClient("").fetchIssues("p1")).resolves.toEqual(issues);
-    expect(fn.mock.calls[0]).toEqual(["/issues?project=p1"]);
+    expect(fn.mock.calls[0]).toEqual(["/issues?project=p1", { redirect: "manual" }]);
 
     fn = stub([run]);
-    await expect(createApiClient("http://h:1/", () => "s3cret").fetchRuns("p 1")).resolves.toEqual([
+    await expect(createApiClient("https://h:1/", () => "s3cret").fetchRuns("p 1")).resolves.toEqual([
       run,
     ]);
-    expect(fn).toHaveBeenCalledWith("http://h:1/runs?project=p%201", {
+    expect(fn).toHaveBeenCalledWith("https://h:1/runs?project=p%201", {
       headers: { "x-friday-token": "s3cret" },
       redirect: "manual",
     });
