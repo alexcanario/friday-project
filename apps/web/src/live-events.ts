@@ -1,6 +1,7 @@
 import type { QueryClient } from "@tanstack/react-query";
 import { costUpdatedEvent, runFinishedEvent, stageChangedEvent } from "@friday/contracts";
 import type { ConnectionState } from "./connection-state.ts";
+import { createFetchSource } from "./fetch-source.ts";
 import { queryKeys } from "./query-keys.ts";
 
 export interface LiveSource {
@@ -15,6 +16,10 @@ export interface LiveEventsOptions {
   queryClient: Pick<QueryClient, "invalidateQueries">;
   onState?: (state: ConnectionState) => void;
   createSource?: (url: string) => LiveSource;
+  /** Sent only in the `x-friday-token` header of the fetch source, never in the URL. */
+  token?: string;
+  /** When set, a frame also invalidates the approvals and the status card of this host. */
+  host?: string;
 }
 
 interface FrameSchema {
@@ -40,7 +45,12 @@ function parseFrame(schema: FrameSchema, data: unknown): number | null {
 export function subscribeLiveEvents(options: LiveEventsOptions): () => void {
   const { baseUrl, project, queryClient, onState } = options;
   if (project === undefined) return () => undefined;
-  const create = options.createSource ?? ((url: string) => new EventSource(url));
+  const { token, host } = options;
+  const create =
+    options.createSource ??
+    (token !== undefined && token !== ""
+      ? (url: string) => createFetchSource(url, token)
+      : (url: string) => new EventSource(url));
   const source = create(`${baseUrl}/events/stream?project=${encodeURIComponent(project)}`);
   let closed = false;
   source.addEventListener("open", () => onState?.("connected"));
@@ -54,6 +64,9 @@ export function subscribeLiveEvents(options: LiveEventsOptions): () => void {
       if (issueId === null) return;
       void queryClient.invalidateQueries({ queryKey: queryKeys.issues(project) });
       void queryClient.invalidateQueries({ queryKey: queryKeys.issue(project, issueId) });
+      if (host === undefined) return;
+      void queryClient.invalidateQueries({ queryKey: queryKeys.approvals(project, host) });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.status(project, host) });
     });
   }
   return () => {

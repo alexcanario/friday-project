@@ -219,7 +219,10 @@ describe("live events with a token", () => {
         const keys = invalidateQueries.mock.calls.map(
           (c) => (c[0] as { queryKey: unknown[] }).queryKey,
         );
-        const expected: unknown[] = [["issues", "p1"], ["issues", "p1", 7]];
+        const expected: unknown[] = [
+          ["issues", "p1"],
+          ["issues", "p1", 7],
+        ];
         if (withHost) expected.push(["approvals", "p1", "h1"], ["status", "p1", "h1"]);
         expect(keys).toEqual(expected);
         sources[0]?.emit(type, { data: "{bad" });

@@ -5,7 +5,8 @@ import type { ApiClient } from "./api.ts";
 import { defaultClientFor } from "./client-for.ts";
 import { ConnectionStatus } from "./ConnectionStatus.tsx";
 import { displayState, type ConnectionState } from "./connection-state.ts";
-import { selectionFromSearch } from "./host-selection.ts";
+import { selectionFromSearch, type Selection } from "./host-selection.ts";
+import { liveTarget } from "./live-target.ts";
 import { Overview } from "./Overview.tsx";
 import { ProjectScreen } from "./ProjectScreen.tsx";
 import { queryKeys } from "./query-keys.ts";
@@ -14,15 +15,14 @@ import { useLiveEvents } from "./use-live-events.ts";
 
 function Hosts({
   hosts,
-  search,
+  selection,
   clientFor,
 }: {
   hosts: HostEntry[] | null;
-  search: string;
+  selection: Selection;
   clientFor: (host: HostEntry) => ApiClient;
 }) {
   if (hosts === null) return <p data-field="error">Não foi possível ler a lista de hosts.</p>;
-  const selection = selectionFromSearch(search, hosts);
   if (selection.kind === "unknown-host") {
     return <p data-field="error">{`Host desconhecido: ${selection.host}.`}</p>;
   }
@@ -46,27 +46,27 @@ function Hosts({
 
 export function App({
   client,
-  project,
-  baseUrl = "",
   hosts,
   search = "",
   clientFor = defaultClientFor,
 }: {
   client: ApiClient;
-  project?: string;
-  baseUrl?: string;
   hosts?: HostEntry[] | null;
   search?: string;
   clientFor?: (host: HostEntry) => ApiClient;
 }) {
   const query = useQuery({ queryKey: queryKeys.health, queryFn: () => client.fetchHealth() });
   const [live, setLive] = useState<ConnectionState | null>(null);
-  useLiveEvents(baseUrl, project, setLive);
+  const selection: Selection = Array.isArray(hosts)
+    ? selectionFromSearch(search, hosts)
+    : { kind: "none" };
+  const target = liveTarget(selection);
+  useLiveEvents(target?.baseUrl ?? "", target?.project, setLive, target?.token, target?.host);
   return (
     <main>
       <h1>Friday</h1>
-      <ConnectionStatus state={displayState(live, query.status)} />
-      {hosts !== undefined && <Hosts hosts={hosts} search={search} clientFor={clientFor} />}
+      <ConnectionStatus state={displayState(live, query.status, target !== null)} />
+      {hosts !== undefined && <Hosts hosts={hosts} selection={selection} clientFor={clientFor} />}
     </main>
   );
 }

@@ -7,10 +7,12 @@ export function useLiveEvents(
   baseUrl: string,
   project: string | undefined,
   onState?: (state: ConnectionState) => void,
+  token?: string,
+  host?: string,
 ): void {
   const queryClient = useQueryClient();
   useEffect(
-    () => subscribeLiveEvents({ baseUrl, project, queryClient, onState }),
-    [baseUrl, project, queryClient, onState],
+    () => subscribeLiveEvents({ baseUrl, project, queryClient, onState, token, host }),
+    [baseUrl, project, token, host, queryClient, onState],
   );
 }

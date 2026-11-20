@@ -9,6 +9,7 @@ export function connectionStateOf(status: "pending" | "error" | "success"): Conn
 export function displayState(
   live: ConnectionState | null,
   health: "pending" | "error" | "success",
+  streaming = false,
 ): ConnectionState {
-  return live ?? connectionStateOf(health);
+  return live ?? (streaming ? "loading" : connectionStateOf(health));
 }

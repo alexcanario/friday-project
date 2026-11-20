@@ -48,7 +48,9 @@ afterEach(() => {
 describe("fetch source", () => {
   it("sends x-friday-token, keeps it out of the URL and opens on 200", async () => {
     const fetchImpl = vi.fn(() => Promise.resolve(streamBody([], false)));
-    const source = createFetchSource(URL_, "tok", { fetchImpl: fetchImpl as unknown as typeof fetch });
+    const source = createFetchSource(URL_, "tok", {
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+    });
     const seen = listen(source, ["open"]);
     expect(source.readyState).toBe(0);
     await vi.advanceTimersByTimeAsync(0);
@@ -74,7 +76,9 @@ describe("fetch source", () => {
       .fn()
       .mockResolvedValueOnce(streamBody([wire.slice(0, cut), wire.slice(cut, -1), "\n", second]))
       .mockResolvedValue(streamBody([], false));
-    const source = createFetchSource(URL_, "tok", { fetchImpl: fetchImpl as unknown as typeof fetch });
+    const source = createFetchSource(URL_, "tok", {
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+    });
     const seen = listen(source, ["stage_changed", "error"]);
     await vi.advanceTimersByTimeAsync(0);
     const frames = seen.filter((s) => s.type === "stage_changed");
@@ -94,7 +98,9 @@ describe("fetch source", () => {
       .fn()
       .mockResolvedValueOnce(streamBody(["id: 3\ndata: x\n\n", "id: abc\ndata: y\n\n"]))
       .mockResolvedValue(streamBody([], false));
-    const source = createFetchSource(URL_, "tok", { fetchImpl: fetchImpl as unknown as typeof fetch });
+    const source = createFetchSource(URL_, "tok", {
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+    });
     await vi.advanceTimersByTimeAsync(1000);
     expect((calls(fetchImpl)[1] as Call)[1].headers["last-event-id"]).toBe("3");
     source.close();
