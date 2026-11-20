@@ -12,4 +12,14 @@ describe("live wiring", () => {
     expect(app).toContain("liveTarget(");
     expect(app).toContain("useLiveEvents(");
   });
+
+  it("App subscribes to the token store and resets the live state", () => {
+    const app = read("../src/App.tsx");
+    expect(app).toContain("useSyncExternalStore(subscribeToken, tokenVersion, tokenVersion)");
+    expect(app).toContain("liveTarget(");
+    expect(app).toContain("liveStateFor(");
+    expect(app).toContain("useCallback(");
+    expect(app).toContain("[key]");
+    expect(app).not.toContain("useLiveEvents(target?.baseUrl ?? \"\", target?.project, (");
+  });
 });

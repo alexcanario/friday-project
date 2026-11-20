@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { readToken, saveToken, submitToken } from "../src/token.ts";
+import { readToken, saveToken, submitToken, subscribeToken, tokenVersion } from "../src/token.ts";
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -27,5 +27,37 @@ describe("panel token", () => {
     expect(local.setItem).not.toHaveBeenCalled();
     vi.stubGlobal("sessionStorage", undefined);
     expect(readToken("h1")).toBe("");
+  });
+
+  it("notifies subscribers once per save and stops after unsubscribe", () => {
+    vi.stubGlobal("sessionStorage", fakeStorage());
+    const listener = vi.fn();
+    const unsubscribe = subscribeToken(listener);
+    const before = tokenVersion();
+    saveToken("h1", "x");
+    expect(listener).toHaveBeenCalledTimes(1);
+    expect(tokenVersion()).toBe(before + 1);
+    submitToken("h1", "");
+    expect(listener).toHaveBeenCalledTimes(2);
+    expect(tokenVersion()).toBe(before + 2);
+    unsubscribe();
+    saveToken("h1", "y");
+    expect(listener).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not notify when sessionStorage throws", () => {
+    vi.stubGlobal("sessionStorage", {
+      getItem: () => null,
+      setItem: () => {
+        throw new Error("quota");
+      },
+    });
+    const listener = vi.fn();
+    const unsubscribe = subscribeToken(listener);
+    const before = tokenVersion();
+    expect(() => saveToken("h1", "x")).toThrow("quota");
+    expect(listener).not.toHaveBeenCalled();
+    expect(tokenVersion()).toBe(before);
+    unsubscribe();
   });
 });

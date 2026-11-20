@@ -191,12 +191,94 @@ describe("fetch source", () => {
     await vi.advanceTimersByTimeAsync(0);
     expect(waitingSeen).toHaveLength(1);
     waiting.close();
+    expect((calls(failing)[0] as Call)[1].signal.aborted).toBe(true);
     await vi.advanceTimersByTimeAsync(10000);
     expect(failing).toHaveBeenCalledTimes(1);
     expect(waitingSeen).toHaveLength(1);
     expect(waiting.readyState).toBe(2);
     expect(earlySeen).toEqual([]);
     expect(pending).toHaveBeenCalledTimes(1);
+  });
+
+  it("a token that is not a valid header stops without fetch", async () => {
+    for (const token of ["tök€", "a\nb", "a\r\nb", "a\u0000b"]) {
+      const fetchImpl = vi.fn(() => Promise.resolve(streamBody([], false)));
+      const source = createFetchSource(URL_, token, {
+        fetchImpl: fetchImpl as unknown as typeof fetch,
+      });
+      const seen = listen(source, ["error", "open"]);
+      await vi.advanceTimersByTimeAsync(0);
+      expect(fetchImpl).not.toHaveBeenCalled();
+      expect(seen).toEqual([{ type: "error", data: undefined }]);
+      expect(source.readyState).toBe(2);
+      await vi.advanceTimersByTimeAsync(10000);
+      expect(fetchImpl).not.toHaveBeenCalled();
+      expect(seen).toHaveLength(1);
+    }
+    const fetchImpl = vi.fn(() => Promise.resolve(streamBody([], false)));
+    const source = createFetchSource(URL_, "Abc123", {
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+    });
+    const seen = listen(source, ["open", "error"]);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+    expect(seen.map((s) => s.type)).toEqual(["open"]);
+    source.close();
+  });
+
+  it("a frame cut by a dropped connection does not leak into the next one", async () => {
+    const json = JSON.stringify({ runId: "r1" });
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(streamBody(['event: stage_changed\ndata: {"issueId":1']))
+      .mockResolvedValueOnce(streamBody([`event: run_finished\ndata: ${json}\n\n`]))
+      .mockResolvedValue(streamBody([], false));
+    const source = createFetchSource(URL_, "tok", {
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+    });
+    const seen = listen(source, ["stage_changed", "run_finished"]);
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(seen).toEqual([{ type: "run_finished", data: json }]);
+    expect("last-event-id" in (calls(fetchImpl)[1] as Call)[1].headers).toBe(false);
+    source.close();
+  });
+
+  it("a body without newline over 1 MiB stops, and a long line under it passes", async () => {
+    const big = vi.fn(() => Promise.resolve(streamBody(["a".repeat(1_048_577)], false)));
+    const over = createFetchSource(URL_, "tok", { fetchImpl: big as unknown as typeof fetch });
+    const overSeen = listen(over, ["error"]);
+    await vi.advanceTimersByTimeAsync(10000);
+    expect(overSeen).toHaveLength(1);
+    expect(over.readyState).toBe(2);
+    expect(big).toHaveBeenCalledTimes(1);
+
+    const long = "x".repeat(1_000_000);
+    const fine = vi.fn(() => Promise.resolve(streamBody([`data: ${long}`, "\n\n"], false)));
+    const under = createFetchSource(URL_, "tok", { fetchImpl: fine as unknown as typeof fetch });
+    const underSeen = listen(under, ["message", "error"]);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(underSeen).toEqual([{ type: "message", data: long }]);
+    under.close();
+  });
+
+  it("empty event name is message", async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(
+        streamBody(["event:\ndata: x\n\n", "event: \ndata: x\n\n", "event: stage_changed\ndata: x\n\n"]),
+      )
+      .mockResolvedValue(streamBody([], false));
+    const source = createFetchSource(URL_, "tok", {
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+    });
+    const seen = listen(source, ["message", "stage_changed"]);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(seen).toEqual([
+      { type: "message", data: "x" },
+      { type: "message", data: "x" },
+      { type: "stage_changed", data: "x" },
+    ]);
+    source.close();
   });
 
   it("never logs or emits the token", async () => {

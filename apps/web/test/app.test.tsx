@@ -1,9 +1,9 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { renderToString } from "react-dom/server";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { App } from "../src/App.tsx";
 import type { ApiClient } from "../src/api.ts";
-import { connectionStateOf, displayState } from "../src/connection-state.ts";
+import { connectionStateOf, displayState, liveStateFor } from "../src/connection-state.ts";
 import { ConnectionStatus } from "../src/ConnectionStatus.tsx";
 
 const client: ApiClient = {
@@ -68,8 +68,25 @@ describe("panel page", () => {
   });
 });
 
+afterEach(() => vi.unstubAllGlobals());
+
+describe("live state of a stream", () => {
+  it("liveStateFor drops the state of another stream", () => {
+    expect(liveStateFor({ key: "a", state: "offline" }, "a")).toBe("offline");
+    expect(liveStateFor({ key: "a", state: "offline" }, "b")).toBeNull();
+    expect(liveStateFor(null, "a")).toBeNull();
+    expect(displayState(liveStateFor({ key: "a", state: "offline" }, "b"), "success", true)).toBe(
+      "loading",
+    );
+  });
+});
+
 describe("header with a selected host", () => {
   it("header shows loading for a selected host and health on the overview", () => {
+    vi.stubGlobal("sessionStorage", {
+      getItem: (key: string) => (key === "friday.panelToken.h1" ? "tok" : null),
+      setItem: () => undefined,
+    });
     expect(displayState(null, "success", true)).toBe("loading");
     expect(displayState("connected", "error", true)).toBe("connected");
     expect(displayState(null, "success")).toBe("connected");
