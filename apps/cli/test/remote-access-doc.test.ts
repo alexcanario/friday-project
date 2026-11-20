@@ -61,6 +61,20 @@ describe("remote access guide", () => {
     expect(doc).toContain(`${PANEL_TOKEN_MIN_LENGTH} caracteres`);
   });
 
+  it("says which requests the token covers and what the origin check and the limit do not do", () => {
+    const vars = section("## Variáveis do daemon");
+    expect(vars).toContain("`/health`");
+    expect(vars).toContain("arquivos estáticos");
+    expect(vars).toContain("o login do proxy é a única barreira");
+    const row = lines.find((line) => line.includes("`Origem não permitida.`")) ?? "";
+    expect(row).toContain("OPTIONS");
+    expect(row).toContain("preflight");
+    const limit = section("### Limite de tentativas");
+    expect(limit).toContain("global");
+    expect(limit).toContain("para todos");
+    expect(limit).toContain("não substitui o login do proxy");
+  });
+
   it("documents the ssh tunnel on another port", () => {
     const tunnel = section("## Túnel SSH em porta diferente");
     expect(tunnel).toContain("ssh -N -L 7778:127.0.0.1:7777");
