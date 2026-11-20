@@ -3,8 +3,11 @@ import { renderToString } from "react-dom/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { App } from "../src/App.tsx";
 import type { ApiClient } from "../src/api.ts";
+import { defaultClientFor } from "../src/client-for.ts";
 import { HostCardView } from "../src/HostCard.tsx";
 import type { HostCardState } from "../src/host-card-state.ts";
+import { ProjectScreenView } from "../src/ProjectView.tsx";
+import type { ProjectState } from "../src/project-state.ts";
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -13,6 +16,8 @@ const client: ApiClient = {
   fetchHealth: () => Promise.resolve({ status: "ok" }),
   fetchProjects: () => Promise.resolve([]),
   fetchProjectOverview: () => Promise.reject(new Error("unused")),
+  fetchIssues: () => Promise.resolve([]),
+  fetchRuns: () => Promise.resolve([]),
 };
 const host = { name: "h1", baseUrl: "" };
 
@@ -51,5 +56,35 @@ describe("token leak", () => {
       expect(html).not.toContain(SECRET);
       expect(html).not.toMatch(/href="[^"]*s3cret/);
     }
+  });
+});
+
+describe("token on the project screen", () => {
+  it("never renders the token on the project screen and the host client sends it", async () => {
+    vi.stubGlobal("sessionStorage", {
+      getItem: (k: string) => (k === "friday.panelToken.h1" ? SECRET : null),
+      setItem: () => undefined,
+    });
+    const app = renderToString(
+      <QueryClientProvider client={new QueryClient()}>
+        <App client={client} hosts={[host]} search="?host=h1&project=a%2Fb" clientFor={() => client} />
+      </QueryClientProvider>,
+    );
+    const states: ProjectState[] = ["loading", "offline", "unauthorized", "error", "ready"];
+    const views = states.map((state) =>
+      renderToString(
+        <ProjectScreenView host={host} project="o/r" state={state} issues={[]} runs={[]} />,
+      ),
+    );
+    for (const html of [app, ...views]) {
+      expect(html).not.toContain(SECRET);
+      expect(html).not.toMatch(/href="[^"]*s3cret/);
+    }
+    const fetchMock = vi.fn(() => Promise.resolve(new Response("[]")));
+    vi.stubGlobal("fetch", fetchMock);
+    await defaultClientFor(host).fetchIssues("o/r");
+    expect(fetchMock).toHaveBeenCalledWith("/issues?project=o%2Fr", {
+      headers: { "x-friday-token": SECRET },
+    });
   });
 });
