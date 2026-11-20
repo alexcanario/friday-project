@@ -9,9 +9,19 @@ describe("query keys", () => {
     expect(queryKeys.issue("p1", 7)).toEqual(["issues", "p1", 7]);
   });
 
-  it("builds the approvals and status keys", () => {
-    expect(queryKeys.approvals("o/r")).toEqual(["approvals", "o/r"]);
-    expect(queryKeys.status("o/r")).toEqual(["status", "o/r"]);
+  it("approvals and status keys end with the host", () => {
+    expect(queryKeys.approvals("o/r", "h1")).toEqual(["approvals", "o/r", "h1"]);
+    expect(queryKeys.status("o/r", "h1")).toEqual(["status", "o/r", "h1"]);
+    expect(queryKeys.approvals("o/r", "h1")).not.toEqual(queryKeys.approvals("o/r", "h2"));
+    expect(queryKeys.status("o/r", "h1")).not.toEqual(queryKeys.status("o/r", "h2"));
+    const qc = new QueryClient();
+    const h1 = queryKeys.approvals("o/r", "h1");
+    const h2 = queryKeys.approvals("o/r", "h2");
+    qc.setQueryData(h1, []);
+    qc.setQueryData(h2, []);
+    void qc.invalidateQueries({ queryKey: h1 });
+    expect(qc.getQueryState(h1)?.isInvalidated).toBe(true);
+    expect(qc.getQueryState(h2)?.isInvalidated).toBe(false);
   });
 
   it("builds project list keys under the keys the live stream invalidates", () => {
