@@ -5,12 +5,14 @@ import {
   issueItem,
   projectItem,
   runItem,
+  runReview,
   statusResponse,
   type ApprovalItem,
   type HealthResponse,
   type IssueItem,
   type ProjectItem,
   type RunItem,
+  type RunReview,
   type StatusResponse,
 } from "@friday/contracts";
 import { ApiHttpError } from "./api-errors.ts";
@@ -31,6 +33,8 @@ export interface ApiClient {
   fetchRuns(project: string): Promise<RunItem[]>;
   fetchApprovals(project: string): Promise<ApprovalItem[]>;
   fetchStatus(project: string): Promise<StatusResponse>;
+  fetchRun(project: string, runId: string): Promise<RunItem>;
+  fetchRunReview(project: string, runId: string): Promise<RunReview>;
   postDecision(id: string, action: "approve" | "deny"): Promise<DecisionResult>;
 }
 
@@ -81,6 +85,19 @@ function approvalMethods(
   };
 }
 
+function runMethods(get: Get): Pick<ApiClient, "fetchRun" | "fetchRunReview"> {
+  const path = (project: string, runId: string, tail: string) =>
+    `/runs/${encodeURIComponent(runId)}${tail}?project=${encodeURIComponent(project)}`;
+  return {
+    async fetchRun(project, runId) {
+      return runItem.parse(await get(path(project, runId, "")));
+    },
+    async fetchRunReview(project, runId) {
+      return runReview.parse(await get(path(project, runId, "/review")));
+    },
+  };
+}
+
 /** Builds the API client for one base URL; `""` means the same origin as the page. */
 export function createApiClient(baseUrl: string, getToken?: () => string): ApiClient {
   const base = baseUrl.replace(/\/+$/, "");
@@ -102,6 +119,7 @@ export function createApiClient(baseUrl: string, getToken?: () => string): ApiCl
       return projectItem.array().parse(await get("/projects"));
     },
     ...approvalMethods(base, get, getToken),
+    ...runMethods(get),
     async fetchIssues(project) {
       return issueItem.array().parse(await get(`/issues?project=${encodeURIComponent(project)}`));
     },

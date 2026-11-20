@@ -1,5 +1,6 @@
 import type { HostEntry, IssueItem, RunItem } from "@friday/contracts";
 import type { ReactNode } from "react";
+import { runToSearch } from "./host-selection.ts";
 import { projectMessage, type ProjectState } from "./project-state.ts";
 
 function IssueRow({ issue }: { issue: IssueItem }) {
@@ -17,12 +18,14 @@ function IssueRow({ issue }: { issue: IssueItem }) {
   );
 }
 
-function RunRow({ run }: { run: RunItem }) {
+function RunRow({ host, project, run }: { host: HostEntry; project: string; run: RunItem }) {
   const cost = run.costUsd === null ? "—" : `$${run.costUsd.toFixed(2)}`;
   const turns = run.numTurns === null ? "—" : String(run.numTurns);
   return (
     <li data-run-id={run.id}>
-      <span data-field="id">{`#${run.issueId}`}</span>{" "}
+      <a data-action="open-run" href={runToSearch(host.name, project, run.id)}>
+        <span data-field="id">{`#${run.issueId}`}</span>
+      </a>{" "}
       <span data-field="phase">{run.phase ?? "—"}</span>{" "}
       <span data-field="status">{run.status}</span> <span data-field="cost">{cost}</span>{" "}
       <span data-field="turns">{turns}</span>
@@ -30,7 +33,8 @@ function RunRow({ run }: { run: RunItem }) {
   );
 }
 
-function Lists({ issues, runs }: { issues: IssueItem[]; runs: RunItem[] }) {
+function Lists(props: { host: HostEntry; project: string; issues: IssueItem[]; runs: RunItem[] }) {
+  const { host, project, issues, runs } = props;
   const sorted = [...issues].sort((a, b) => a.issueId - b.issueId);
   return (
     <>
@@ -48,7 +52,7 @@ function Lists({ issues, runs }: { issues: IssueItem[]; runs: RunItem[] }) {
       ) : (
         <ul data-list="runs">
           {runs.map((r) => (
-            <RunRow key={r.id} run={r} />
+            <RunRow key={r.id} host={host} project={project} run={r} />
           ))}
         </ul>
       )}
@@ -81,7 +85,7 @@ export function ProjectScreenView({
       {message !== null ? (
         <p data-field="message">{message}</p>
       ) : (
-        <Lists issues={issues} runs={runs} />
+        <Lists host={host} project={project} issues={issues} runs={runs} />
       )}
       <section data-slot="approvals">{approvals}</section>
     </section>

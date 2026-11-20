@@ -94,6 +94,28 @@ describe("project view", () => {
     expect(html.indexOf('data-run-id="r2"')).toBeLessThan(html.indexOf('data-run-id="r1"'));
   });
 
+  it("links each run to its detail with host, project and run", () => {
+    const run = (id: string, issueId: number): RunItem => ({
+      id,
+      issueId,
+      phase: null,
+      status: "running",
+      startedAt: null,
+      finishedAt: null,
+      costUsd: 0.5,
+      numTurns: 3,
+    });
+    const runs = [run("r2", 14), run("r1", 13)];
+    const html = view({ runs });
+    const r2 = row(html, 'data-run-id="r2"');
+    expect(r2).toContain(
+      '<a data-action="open-run" href="?host=h1&amp;project=o%2Fr&amp;run=r2"><span data-field="id">#14</span></a>',
+    );
+    expect(count(html, 'data-action="open-run"')).toBe(2);
+    const spaced = view({ runs, host: { name: "vps 1", baseUrl: "" } });
+    expect(spaced).toContain("host=vps+1");
+  });
+
   it("shows only the message in non-ready states and keeps header, back link and slot", () => {
     const states: ProjectState[] = ["loading", "offline", "unauthorized", "error", "ready"];
     for (const state of states) {
