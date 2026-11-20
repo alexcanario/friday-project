@@ -45,6 +45,10 @@ export function apiDepsOf(
 const MISSING_TOKEN_WARNING =
   "Aviso: FRIDAY_PANEL_TOKEN ausente; a leitura do painel fica aberta em 127.0.0.1. Não exponha a porta por túnel ou proxy sem o token.";
 
+/** Logged when origins are set without a token; names the variables, never their values. */
+export const MISSING_TOKEN_REFUSAL =
+  "Painel não iniciado: FRIDAY_PANEL_ORIGINS está definida, mas FRIDAY_PANEL_TOKEN está ausente ou vazia. Defina FRIDAY_PANEL_TOKEN e reinicie o daemon; o daemon continua rodando sem o painel.";
+
 /** Splits `FRIDAY_PANEL_ORIGINS` by comma, trimming spaces and dropping empty items. */
 export function parseOrigins(value: string | undefined): string[] {
   return (value ?? "")
@@ -58,28 +62,31 @@ function panelErrorOf(error: unknown, port: number): unknown {
   return code === "EADDRINUSE" ? new Error(`A porta ${port} do painel já está em uso.`) : error;
 }
 
-/** Starts the panel API on the daemon's database; on failure releases the daemon and rethrows. */
+/**
+ * Starts the panel API on the daemon's database; on failure releases the daemon and rethrows.
+ * Returns null (and logs the refusal) when origins are set without a token: fail closed.
+ */
 export async function startPanel(
   daemon: Daemon,
   start: StartApi,
   port: number,
   log: (message: string) => void,
   env: Record<string, string | undefined>,
-): Promise<RunningApi> {
+): Promise<RunningApi | null> {
+  const origins = parseOrigins(env.FRIDAY_PANEL_ORIGINS);
+  const noToken = env.FRIDAY_PANEL_TOKEN === undefined || env.FRIDAY_PANEL_TOKEN === "";
+  if (noToken && origins.length > 0) {
+    log(MISSING_TOKEN_REFUSAL);
+    return null;
+  }
   let api: RunningApi;
   try {
-    api = await start({
-      deps: apiDepsOf(daemon, env),
-      port,
-      allowedOrigins: parseOrigins(env.FRIDAY_PANEL_ORIGINS),
-    });
+    api = await start({ deps: apiDepsOf(daemon, env), port, allowedOrigins: origins });
   } catch (error) {
     daemon.release();
     throw panelErrorOf(error, port);
   }
-  if (env.FRIDAY_PANEL_TOKEN === undefined || env.FRIDAY_PANEL_TOKEN === "") {
-    log(MISSING_TOKEN_WARNING);
-  }
+  if (noToken) log(MISSING_TOKEN_WARNING);
   log(`Painel em http://${api.address}:${api.port}`);
   return api;
 }
