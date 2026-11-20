@@ -64,11 +64,11 @@ describe("panel fails closed", () => {
   it("starts the panel with origins and a token", async () => {
     const { api, start, logs } = await run({
       FRIDAY_PANEL_TOKEN: "tok",
-      FRIDAY_PANEL_ORIGINS: "http://a.local",
+      FRIDAY_PANEL_ORIGINS: "https://a.local",
     });
     expect(start).toHaveBeenCalledTimes(1);
     const call = start.mock.calls[0] as unknown as [{ allowedOrigins: string[] }];
-    expect(call[0].allowedOrigins).toEqual(["http://a.local"]);
+    expect(call[0].allowedOrigins).toEqual(["https://a.local"]);
     expect(api).not.toBeNull();
     expect(logs).not.toContain(REFUSAL);
     expect(logs).not.toContain(WARNING);
@@ -98,7 +98,7 @@ describe("daemon with a refused panel", () => {
       {
         FRIDAY_HOME: validRoot(),
         FRIDAY_PANEL_TOKEN: "tok",
-        FRIDAY_PANEL_ORIGINS: "http://a.local",
+        FRIDAY_PANEL_ORIGINS: "https://a.local",
       },
       { log: (m) => void lines.push(m) },
     );

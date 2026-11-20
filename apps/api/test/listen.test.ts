@@ -7,9 +7,14 @@ import { openFixture, type Fixture } from "./helpers.ts";
 let f: Fixture;
 afterEach(() => f.db.close());
 
-function getWithHost(port: number, host: string): Promise<{ status: number; body: string }> {
+function getWithHost(
+  port: number,
+  host: string,
+  extra: Record<string, string> = {},
+): Promise<{ status: number; body: string }> {
   return new Promise((resolve, reject) => {
-    const req = request({ host: "127.0.0.1", port, path: "/health", headers: { host } }, (res) => {
+    const headers = { host, ...extra };
+    const req = request({ host: "127.0.0.1", port, path: "/health", headers }, (res) => {
       let body = "";
       res.on("data", (c: Buffer) => (body += c.toString()));
       res.on("end", () => resolve({ status: res.statusCode ?? 0, body }));
@@ -53,11 +58,14 @@ describe("startApi", () => {
     const api = await startApi({
       deps: f.deps,
       port: 0,
-      allowedOrigins: ["http://painel.exemplo.com"],
+      allowedOrigins: ["https://painel.exemplo.com"],
     });
     try {
       expect((await getWithHost(api.port, `127.0.0.1:${api.port}`)).status).toBe(200);
-      expect((await getWithHost(api.port, "painel.exemplo.com")).status).toBe(200);
+      const proxied = await getWithHost(api.port, "painel.exemplo.com", {
+        "x-forwarded-proto": "https",
+      });
+      expect(proxied.status).toBe(200);
       for (const host of ["evil.local", "127.0.0.1:1"]) {
         const res = await getWithHost(api.port, host);
         expect(res.status, host).toBe(403);
