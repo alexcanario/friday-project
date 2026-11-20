@@ -16,7 +16,13 @@ describe("defaultClientFor", () => {
     vi.stubGlobal("fetch", fetchFn);
     await defaultClientFor({ name: "h1", baseUrl: "" }).fetchHealth();
     await defaultClientFor({ name: "h2", baseUrl: "" }).fetchHealth();
-    expect(fetchFn.mock.calls[0]?.[1]).toEqual({ headers: { "x-friday-token": "t1" } });
-    expect(fetchFn.mock.calls[1]?.[1]).toEqual({ headers: { "x-friday-token": "t2" } });
+    expect(fetchFn.mock.calls[0]?.[1]).toEqual({
+      headers: { "x-friday-token": "t1" },
+      redirect: "manual",
+    });
+    expect(fetchFn.mock.calls[1]?.[1]).toEqual({
+      headers: { "x-friday-token": "t2" },
+      redirect: "manual",
+    });
   });
 });

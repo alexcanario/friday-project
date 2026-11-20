@@ -151,6 +151,7 @@ describe("token on the project screen", () => {
     await defaultClientFor(host).fetchIssues("o/r");
     expect(fetchMock).toHaveBeenCalledWith("/issues?project=o%2Fr", {
       headers: { "x-friday-token": SECRET },
+      redirect: "manual",
     });
   });
 });

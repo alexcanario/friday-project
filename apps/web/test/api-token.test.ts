@@ -19,7 +19,10 @@ describe("api client with token", () => {
     expect(fn.mock.calls[0]).toEqual(["/health"]);
     fn = stub({ status: "ok" });
     await createApiClient("", () => "s3cret").fetchHealth();
-    expect(fn).toHaveBeenCalledWith("/health", { headers: { "x-friday-token": "s3cret" } });
+    expect(fn).toHaveBeenCalledWith("/health", {
+      headers: { "x-friday-token": "s3cret" },
+      redirect: "manual",
+    });
     fn = stub({ status: "ok" });
     await createApiClient("", () => "").fetchHealth();
     expect(fn.mock.calls[0]).toEqual(["/health"]);
@@ -31,6 +34,7 @@ describe("api client with token", () => {
     await expect(client.fetchProjects()).resolves.toEqual([{ id: "a/b" }]);
     expect(fn).toHaveBeenCalledWith("http://h:1/projects", {
       headers: { "x-friday-token": "t" },
+      redirect: "manual",
     });
     stub([{ id: "a/b" }], 500);
     await expect(client.fetchProjects()).rejects.toThrow();
