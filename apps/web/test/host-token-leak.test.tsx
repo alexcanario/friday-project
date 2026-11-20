@@ -8,6 +8,7 @@ import { HostCardView } from "../src/HostCard.tsx";
 import type { HostCardState } from "../src/host-card-state.ts";
 import { ProjectScreenView } from "../src/ProjectView.tsx";
 import type { ProjectState } from "../src/project-state.ts";
+import { queryKeys } from "../src/query-keys.ts";
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -61,6 +62,61 @@ describe("token leak", () => {
       expect(html).not.toContain(SECRET);
       expect(html).not.toMatch(/href="[^"]*s3cret/);
     }
+  });
+});
+
+describe("token on the approvals section", () => {
+  it("never renders the approvals token and each host client sends only its own", async () => {
+    const tokens: Record<string, string> = {
+      "friday.panelToken.h1": SECRET,
+      "friday.panelToken.h2": "other-token-h2",
+    };
+    vi.stubGlobal("sessionStorage", {
+      getItem: (k: string) => tokens[k] ?? null,
+      setItem: () => undefined,
+    });
+    const qc = new QueryClient();
+    qc.setQueryData(queryKeys.approvals("a/b", "h1"), [
+      {
+        id: "a1",
+        issueId: 14,
+        pr: 5,
+        headSha: "abc123",
+        tier: "low",
+        requestedAt: 1,
+        expiresAt: 2,
+      },
+    ]);
+    qc.setQueryData(queryKeys.status("a/b", "h1"), {
+      enabled: true,
+      breaker: { open: false, openedAt: null, failures: [] },
+    });
+    const html = renderToString(
+      <QueryClientProvider client={qc}>
+        <App
+          client={client}
+          hosts={[host]}
+          search="?host=h1&project=a%2Fb"
+          clientFor={() => client}
+        />
+      </QueryClientProvider>,
+    );
+    expect(html).toContain("data-approval-id");
+    expect(html).not.toContain(SECRET);
+    expect(html).not.toMatch(/href="[^"]*s3cret/);
+    const fetchMock = vi.fn(() => Promise.resolve(new Response("[]")));
+    vi.stubGlobal("fetch", fetchMock);
+    await defaultClientFor(host).fetchApprovals("o/r");
+    await defaultClientFor({ name: "h2", baseUrl: "" }).fetchApprovals("o/r");
+    const [first, second] = fetchMock.mock.calls as unknown as [
+      [string, { headers: Record<string, string> }],
+      [string, { headers: Record<string, string> }],
+    ];
+    expect(first[0]).not.toContain(SECRET);
+    expect(first[1].headers["x-friday-token"]).toBe(SECRET);
+    expect(second[0]).not.toContain("other-token-h2");
+    expect(second[1].headers["x-friday-token"]).toBe("other-token-h2");
+    expect(JSON.stringify(second)).not.toContain(SECRET);
   });
 });
 

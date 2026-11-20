@@ -1,8 +1,11 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { renderToString } from "react-dom/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { ApiClient } from "../src/api.ts";
 import { ApprovalsScreen, approvalsMessage } from "../src/ApprovalsScreen.tsx";
+import { saveTyped } from "../src/token.ts";
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -56,8 +59,8 @@ describe("ApprovalsScreen", () => {
     expect(loading).toContain("Salvar token");
     expect(loading).not.toContain('data-list="approvals"');
     const qc = new QueryClient();
-    qc.setQueryData(["approvals", "o/r"], [item]);
-    qc.setQueryData(["status", "o/r"], status);
+    qc.setQueryData(["approvals", "o/r", "h1"], [item]);
+    qc.setQueryData(["status", "o/r", "h1"], status);
     const ready = render(qc);
     expect(ready).toContain('data-approval-id="a1"');
     expect(ready).toContain('data-section="status"');
@@ -66,5 +69,35 @@ describe("ApprovalsScreen", () => {
     const withToken = render(qc);
     expect(withToken).toContain('data-approval-id="a1"');
     expect(withToken).not.toContain("disabled");
+  });
+
+  it("reads the cache by host", () => {
+    stubStorage({});
+    const qc = new QueryClient();
+    qc.setQueryData(["approvals", "o/r", "h1"], [item]);
+    qc.setQueryData(["status", "o/r", "h1"], status);
+    expect(render(qc)).toContain('data-approval-id="a1"');
+    const other = new QueryClient();
+    other.setQueryData(["approvals", "o/r", "h2"], [item]);
+    other.setQueryData(["status", "o/r", "h2"], status);
+    const html = render(other);
+    expect(html).toContain("Carregando aprovações...");
+    expect(html).not.toContain("data-approval-id");
+  });
+
+  it("clears the typed token after saving and never renders it", () => {
+    const onSave = vi.fn();
+    expect(saveTyped("s3cret", onSave)).toBe("");
+    expect(onSave).toHaveBeenCalledTimes(1);
+    expect(onSave).toHaveBeenCalledWith("s3cret");
+    stubStorage({ "friday.panelToken.h1": "s3cret" });
+    const qc = new QueryClient();
+    qc.setQueryData(["approvals", "o/r", "h1"], [item]);
+    qc.setQueryData(["status", "o/r", "h1"], status);
+    const html = render(qc);
+    expect(html).not.toContain("s3cret");
+    expect(html).toContain('type="password"');
+    const source = readFileSync(join(import.meta.dirname, "../src/ApprovalsScreen.tsx"), "utf8");
+    expect(source).toContain("setTyped(saveTyped(typed,");
   });
 });

@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useMemo, type ReactNode } from "react";
 import type { ApiClient } from "./api.ts";
 import { projectStateOf } from "./project-state.ts";
+import { ApprovalsScreen } from "./ApprovalsScreen.tsx";
 import { ProjectScreenView } from "./ProjectView.tsx";
 import { queryKeys } from "./query-keys.ts";
 
@@ -35,7 +36,9 @@ export function ProjectScreen({
       state={projectStateOf(issues, runs)}
       issues={issues.data ?? []}
       runs={runs.data ?? []}
-      approvals={approvals}
+      approvals={
+        approvals ?? <ApprovalsScreen client={client} host={host.name} project={project} />
+      }
     />
   );
 }

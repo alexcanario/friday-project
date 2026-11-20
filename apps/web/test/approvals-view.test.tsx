@@ -2,7 +2,7 @@ import type { ApprovalItem, StatusResponse } from "@friday/contracts";
 import type React from "react";
 import { renderToString } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
-import { ApprovalsView } from "../src/ApprovalsView.tsx";
+import { ApprovalsView, buttonsDisabled } from "../src/ApprovalsView.tsx";
 
 type Props = Parameters<typeof ApprovalsView>[0];
 
@@ -59,6 +59,16 @@ describe("ApprovalsView", () => {
     }
     expect(count(off, "disabled")).toBe(4);
     expect(count(html(), "disabled")).toBe(0);
+  });
+
+  it("disables both buttons while a decision is busy", () => {
+    expect(buttonsDisabled(true, false)).toBe(false);
+    expect(buttonsDisabled(true, true)).toBe(true);
+    expect(buttonsDisabled(false, false)).toBe(true);
+    expect(buttonsDisabled(false, true)).toBe(true);
+    expect(count(html({ hasToken: true, busy: true }), "disabled")).toBe(4);
+    expect(count(html({ hasToken: true, busy: false }), "disabled")).toBe(0);
+    expect(count(html({ hasToken: true }), "disabled")).toBe(0);
   });
 
   it("calls onApprove and onDeny with the approval id", () => {

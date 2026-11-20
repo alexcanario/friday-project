@@ -1,5 +1,6 @@
 import type { IssueItem, RunItem } from "@friday/contracts";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import type { ReactNode } from "react";
 import { renderToString } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import type { ApiClient } from "../src/api.ts";
@@ -32,15 +33,36 @@ const runItem: RunItem = {
   numTurns: null,
 };
 
-function render(qc: QueryClient) {
+function render(qc: QueryClient, approvals?: ReactNode) {
   const clientFor = vi.fn(() => client);
   const html = renderToString(
     <QueryClientProvider client={qc}>
-      <ProjectScreen host={host} project="o/r" clientFor={clientFor} />
+      <ProjectScreen host={host} project="o/r" clientFor={clientFor} approvals={approvals} />
     </QueryClientProvider>,
   );
   return { html, clientFor };
 }
+const approvalItem = {
+  id: "a1",
+  issueId: 13,
+  pr: 5,
+  headSha: "abc123",
+  tier: "low" as const,
+  requestedAt: 1,
+  expiresAt: 2,
+};
+const statusItem = { enabled: true, breaker: { open: false, openedAt: null, failures: [] } };
+function seed(name: string, withApprovals: boolean): QueryClient {
+  const qc = new QueryClient();
+  qc.setQueryData(queryKeys.projectIssues("o/r", name), [issue]);
+  qc.setQueryData(queryKeys.projectRuns("o/r", name), [runItem]);
+  if (withApprovals) {
+    qc.setQueryData(queryKeys.approvals("o/r", name), [approvalItem]);
+    qc.setQueryData(queryKeys.status("o/r", name), statusItem);
+  }
+  return qc;
+}
+const sectionOf = (html: string) => html.slice(html.indexOf('<section data-slot="approvals">'));
 
 describe("project screen", () => {
   it("screen loads through the host client and keys the cache by host", () => {
@@ -61,5 +83,33 @@ describe("project screen", () => {
     other.setQueryData(queryKeys.projectIssues("o/r", "h2"), [issue]);
     other.setQueryData(queryKeys.projectRuns("o/r", "h2"), [runItem]);
     expect(render(other).html).toContain("Carregando issues e runs...");
+  });
+
+  it("renders the approvals section from the host client and keys it by host", () => {
+    const ready = render(seed("h1", true));
+    const html = ready.html;
+    const section = sectionOf(html);
+    const at = html.indexOf('data-slot="approvals"');
+    expect(at).toBeGreaterThan(-1);
+    expect(section).toContain('data-approval-id="a1"');
+    expect(section).toContain('type="password"');
+    expect(section).toContain("Salvar token");
+    expect(at).toBeGreaterThan(html.indexOf('data-list="issues"'));
+    expect(at).toBeGreaterThan(html.indexOf('data-list="runs"'));
+    expect(ready.clientFor).toHaveBeenCalledTimes(1);
+    expect(ready.clientFor).toHaveBeenCalledWith(host);
+    const qc = seed("h1", false);
+    qc.setQueryData(queryKeys.approvals("o/r", "h2"), [approvalItem]);
+    qc.setQueryData(queryKeys.status("o/r", "h2"), statusItem);
+    const crossed = sectionOf(render(qc).html);
+    expect(crossed).toContain("Carregando aprovações...");
+    expect(crossed).not.toContain("data-approval-id");
+  });
+
+  it("the approvals prop replaces the default section", () => {
+    const html = render(seed("h1", true), <p>SUBST</p>).html;
+    expect(html).toContain("SUBST");
+    expect(html).not.toContain('type="password"');
+    expect(html).not.toContain("data-approval-id");
   });
 });

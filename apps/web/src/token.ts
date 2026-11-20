@@ -12,6 +12,12 @@ export function saveToken(host: string, token: string): void {
   sessionStorage.setItem(tokenKey(host), token);
 }
 
+/** Hands the typed token to `onSave` and returns the cleared field value. */
+export function saveTyped(typed: string, onSave: (value: string) => void): string {
+  onSave(typed);
+  return "";
+}
+
 /** Saves the typed token; false when it is empty. */
 export function submitToken(host: string, value: string): boolean {
   saveToken(host, value);
