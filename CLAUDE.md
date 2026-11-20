@@ -31,6 +31,7 @@ Owner: Alex (pt-BR). Current decisions: `docs/decisions.md`. Process: `docs/proc
 - Economy: read only the files the issue lists plus what a failing test points to; no repo-wide exploration. Use the subagents in `.claude/agents/` (each declares its model) instead of doing their work in the main session.
 - Lessons for the sibling plugins (agile@canary, legacy-lens), **only when needed** — a real bug, gap or improvement seen while working, never speculation: append a `⏳ plugin: agile|lens [<scope>]` note to `docs/agile/retro-log.md` (row in "Plugin notes — status" + dated entry, English, no secrets). Never write in those repositories; the same lesson twice stays one row.
 - Keep files small: a source file ≤ 300 lines, a function ≤ 50 lines.
+- Worktrees: `V:\wt\friday-project` (one folder per issue, `V:\wt\friday-project\<issue>`, on the owner's machine; never inside the repository). Drafts go to `V:\scratch\friday-project\<issue>`.
 
 ## Done
 CI green (typecheck, lint, test) · every criterion has a passing test · QA and Judge verdicts posted on the PR bound to the head SHA · issue closed by the squash merge · no new `TODO` without an issue.
