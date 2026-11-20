@@ -8,8 +8,24 @@ export function readToken(host: string): string {
   return sessionStorage.getItem(tokenKey(host)) ?? "";
 }
 
+const listeners = new Set<() => void>();
+let version = 0;
+
+/** Calls `listener` after every saved token; returns the function that stops it. */
+export function subscribeToken(listener: () => void): () => void {
+  listeners.add(listener);
+  return () => void listeners.delete(listener);
+}
+
+/** Goes up by one on every saved token. */
+export function tokenVersion(): number {
+  return version;
+}
+
 export function saveToken(host: string, token: string): void {
   sessionStorage.setItem(tokenKey(host), token);
+  version += 1;
+  for (const listener of [...listeners]) listener();
 }
 
 /** Hands the typed token to `onSave` and returns the cleared field value. */

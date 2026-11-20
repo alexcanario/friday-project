@@ -1,16 +1,17 @@
 import type { HostEntry } from "@friday/contracts";
 import { useQuery } from "@tanstack/react-query";
-import { useState } from "react";
+import { useCallback, useState, useSyncExternalStore } from "react";
 import type { ApiClient } from "./api.ts";
 import { defaultClientFor } from "./client-for.ts";
 import { ConnectionStatus } from "./ConnectionStatus.tsx";
-import { displayState, type ConnectionState } from "./connection-state.ts";
+import { displayState, liveStateFor, type ConnectionState } from "./connection-state.ts";
 import { selectionFromSearch, type Selection } from "./host-selection.ts";
 import { liveTarget } from "./live-target.ts";
 import { Overview } from "./Overview.tsx";
 import { ProjectScreen } from "./ProjectScreen.tsx";
 import { queryKeys } from "./query-keys.ts";
 import { RunDetailScreen } from "./RunDetailScreen.tsx";
+import { subscribeToken, tokenVersion } from "./token.ts";
 import { useLiveEvents } from "./use-live-events.ts";
 
 function Hosts({
@@ -56,16 +57,24 @@ export function App({
   clientFor?: (host: HostEntry) => ApiClient;
 }) {
   const query = useQuery({ queryKey: queryKeys.health, queryFn: () => client.fetchHealth() });
-  const [live, setLive] = useState<ConnectionState | null>(null);
+  const [live, setLive] = useState<{ key: string; state: ConnectionState } | null>(null);
+  useSyncExternalStore(subscribeToken, tokenVersion, tokenVersion);
   const selection: Selection = Array.isArray(hosts)
     ? selectionFromSearch(search, hosts)
     : { kind: "none" };
   const target = liveTarget(selection);
-  useLiveEvents(target?.baseUrl ?? "", target?.project, setLive, target?.token, target?.host);
+  const key =
+    target === null
+      ? ""
+      : JSON.stringify([target.baseUrl, target.project, target.host, target.token]);
+  const onLive = useCallback((state: ConnectionState) => setLive({ key, state }), [key]);
+  useLiveEvents(target?.baseUrl ?? "", target?.project, onLive, target?.token, target?.host);
   return (
     <main>
       <h1>Friday</h1>
-      <ConnectionStatus state={displayState(live, query.status, target !== null)} />
+      <ConnectionStatus
+        state={displayState(liveStateFor(live, key), query.status, target !== null)}
+      />
       {hosts !== undefined && <Hosts hosts={hosts} selection={selection} clientFor={clientFor} />}
     </main>
   );
