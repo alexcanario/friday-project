@@ -82,7 +82,13 @@ describe("host check", () => {
     const webRoot = mkdtempSync(join(tmpdir(), "friday-web-"));
     writeFileSync(join(webRoot, "index.html"), "<html></html>");
     const app = await appWith({ webRoot });
-    for (const url of ["/health", "/status?project=p1", "/openapi.json", "/", "/rota-inexistente"]) {
+    for (const url of [
+      "/health",
+      "/status?project=p1",
+      "/openapi.json",
+      "/",
+      "/rota-inexistente",
+    ]) {
       const res = await app.inject({ url, headers: { host: "evil.local" } });
       expect(res.statusCode, url).toBe(403);
       expect(res.body, url).toBe(BODY);

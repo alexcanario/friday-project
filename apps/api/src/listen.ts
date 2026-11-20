@@ -1,5 +1,6 @@
 import { resolve } from "node:path";
 import { buildApp, type ApiDeps } from "./app.ts";
+import { allowedHostsOf } from "./host-check.ts";
 
 export const DEFAULT_PORT = 7777;
 const HOST = "127.0.0.1";
@@ -19,12 +20,15 @@ export interface RunningApi {
 }
 
 export async function startApi(options: StartApiOptions): Promise<RunningApi> {
+  let boundPort = options.port ?? DEFAULT_PORT;
   const app = await buildApp(options.deps, {
     webRoot: options.webRoot ?? DEFAULT_WEB_ROOT,
     allowedOrigins: options.allowedOrigins,
+    allowedHosts: () => allowedHostsOf(boundPort, options.allowedOrigins ?? []),
   });
-  await app.listen({ host: HOST, port: options.port ?? DEFAULT_PORT });
+  await app.listen({ host: HOST, port: boundPort });
   const addr = app.server.address();
   const port = typeof addr === "object" && addr !== null ? addr.port : 0;
+  boundPort = port;
   return { address: HOST, port, close: () => app.close() };
 }
