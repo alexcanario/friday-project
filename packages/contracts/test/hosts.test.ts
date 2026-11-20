@@ -22,4 +22,14 @@ describe("hosts file", () => {
     ];
     for (const input of bad) expect(hostsFile.safeParse(input).success).toBe(false);
   });
+
+  it("hostsFile refuses a base without protocol", () => {
+    const parse = (baseUrl: string) => hostsFile.safeParse([{ name: "a", baseUrl }]).success;
+    for (const b of ["//host.remoto", "\\\\host.remoto", " //host.remoto", "http:"]) {
+      expect(parse(b)).toBe(false);
+    }
+    for (const b of ["", "https://h", "http://127.0.0.1:7777", "http://localhost:7777"]) {
+      expect(parse(b)).toBe(true);
+    }
+  });
 });
