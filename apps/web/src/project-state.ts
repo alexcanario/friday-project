@@ -1,6 +1,6 @@
-import { classifyHostError } from "./api-errors.ts";
+import { LOGIN_EXPIRED_MESSAGE, classifyHostError } from "./api-errors.ts";
 
-export type ProjectState = "loading" | "offline" | "unauthorized" | "error" | "ready";
+export type ProjectState = "loading" | "offline" | "unauthorized" | "login" | "error" | "ready";
 
 export type QueryPart = { status: "pending" | "error" | "success"; error?: unknown };
 
@@ -8,6 +8,7 @@ export function projectStateOf(issues: QueryPart, runs: QueryPart): ProjectState
   const failed = [issues, runs].filter((p) => p.status === "error");
   const kinds = failed.map((p) => classifyHostError(p.error));
   if (kinds.includes("unauthorized")) return "unauthorized";
+  if (kinds.includes("login")) return "login";
   if (kinds.includes("offline")) return "offline";
   if (kinds.length > 0) return "error";
   if (issues.status === "pending" || runs.status === "pending") return "loading";
@@ -18,6 +19,7 @@ const MESSAGES: Record<Exclude<ProjectState, "ready">, string> = {
   loading: "Carregando issues e runs...",
   offline: "Sem conexão com o host.",
   unauthorized: "Token necessário. Informe o token do host na visão geral.",
+  login: LOGIN_EXPIRED_MESSAGE,
   error: "Não foi possível carregar issues e runs.",
 };
 

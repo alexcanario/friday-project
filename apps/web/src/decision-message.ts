@@ -14,5 +14,8 @@ export function decisionMessage(r: DecisionResult): string {
   if (r.outcome !== null && Object.hasOwn(MESSAGES, r.outcome))
     return MESSAGES[r.outcome] as string;
   if (r.outcome === null && r.status === 401) return "Token do painel inválido.";
+  if (r.outcome === null && r.status === 429) {
+    return "Muitas tentativas recusadas. Tente de novo em instantes.";
+  }
   return `Falha inesperada (HTTP ${r.status}).`;
 }

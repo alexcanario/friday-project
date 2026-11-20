@@ -1,5 +1,6 @@
 import type { QueryClient } from "@tanstack/react-query";
 import type { ApiClient } from "./api.ts";
+import { ApiRedirectError, LOGIN_EXPIRED_MESSAGE } from "./api-errors.ts";
 import { decisionMessage } from "./decision-message.ts";
 import { queryKeys } from "./query-keys.ts";
 import { readToken } from "./token.ts";
@@ -13,7 +14,8 @@ export async function runDecision(
   if (readToken(host) === "") return "Token do painel inválido.";
   try {
     return decisionMessage(await client.postDecision(id, action));
-  } catch {
+  } catch (error) {
+    if (error instanceof ApiRedirectError) return LOGIN_EXPIRED_MESSAGE;
     return "Não foi possível enviar a decisão.";
   }
 }

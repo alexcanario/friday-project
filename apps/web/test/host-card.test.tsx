@@ -67,9 +67,7 @@ describe("host card", () => {
       kind: "login",
     });
     const html = view({ kind: "login" });
-    expect(html).toContain(
-      "Sessão de login expirada. Recarregue a página para entrar de novo.",
-    );
+    expect(html).toContain("Sessão de login expirada. Recarregue a página para entrar de novo.");
     expect(html).not.toContain('type="password"');
     expect(html).not.toContain('data-field="token"');
     expect(view({ kind: "unauthorized" })).toContain('type="password"');

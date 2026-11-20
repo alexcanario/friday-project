@@ -2,6 +2,7 @@ import type { HostEntry } from "@friday/contracts";
 import { useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { useMemo, type FormEvent } from "react";
 import type { ApiClient } from "./api.ts";
+import { LOGIN_EXPIRED_MESSAGE } from "./api-errors.ts";
 import { hostCardStateOf, type HostCardState, type ProjectSummary } from "./host-card-state.ts";
 import { selectionToSearch } from "./host-selection.ts";
 import { saveToken } from "./token.ts";
@@ -87,6 +88,7 @@ export function HostCardView({ host, state, onSaveToken }: HostCardViewProps) {
       {state.kind === "offline" && <p>sem conexão</p>}
       {state.kind === "error" && <p>Erro ao consultar o host</p>}
       {state.kind === "unauthorized" && <TokenForm host={host} onSaveToken={onSaveToken} />}
+      {state.kind === "login" && <p>{LOGIN_EXPIRED_MESSAGE}</p>}
       {state.kind === "ready" && <Ready host={host} projects={state.projects} />}
     </section>
   );

@@ -8,6 +8,7 @@ export type HostCardState =
   | { kind: "offline" }
   | { kind: "error" }
   | { kind: "unauthorized" }
+  | { kind: "login" }
   | { kind: "ready"; projects: ProjectSummary[] };
 
 export function hostCardStateOf(q: {
