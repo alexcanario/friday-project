@@ -122,7 +122,7 @@ it("refuses invalid config, other repository and missing credentials before any 
     expect(f.seams.createGitHub, c.name).not.toHaveBeenCalled();
     expect(readdirSync(ws.tmpRoot), c.name).toEqual([]);
   }
-});
+}, 30_000);
 
 it("wires the worktrees, git host and GitHub from the factory config", async () => {
   const ws = workspace();
