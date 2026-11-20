@@ -63,6 +63,31 @@ describe("secure base", () => {
     expect(isInsecureBase("//host.remoto", https)).toBe(true);
   });
 
+  it("flags a base that becomes protocol-relative once the path is appended", async () => {
+    for (const base of ["/", "\\", "/\t", "/\n", " \\", "\\\t"]) {
+      expect(isInsecureBase(base, undefined)).toBe(true);
+    }
+    // Whitespace-only bases resolve against the page (" /health"), so the page decides.
+    const http = { protocol: "http:", hostname: "painel.exemplo.com" };
+    const local = { protocol: "http:", hostname: "localhost" };
+    for (const base of [" ", "\t"]) {
+      expect(isInsecureBase(base, undefined)).toBe(false);
+      expect(isInsecureBase(base, local)).toBe(false);
+      expect(isInsecureBase(base, http)).toBe(true);
+    }
+    vi.stubGlobal("location", local);
+    const fn = vi.fn(() => Promise.resolve(new Response("{}", { status: 200 })));
+    vi.stubGlobal("fetch", fn);
+    await expect(createApiClient("\\", () => "tok").fetchHealth()).rejects.toBeInstanceOf(
+      ApiInsecureError,
+    );
+    expect(fn).toHaveBeenCalledTimes(0);
+    vi.stubGlobal("sessionStorage", { getItem: () => "tok", setItem: () => undefined });
+    expect(
+      liveTarget({ kind: "selected", host: { name: "h1", baseUrl: "/" }, project: "o/r" }),
+    ).toBeNull();
+  });
+
   it("never sends the token to a protocol-relative base", async () => {
     vi.stubGlobal("location", { protocol: "http:", hostname: "localhost" });
     const fn = vi.fn(() =>
