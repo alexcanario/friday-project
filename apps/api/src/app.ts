@@ -51,6 +51,8 @@ export interface ApiDeps {
   projects: ProjectListReader;
   /** Secret of the `x-friday-token` header (D108); undefined or empty rejects every write. */
   panelToken: string | undefined;
+  /** Instant (ms since 1970) from which the token is refused with 401; absent means it never expires. */
+  panelTokenExpiresAt?: number;
   unitOfWork: UnitOfWork;
   github: Pick<GitHubPort, "squashMerge">;
   readPrHead: (pr: number) => Promise<string>;
@@ -81,6 +83,9 @@ async function registerApiRoutes(app: App, deps: ApiDeps): Promise<void> {
   await app.register(async (api) => {
     api.addHook("onRequest", async (req, reply) => {
       if (deps.panelToken === undefined || deps.panelToken === "") return;
+      if (deps.panelTokenExpiresAt !== undefined && deps.now() >= deps.panelTokenExpiresAt) {
+        return reply.code(401).send({ message: "Token do painel expirado." });
+      }
       if (!isPanelTokenValid(req.headers["x-friday-token"], deps.panelToken)) {
         return reply.code(401).send({ message: "Token do painel inválido." });
       }

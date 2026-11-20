@@ -12,7 +12,9 @@ import {
   createRunRepository,
   createUnitOfWork,
 } from "@friday/infrastructure";
-import { panelRefusalOf } from "./panel-checks.ts";
+import { expiryWarningOf, panelRefusalOf, parseExpiresAt, parseOrigins } from "./panel-checks.ts";
+
+export { parseOrigins };
 
 /** Default panel port, used when factory.yaml has no panel block. */
 export const DEFAULT_PANEL_PORT = 7777;
@@ -37,6 +39,7 @@ export function apiDepsOf(
     enabled: createProjectEnabledRepository(db),
     projects: createProjectListReader(db),
     panelToken: env.FRIDAY_PANEL_TOKEN,
+    panelTokenExpiresAt: parseExpiresAt(env.FRIDAY_PANEL_TOKEN_EXPIRES_AT),
     unitOfWork: createUnitOfWork(db),
     github: { squashMerge: (pr, sha) => daemon.github.squashMerge(pr, sha) },
     readPrHead: async (pr) => (await daemon.github.getPrMergeState(pr)).headSha,
@@ -51,14 +54,6 @@ const MISSING_TOKEN_WARNING =
 /** Logged when origins are set without a token; names the variables, never their values. */
 export const MISSING_TOKEN_REFUSAL =
   "Painel não iniciado: FRIDAY_PANEL_ORIGINS está definida, mas FRIDAY_PANEL_TOKEN está ausente ou vazia. Defina FRIDAY_PANEL_TOKEN e reinicie o daemon; o daemon continua rodando sem o painel.";
-
-/** Splits `FRIDAY_PANEL_ORIGINS` by comma, trimming spaces and dropping empty items. */
-export function parseOrigins(value: string | undefined): string[] {
-  return (value ?? "")
-    .split(",")
-    .map((o) => o.trim())
-    .filter((o) => o !== "");
-}
 
 function panelErrorOf(error: unknown, port: number): unknown {
   const code = (error as { code?: unknown } | null)?.code;
@@ -82,7 +77,7 @@ export async function startPanel(
     log(MISSING_TOKEN_REFUSAL);
     return null;
   }
-  const refusal = panelRefusalOf(env);
+  const refusal = panelRefusalOf(env, Date.now());
   if (refusal !== null) {
     log(refusal);
     return null;
@@ -95,6 +90,8 @@ export async function startPanel(
     throw panelErrorOf(error, port);
   }
   if (noToken) log(MISSING_TOKEN_WARNING);
+  const expiryWarning = expiryWarningOf(env, Date.now());
+  if (expiryWarning !== null) log(expiryWarning);
   log(`Painel em http://${api.address}:${api.port}`);
   return api;
 }

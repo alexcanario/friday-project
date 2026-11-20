@@ -4,7 +4,12 @@ import { join } from "node:path";
 import type { Daemon } from "@friday/daemon";
 import { openDatabase, type FridayDatabase } from "@friday/infrastructure";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { apiDepsOf, MISSING_TOKEN_REFUSAL, startPanel, type StartApi } from "../src/daemon-panel.ts";
+import {
+  apiDepsOf,
+  MISSING_TOKEN_REFUSAL,
+  startPanel,
+  type StartApi,
+} from "../src/daemon-panel.ts";
 import { runDaemonCommand } from "../src/daemon.ts";
 import {
   EXPIRY_INVALID_REFUSAL,
@@ -173,7 +178,10 @@ describe("panel token rules", () => {
   });
 
   it("warns 7 days or less before the expiry", async () => {
-    const warned = await run({ FRIDAY_PANEL_TOKEN: VALID_TOKEN, [EXPIRES]: "2026-11-25T00:00:00Z" });
+    const warned = await run({
+      FRIDAY_PANEL_TOKEN: VALID_TOKEN,
+      [EXPIRES]: "2026-11-25T00:00:00Z",
+    });
     const warning =
       "Aviso: FRIDAY_PANEL_TOKEN expira em 5 dia(s). Gere outro token e reinicie o daemon.";
     expect(warned.logs).toEqual([warning, "Painel em http://127.0.0.1:7777"]);
