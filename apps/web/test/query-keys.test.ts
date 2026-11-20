@@ -9,6 +9,11 @@ describe("query keys", () => {
     expect(queryKeys.issue("p1", 7)).toEqual(["issues", "p1", 7]);
   });
 
+  it("builds the approvals and status keys", () => {
+    expect(queryKeys.approvals("o/r")).toEqual(["approvals", "o/r"]);
+    expect(queryKeys.status("o/r")).toEqual(["status", "o/r"]);
+  });
+
   it("builds project list keys under the keys the live stream invalidates", () => {
     expect(queryKeys.projectIssues("o/r", "h1")).toEqual(["issues", "o/r", "list", "h1"]);
     expect(queryKeys.projectRuns("o/r", "h1")).toEqual(["issues", "o/r", "runs", "h1"]);

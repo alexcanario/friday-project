@@ -14,6 +14,9 @@ const client: ApiClient = {
   fetchProjectOverview: never,
   fetchIssues: never,
   fetchRuns: never,
+  fetchApprovals: never,
+  fetchStatus: never,
+  postDecision: never,
 };
 const issue: IssueItem = { issueId: 13, state: "Todo", heldReason: null };
 const runItem: RunItem = {
