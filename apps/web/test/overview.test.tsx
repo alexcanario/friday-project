@@ -13,6 +13,8 @@ const client: ApiClient = {
   fetchRuns: () => Promise.resolve([]),
   fetchApprovals: () => Promise.reject(new Error("unused")),
   fetchStatus: () => Promise.reject(new Error("unused")),
+  fetchRun: () => Promise.reject(new Error("unused")),
+  fetchRunReview: () => Promise.reject(new Error("unused")),
   postDecision: () => Promise.reject(new Error("unused")),
 };
 const clientFor = () => client;

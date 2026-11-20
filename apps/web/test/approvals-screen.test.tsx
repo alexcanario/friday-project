@@ -13,6 +13,8 @@ const client: ApiClient = {
   fetchProjectOverview: never,
   fetchApprovals: never,
   fetchStatus: never,
+  fetchRun: never,
+  fetchRunReview: never,
   postDecision: never,
   fetchIssues: never,
   fetchRuns: never,

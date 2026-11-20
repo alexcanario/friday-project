@@ -29,4 +29,26 @@ describe("query keys", () => {
     expect(qc.getQueryState(keys[1]!)?.isInvalidated).toBe(true);
     expect(qc.getQueryState(keys[2]!)?.isInvalidated).toBe(false);
   });
+
+  it("run keys end with the host and sit under the issues prefix", () => {
+    expect(queryKeys.projectRun("o/r", "r1", "h1")).toEqual(["issues", "o/r", "run", "r1", "h1"]);
+    expect(queryKeys.projectRunReview("o/r", "r1", "h1")).toEqual([
+      "issues",
+      "o/r",
+      "run-review",
+      "r1",
+      "h1",
+    ]);
+    const qc = new QueryClient();
+    const keys = [
+      queryKeys.projectRun("o/r", "r1", "h1"),
+      queryKeys.projectRunReview("o/r", "r1", "h1"),
+      queryKeys.projectRun("outro/r", "r1", "h1"),
+    ];
+    for (const key of keys) qc.setQueryData(key, {});
+    void qc.invalidateQueries({ queryKey: queryKeys.issues("o/r") });
+    expect(qc.getQueryState(keys[0]!)?.isInvalidated).toBe(true);
+    expect(qc.getQueryState(keys[1]!)?.isInvalidated).toBe(true);
+    expect(qc.getQueryState(keys[2]!)?.isInvalidated).toBe(false);
+  });
 });
