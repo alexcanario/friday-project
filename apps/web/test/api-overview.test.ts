@@ -70,7 +70,7 @@ describe("project overview", () => {
       ]),
     );
     for (const call of fn.mock.calls) {
-      expect(call[1]).toEqual({ headers: { "x-friday-token": "t" } });
+      expect(call[1]).toEqual({ headers: { "x-friday-token": "t" }, redirect: "manual" });
     }
     stub(null);
     await expect(client.fetchProjectOverview("a/b", "2026-11-19")).resolves.toMatchObject({
@@ -81,6 +81,35 @@ describe("project overview", () => {
       await expect(client.fetchProjectOverview("a/b", "2026-11-19")).rejects.toThrow();
       stub(true, { match, status: 200, body: { bad: true } });
       await expect(client.fetchProjectOverview("a/b", "2026-11-19")).rejects.toThrow();
+    }
+  });
+
+  it("fetchProjectOverview rejects an invalid day before any fetch", async () => {
+    const client = createApiClient("", () => "t");
+    const invalid = [
+      "",
+      "2026-1-9",
+      "20261119",
+      "2026-11-19/../x",
+      "2026-11-19?x=1",
+      "2026-13-01",
+      "2026-02-30",
+      "2026-11-19 ",
+    ];
+    for (const bad of invalid) {
+      const fn = stub(true);
+      await expect(client.fetchProjectOverview("a/b", bad)).rejects.toThrow(RangeError);
+      expect(fn).not.toHaveBeenCalled();
+    }
+    for (const valid of ["2026-11-19", "2024-02-29"]) {
+      const fn = stub(true);
+      await expect(client.fetchProjectOverview("a/b", valid)).resolves.toMatchObject({
+        activeRuns: 1,
+      });
+      const urls = fn.mock.calls.map((c) => c[0]);
+      expect(urls).toContain(`/ledger/days/${valid}?project=a%2Fb`);
+      expect(urls).toContain("/status?project=a%2Fb");
+      expect(urls).toContain("/runs?project=a%2Fb");
     }
   });
 });

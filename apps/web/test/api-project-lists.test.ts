@@ -37,6 +37,7 @@ describe("api client project lists", () => {
     ]);
     expect(fn).toHaveBeenCalledWith("http://h:1/runs?project=p%201", {
       headers: { "x-friday-token": "s3cret" },
+      redirect: "manual",
     });
 
     const client = createApiClient("");

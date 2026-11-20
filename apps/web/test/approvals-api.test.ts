@@ -29,6 +29,7 @@ describe("approvals api", () => {
     await expect(createApiClient("", () => "t").fetchApprovals("p 1")).resolves.toEqual([item]);
     expect(fn).toHaveBeenCalledWith("/approvals?project=p%201", {
       headers: { "x-friday-token": "t" },
+      redirect: "manual",
     });
     fn = stub(status);
     await expect(createApiClient("http://h:1/").fetchStatus("p1")).resolves.toEqual(status);
@@ -53,6 +54,7 @@ describe("approvals api", () => {
       expect.objectContaining({
         method: "POST",
         headers: expect.objectContaining({ "x-friday-token": "s3cret" }),
+        redirect: "manual",
       }),
     );
     const init = (fn.mock.calls[0] as unknown as [string, RequestInit])[1];

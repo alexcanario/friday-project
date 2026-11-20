@@ -40,6 +40,7 @@ describe("run detail api", () => {
     await createApiClient("", () => "tok").fetchRun("o/r", "r1");
     expect(fn).toHaveBeenCalledWith("/runs/r1?project=o%2Fr", {
       headers: { "x-friday-token": "tok" },
+      redirect: "manual",
     });
 
     stub({}, 404);
