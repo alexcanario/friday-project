@@ -53,6 +53,8 @@ export interface ApiDeps {
   github: Pick<GitHubPort, "squashMerge">;
   readPrHead: (pr: number) => Promise<string>;
   now: () => number;
+  /** Receives one JSON line per logged error (500s and GitHub failures); nothing is logged when absent. */
+  log?: (message: string) => void;
   /** Poll interval of `GET /events/stream` in ms (default 1000). */
   ssePollMs?: number;
 }
@@ -104,7 +106,7 @@ export async function buildApp(
     openapi: { info: { title: "Friday API", version: "0.0.0" } },
     transform: jsonSchemaTransform,
   });
-  registerErrorHandler(app);
+  registerErrorHandler(app, deps.log);
   healthRoutes(app);
   await registerApiRoutes(app, deps);
   if (options.webRoot !== undefined && existsSync(join(options.webRoot, "index.html"))) {

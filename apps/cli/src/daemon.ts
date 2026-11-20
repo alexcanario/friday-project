@@ -211,7 +211,7 @@ export async function startDaemon(deps: DaemonDeps): Promise<Result> {
   const specialist = specialistComposeOf(loaded);
   if (specialist === null) return fail("A ficha backend não está no registro central.\n");
   const paths = daemonPaths({ env, homeDir, repository });
-  const redact = createRedactor(env, tokenEnvNamesOf(loaded));
+  const redact = createRedactor(env, [...tokenEnvNamesOf(loaded), "FRIDAY_PANEL_TOKEN"]);
   try {
     const createWorktrees =
       deps.createWorktrees ?? ((d: GitWorktreeManagerDeps) => new GitWorktreeManager(d));
@@ -233,7 +233,7 @@ export async function startDaemon(deps: DaemonDeps): Promise<Result> {
       daemon,
       deps.startApi ?? realStartApi,
       port,
-      logOf(deps),
+      (message) => logOf(deps)(redact(message)),
       deps.env,
     );
     const stop = await startOrRelease(daemon, api);
