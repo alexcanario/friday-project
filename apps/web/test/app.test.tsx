@@ -67,3 +67,26 @@ describe("panel page", () => {
     expect(displayState(null, "error")).toBe("offline");
   });
 });
+
+describe("header with a selected host", () => {
+  it("header shows loading for a selected host and health on the overview", () => {
+    expect(displayState(null, "success", true)).toBe("loading");
+    expect(displayState("connected", "error", true)).toBe("connected");
+    expect(displayState(null, "success")).toBe("connected");
+    const qc = new QueryClient();
+    qc.setQueryData(["health"], { status: "ok" });
+    const hosts = [{ name: "h1", baseUrl: "" }];
+    const render = (search: string): string =>
+      renderToString(
+        <QueryClientProvider client={qc}>
+          <App client={client} hosts={hosts} search={search} clientFor={() => client} />
+        </QueryClientProvider>,
+      );
+    const selected = render("?host=h1&project=a%2Fb");
+    expect(selected).toContain("Carregando…");
+    expect(selected).not.toContain("Conectado");
+    const overview = render("");
+    expect(overview).toContain("Conectado");
+    expect(overview).not.toContain("Carregando…");
+  });
+});

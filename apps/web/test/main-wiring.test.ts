@@ -4,11 +4,11 @@ import { describe, expect, it } from "vitest";
 const read = (rel: string): string => readFileSync(new URL(rel, import.meta.url), "utf8");
 
 describe("main wiring", () => {
-  it("main passes project and baseUrl to App", () => {
+  it("main builds the api client from VITE_FRIDAY_API_BASE", () => {
     const main = read("../src/main.tsx");
-    expect(main).toContain("projectFromSearch(window.location.search)");
-    expect(main).toContain("project={project}");
-    expect(main).toContain("baseUrl={baseUrl}");
+    expect(main).not.toContain("project={project}");
+    expect(main).not.toContain("baseUrl={baseUrl}");
+    expect(main).not.toContain("projectFromSearch");
     expect(main).toContain("import.meta.env.VITE_FRIDAY_API_BASE");
     expect(main).toContain("createApiClient(");
   });

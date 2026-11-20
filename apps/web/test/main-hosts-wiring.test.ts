@@ -5,8 +5,6 @@ describe("main hosts wiring", () => {
   it("main loads the hosts and keeps the existing wiring", () => {
     const main = readFileSync(new URL("../src/main.tsx", import.meta.url), "utf8");
     expect(main).toContain("loadHosts(");
-    expect(main).toContain("projectFromSearch(window.location.search)");
-    expect(main).toContain("baseUrl={baseUrl}");
     expect(main).toContain("import.meta.env.VITE_FRIDAY_API_BASE");
   });
 });
