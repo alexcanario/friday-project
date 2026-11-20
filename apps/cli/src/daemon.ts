@@ -95,21 +95,21 @@ function logOf(deps: DaemonDeps): (message: string) => void {
 }
 
 /** Starts the ticker; if it throws, closes the panel API, releases the lock and database, and rethrows. */
-async function startOrRelease(daemon: Daemon, api: RunningApi): Promise<() => void> {
+async function startOrRelease(daemon: Daemon, api: RunningApi | null): Promise<() => void> {
   try {
     return daemon.ticker.start();
   } catch (error) {
-    await closePanelQuietly(api);
+    if (api !== null) await closePanelQuietly(api);
     daemon.release();
     throw error;
   }
 }
 
 /** Stops accepting requests, then drains the ticker; reports the close error after the drain. */
-async function drain(daemon: Daemon, api: RunningApi): Promise<unknown> {
+async function drain(daemon: Daemon, api: RunningApi | null): Promise<unknown> {
   let closeError: unknown;
   try {
-    await api.close();
+    await api?.close();
   } catch (error) {
     closeError = error;
   }
@@ -120,7 +120,7 @@ async function drain(daemon: Daemon, api: RunningApi): Promise<unknown> {
 /** Waits for the stop signal, then stops the ticker, drains it and releases the daemon. A second signal forces exit 130. */
 function untilSignal(
   daemon: Daemon,
-  api: RunningApi,
+  api: RunningApi | null,
   stop: () => void,
   onSignal: (handler: () => void) => void,
   exit: (code: number) => void,
