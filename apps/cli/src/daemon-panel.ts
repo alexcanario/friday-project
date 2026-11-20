@@ -22,6 +22,7 @@ export type StartApi = typeof startApi;
 export function apiDepsOf(
   daemon: Pick<Daemon, "db" | "github">,
   env: Record<string, string | undefined>,
+  log?: (message: string) => void,
 ): ApiDeps {
   const { db } = daemon;
   return {
@@ -39,6 +40,7 @@ export function apiDepsOf(
     github: { squashMerge: (pr, sha) => daemon.github.squashMerge(pr, sha) },
     readPrHead: async (pr) => (await daemon.github.getPrMergeState(pr)).headSha,
     now: Date.now,
+    log,
   };
 }
 
@@ -81,7 +83,7 @@ export async function startPanel(
   }
   let api: RunningApi;
   try {
-    api = await start({ deps: apiDepsOf(daemon, env), port, allowedOrigins: origins });
+    api = await start({ deps: apiDepsOf(daemon, env, log), port, allowedOrigins: origins });
   } catch (error) {
     daemon.release();
     throw panelErrorOf(error, port);

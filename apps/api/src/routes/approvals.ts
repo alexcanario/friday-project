@@ -2,6 +2,7 @@ import { applyInputs, decideApproval, type DecideApprovalDeps } from "@friday/ap
 import { z } from "zod";
 import type { ApiDeps } from "../app.ts";
 import { approvalItem } from "@friday/contracts";
+import { logError } from "../error-log.ts";
 import { isPanelTokenValid } from "../panel-token.ts";
 import { projectQuery } from "../schemas.ts";
 import type { App } from "./types.ts";
@@ -42,8 +43,8 @@ function githubGuarded(deps: ApiDeps): Pick<DecideApprovalDeps, "github" | "read
   const wrap = async <T>(call: () => Promise<T>): Promise<T> => {
     try {
       return await call();
-    } catch {
-      throw new GitHubFailure("github call failed");
+    } catch (cause) {
+      throw new GitHubFailure("github call failed", { cause });
     }
   };
   return {
@@ -80,6 +81,7 @@ function decideRoute(app: App, deps: ApiDeps, decision: "approve" | "deny"): voi
         );
       } catch (err) {
         if (!(err instanceof GitHubFailure)) throw err;
+        logError(deps.log, "github call failed", req, err);
         return reply.code(502).send({ error: "Falha ao consultar o GitHub." });
       }
       if (outcome.kind !== "unknown" && outcome.kind !== "already_decided") {

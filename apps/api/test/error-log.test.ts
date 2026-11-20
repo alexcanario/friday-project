@@ -4,6 +4,14 @@ import { buildApp } from "../src/index.ts";
 import { GitHubFailure } from "../src/routes/approvals.ts";
 import { HEAD, openFixture, seedApproval, type Fixture } from "./helpers.ts";
 
+interface Line {
+  level: string;
+  msg: string;
+  method: string;
+  path: string;
+  err: { name: string; message: string; stack: string; cause?: { message: string } | string };
+}
+
 let f: Fixture;
 let app: FastifyInstance;
 let lines: string[];
@@ -61,7 +69,7 @@ describe("error log", () => {
     expect(res.body).toBe('{"error":"Erro interno."}');
     expect(res.body).not.toContain("segredo-db");
     expect(lines).toHaveLength(1);
-    const line = JSON.parse(lines[0] as string) as Record<string, any>;
+    const line = JSON.parse(lines[0] as string) as Line;
     expect(line.level).toBe("error");
     expect(line.msg).toBe("unhandled error in request");
     expect(line.method).toBe("POST");
@@ -79,9 +87,9 @@ describe("error log", () => {
     expect(head.body).toBe('{"error":"Falha ao consultar o GitHub."}');
     expect(head.body).not.toContain("falha-original");
     expect(lines).toHaveLength(1);
-    const a = JSON.parse(lines[0] as string) as Record<string, any>;
+    const a = JSON.parse(lines[0] as string) as Line;
     expect(a.msg).toBe("github call failed");
-    expect(a.err.cause.message).toBe("falha-original");
+    expect((a.err.cause as { message: string }).message).toBe("falha-original");
     await app.close();
     f.db.close();
 
@@ -90,16 +98,16 @@ describe("error log", () => {
     expect(merge.statusCode).toBe(502);
     expect(merge.body).toBe('{"error":"Falha ao consultar o GitHub."}');
     expect(lines).toHaveLength(1);
-    const b = JSON.parse(lines[0] as string) as Record<string, any>;
+    const b = JSON.parse(lines[0] as string) as Line;
     expect(b.msg).toBe("github call failed");
-    expect(b.err.cause.message).toBe("falha-original");
+    expect((b.err.cause as { message: string }).message).toBe("falha-original");
     await app.close();
     f.db.close();
 
     await boot(rejectHead("texto"));
     const plain = await post("approve");
     expect(plain.statusCode).toBe(502);
-    const c = JSON.parse(lines[0] as string) as Record<string, any>;
+    const c = JSON.parse(lines[0] as string) as Line;
     expect(c.err.cause).toBe("texto");
   });
 
@@ -187,7 +195,7 @@ describe("error log", () => {
     const out: string[] = [];
     logError((m) => void out.push(m), "m", { method: "GET", url: "/x?y=1" }, e);
     expect(out).toHaveLength(1);
-    const parsed = JSON.parse(out[0] as string) as Record<string, any>;
+    const parsed = JSON.parse(out[0] as string) as Line;
     expect(parsed.err.message).toBe("ciclo");
     expect(parsed.path).toBe("/x");
     expect(() => logError(undefined, "m", { method: "GET", url: "/" }, e)).not.toThrow();
