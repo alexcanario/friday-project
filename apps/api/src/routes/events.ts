@@ -1,4 +1,4 @@
-import type { ServerResponse } from "node:http";
+import type { OutgoingHttpHeaders, ServerResponse } from "node:http";
 import type { StoredEvent } from "@friday/application";
 import type { CostUpdatedEvent } from "@friday/contracts";
 import { z } from "zod";
@@ -87,7 +87,7 @@ export function eventsRoutes(app: App, deps: ApiDeps): void {
       reply.hijack();
       const raw = reply.raw;
       raw.writeHead(200, {
-        ...reply.getHeaders(),
+        ...(reply.getHeaders() as OutgoingHttpHeaders),
         "Content-Type": "text/event-stream",
         "Cache-Control": "no-cache",
       });
