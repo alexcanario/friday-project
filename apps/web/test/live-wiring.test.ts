@@ -20,6 +20,6 @@ describe("live wiring", () => {
     expect(app).toContain("liveStateFor(");
     expect(app).toContain("useCallback(");
     expect(app).toContain("[key]");
-    expect(app).not.toContain("useLiveEvents(target?.baseUrl ?? \"\", target?.project, (");
+    expect(app).not.toContain('useLiveEvents(target?.baseUrl ?? "", target?.project, (');
   });
 });

@@ -16,8 +16,17 @@ interface Frame {
 /** The server only sends numeric ids; anything else would make `fetch` reject the header. */
 const NUMERIC_ID = /^\d+$/;
 
-/** Decodes SSE text into frames; a frame may be split anywhere between pushed chunks. */
-function createFrameDecoder(onFrame: (frame: Frame) => void): (text: string) => void {
+/** Longest text kept while waiting for a newline; a longer one is not a real stream. */
+const MAX_PENDING = 1_048_576;
+
+/** A header value `fetch` accepts without a rewrite: visible ASCII only. */
+const HEADER_SAFE_TOKEN = /^[\x21-\x7E]+$/;
+
+/**
+ * Decodes SSE text into frames; a frame may be split anywhere between pushed chunks.
+ * The returned function gives false when the unfinished line grew past `MAX_PENDING`.
+ */
+function createFrameDecoder(onFrame: (frame: Frame) => void): (text: string) => boolean {
   let pending = "";
   let id: string | null = null;
   let event = "message";
@@ -35,7 +44,7 @@ function createFrameDecoder(onFrame: (frame: Frame) => void): (text: string) => 
     const raw = colon === -1 ? "" : line.slice(colon + 1);
     const value = raw.startsWith(" ") ? raw.slice(1) : raw;
     if (name === "id") id = value;
-    else if (name === "event") event = value;
+    else if (name === "event") event = value === "" ? "message" : value;
     else if (name === "data") data.push(value);
   };
   return (text) => {
@@ -48,6 +57,7 @@ function createFrameDecoder(onFrame: (frame: Frame) => void): (text: string) => 
       else field(line);
       newline = pending.indexOf("\n");
     }
+    return pending.length <= MAX_PENDING;
   };
 }
 
@@ -64,10 +74,6 @@ class FetchSource implements LiveSource {
   private reader: ReadableStreamDefaultReader<Uint8Array> | null = null;
   private timer: ReturnType<typeof setTimeout> | undefined;
   private readonly listeners = new Map<string, Listener[]>();
-  private readonly decode = createFrameDecoder((frame) => {
-    if (frame.id !== null && NUMERIC_ID.test(frame.id)) this.lastId = frame.id;
-    this.emit(frame.event, frame.data);
-  });
 
   private readonly url: string;
   private readonly token: string;
@@ -77,7 +83,16 @@ class FetchSource implements LiveSource {
     this.url = url;
     this.token = token;
     this.options = options;
-    void this.connect();
+    if (HEADER_SAFE_TOKEN.test(token) || token === "") {
+      void this.connect();
+      return;
+    }
+    // A token `fetch` would reject (or rewrite) never leaves; the error reaches listeners added after this constructor.
+    this.readyState = 2;
+    queueMicrotask(() => {
+      this.emit("error");
+      this.closed = true;
+    });
   }
 
   addEventListener(type: string, listener: Listener): void {
@@ -106,14 +121,24 @@ class FetchSource implements LiveSource {
     if (retry) this.timer = setTimeout(() => void this.connect(), this.options?.retryMs ?? 1000);
   }
 
-  private async readBody(body: ReadableStream<Uint8Array>): Promise<void> {
+  /** Reads one connection to its end; false when it was stopped for good (buffer overflow). */
+  private async readBody(body: ReadableStream<Uint8Array>): Promise<boolean> {
     const text = new TextDecoder();
+    const decode = createFrameDecoder((frame) => {
+      if (frame.id !== null && NUMERIC_ID.test(frame.id)) this.lastId = frame.id;
+      this.emit(frame.event, frame.data);
+    });
     const reader = body.getReader();
     this.reader = reader;
     for (;;) {
       const { done, value } = await reader.read();
-      if (done) return;
-      this.decode(text.decode(value, { stream: true }));
+      if (done) return true;
+      if (decode(text.decode(value, { stream: true }))) continue;
+      void reader.cancel().catch(() => undefined);
+      this.readyState = 2;
+      this.emit("error");
+      this.closed = true;
+      return false;
     }
   }
 
@@ -134,7 +159,7 @@ class FetchSource implements LiveSource {
       if (res.body === null) return this.fail(true);
       this.readyState = 1;
       this.emit("open");
-      await this.readBody(res.body);
+      if (!(await this.readBody(res.body))) return;
     } catch {
       if (this.closed) return;
     }

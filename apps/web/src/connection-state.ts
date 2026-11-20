@@ -6,6 +6,14 @@ export function connectionStateOf(status: "pending" | "error" | "success"): Conn
   return "connected";
 }
 
+/** The live state only counts while it belongs to the stream now open (same key). */
+export function liveStateFor(
+  live: { key: string; state: ConnectionState } | null,
+  key: string,
+): ConnectionState | null {
+  return live !== null && live.key === key ? live.state : null;
+}
+
 export function displayState(
   live: ConnectionState | null,
   health: "pending" | "error" | "success",

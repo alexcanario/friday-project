@@ -265,7 +265,11 @@ describe("fetch source", () => {
     const fetchImpl = vi
       .fn()
       .mockResolvedValueOnce(
-        streamBody(["event:\ndata: x\n\n", "event: \ndata: x\n\n", "event: stage_changed\ndata: x\n\n"]),
+        streamBody([
+          "event:\ndata: x\n\n",
+          "event: \ndata: x\n\n",
+          "event: stage_changed\ndata: x\n\n",
+        ]),
       )
       .mockResolvedValue(streamBody([], false));
     const source = createFetchSource(URL_, "tok", {
