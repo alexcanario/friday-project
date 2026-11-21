@@ -1,4 +1,6 @@
-import type { FastifyInstance } from "fastify";
+import type { ServerResponse } from "node:http";
+import type { Socket } from "node:net";
+import type { FastifyInstance, FastifyRequest } from "fastify";
 
 export interface AttemptLimit {
   maxFailures: number;
@@ -26,11 +28,34 @@ function writeWarn(log: ((message: string) => void) | undefined, entry: Record<s
   }
 }
 
+function refusalEntry(req: FastifyRequest, status: number): Record<string, unknown> {
+  return {
+    msg: "request refused",
+    status,
+    method: req.method,
+    path: req.url.split("?")[0]?.slice(0, MAX_PATH),
+    host: headerText(req.headers.host),
+    origin: headerText(req.headers.origin),
+  };
+}
+
+/** One admitted request without a response per socket; the slot is freed when the response closes. */
+function takeSlot(inFlight: WeakMap<Socket, number>, socket: Socket, raw: ServerResponse): boolean {
+  const open = inFlight.get(socket) ?? 0;
+  if (open >= 1) return false;
+  inFlight.set(socket, open + 1);
+  raw.once("close", () => {
+    inFlight.set(socket, Math.max(0, (inFlight.get(socket) ?? 1) - 1));
+  });
+  return true;
+}
+
 /**
  * Counts 401 and 403 responses in one window (state lives in this closure) when they are sent, not when they
  * finish, so a parallel burst cannot slip past the limit; once `maxFailures` is reached
  * every request except `/health` gets 429 until the window ends. Each refusal and the limit itself are logged once
- * (never the token or the query), so the limit also caps the log.
+ * (never the token or the query), so the limit also caps the log. Each socket has room for 1 admitted request
+ * without a response yet: pipelined extras get 429 (retry-after 1), which is neither counted nor logged.
  */
 export function registerAttemptLimit(
   app: FastifyInstance,
@@ -41,6 +66,7 @@ export function registerAttemptLimit(
   let start = 0;
   let count = 0;
   let warned = false;
+  const inFlight = new WeakMap<Socket, number>();
 
   const refresh = (): void => {
     if (count > 0 && now() - start >= limit.windowMs) {
@@ -53,10 +79,15 @@ export function registerAttemptLimit(
 
   app.addHook("onRequest", async (req, reply) => {
     refresh();
-    if (count < limit.maxFailures) return;
-    if (req.url.split("?")[0] === "/health") return;
-    const seconds = Math.ceil((start + limit.windowMs - now()) / 1000);
-    return reply.code(429).header("retry-after", String(seconds)).send(LIMITED_BODY);
+    const isHealth = req.url.split("?")[0] === "/health";
+    if (count >= limit.maxFailures && !isHealth) {
+      const seconds = Math.ceil((start + limit.windowMs - now()) / 1000);
+      return reply.code(429).header("retry-after", String(seconds)).send(LIMITED_BODY);
+    }
+    if (isHealth) return;
+    if (!takeSlot(inFlight, req.raw.socket, reply.raw)) {
+      return reply.code(429).header("retry-after", "1").send(LIMITED_BODY);
+    }
   });
 
   app.addHook("onSend", async (req, reply, payload) => {
@@ -65,14 +96,7 @@ export function registerAttemptLimit(
     if (count === 0) start = now();
     count += 1;
     if (count <= limit.maxFailures) {
-      write({
-        msg: "request refused",
-        status: reply.statusCode,
-        method: req.method,
-        path: req.url.split("?")[0]?.slice(0, MAX_PATH),
-        host: headerText(req.headers.host),
-        origin: headerText(req.headers.origin),
-      });
+      write(refusalEntry(req, reply.statusCode));
     }
     if (count >= limit.maxFailures && !warned) {
       warned = true;
