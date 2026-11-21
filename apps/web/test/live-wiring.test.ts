@@ -6,11 +6,22 @@ const read = (rel: string): string => readFileSync(new URL(rel, import.meta.url)
 describe("live wiring", () => {
   it("useLiveEvents depends on token and host and App uses liveTarget", () => {
     expect(read("../src/use-live-events.ts")).toContain(
-      "[baseUrl, project, token, host, queryClient, onState]",
+      "[baseUrl, project, token, host, queryClient, onState, reopen]",
     );
     const app = read("../src/App.tsx");
     expect(app).toContain("liveTarget(");
     expect(app).toContain("useLiveEvents(");
+  });
+
+  it("saving the same token again reopens the stream", () => {
+    const hook = read("../src/use-live-events.ts");
+    expect(hook).toContain("reopen?: number");
+    expect(hook).toContain("[baseUrl, project, token, host, queryClient, onState, reopen]");
+    const app = read("../src/App.tsx");
+    expect(app).toContain(
+      "const tokenSaves = useSyncExternalStore(subscribeToken, tokenVersion, tokenVersion);",
+    );
+    expect(app).toMatch(/useLiveEvents\([^)]*\btarget\?\.host,\s*tokenSaves,?\s*\)/);
   });
 
   it("App subscribes to the token store and resets the live state", () => {

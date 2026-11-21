@@ -19,33 +19,45 @@ const NUMERIC_ID = /^\d+$/;
 /** Longest text kept while waiting for a newline; a longer one is not a real stream. */
 const MAX_PENDING = 1_048_576;
 
+/** Most characters the `data` lines of one event may add up to (joined, newlines included). */
+const MAX_EVENT_DATA = 1_048_576;
+
 /** A header value `fetch` accepts without a rewrite: visible ASCII only. */
 const HEADER_SAFE_TOKEN = /^[\x21-\x7E]+$/;
 
 /**
  * Decodes SSE text into frames; a frame may be split anywhere between pushed chunks.
- * The returned function gives false when the unfinished line grew past `MAX_PENDING`.
+ * The returned function gives false when the unfinished line grew past `MAX_PENDING` or the
+ * `data` lines of one event past `MAX_EVENT_DATA`.
  */
 function createFrameDecoder(onFrame: (frame: Frame) => void): (text: string) => boolean {
   let pending = "";
   let id: string | null = null;
   let event = "message";
   let data: string[] = [];
+  let dataSize = 0;
   const dispatch = (): void => {
     if (data.length > 0) onFrame({ id, event, data: data.join("\n") });
     id = null;
     event = "message";
     data = [];
+    dataSize = 0;
   };
-  const field = (line: string): void => {
-    if (line.startsWith(":")) return;
+  /** False when the `data` lines of the open event passed `MAX_EVENT_DATA`. */
+  const field = (line: string): boolean => {
+    if (line.startsWith(":")) return true;
     const colon = line.indexOf(":");
     const name = colon === -1 ? line : line.slice(0, colon);
     const raw = colon === -1 ? "" : line.slice(colon + 1);
     const value = raw.startsWith(" ") ? raw.slice(1) : raw;
     if (name === "id") id = value;
     else if (name === "event") event = value === "" ? "message" : value;
-    else if (name === "data") data.push(value);
+    else if (name === "data") {
+      dataSize += value.length + (data.length > 0 ? 1 : 0);
+      if (dataSize > MAX_EVENT_DATA) return false;
+      data.push(value);
+    }
+    return true;
   };
   return (text) => {
     pending += text;
@@ -54,7 +66,7 @@ function createFrameDecoder(onFrame: (frame: Frame) => void): (text: string) => 
       const line = pending.slice(0, newline).replace(/\r$/, "");
       pending = pending.slice(newline + 1);
       if (line === "") dispatch();
-      else field(line);
+      else if (!field(line)) return false;
       newline = pending.indexOf("\n");
     }
     return pending.length <= MAX_PENDING;

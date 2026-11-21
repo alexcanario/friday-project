@@ -9,10 +9,11 @@ export function useLiveEvents(
   onState?: (state: ConnectionState) => void,
   token?: string,
   host?: string,
+  reopen?: number,
 ): void {
   const queryClient = useQueryClient();
   useEffect(
     () => subscribeLiveEvents({ baseUrl, project, queryClient, onState, token, host }),
-    [baseUrl, project, token, host, queryClient, onState],
+    [baseUrl, project, token, host, queryClient, onState, reopen],
   );
 }
