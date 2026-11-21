@@ -72,7 +72,7 @@ export interface BuildAppOptions {
   allowedHosts?: () => readonly string[];
   /** Outside loopback refuses requests the proxy did not mark `https` in `x-forwarded-proto`. Runs after the host check. */
   requireHttps?: boolean;
-  /** Refusal counter (401 and 403): at the limit every request but `/health` gets 429. Off when omitted. */
+  /** Refusal counter (401 and 403): at the limit every request but `/health` gets 429; a socket also holds 1 request at a time (pipelined extras get 429). Off when omitted. */
   attemptLimit?: AttemptLimit;
   /** Called for every route registered, so a test can walk all of them. */
   onRoute?: (route: { method: string | string[]; url: string }) => void;
