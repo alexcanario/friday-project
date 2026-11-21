@@ -32,4 +32,12 @@ describe("hosts file", () => {
       expect(parse(b)).toBe(true);
     }
   });
+
+  it("hostsFile refuses an http(s) base without two slashes", () => {
+    const parse = (baseUrl: string) => hostsFile.safeParse([{ name: "a", baseUrl }]).success;
+    for (const b of ["http:localhost:7777", "http:/localhost:7777", "https:host"]) {
+      expect(parse(b)).toBe(false);
+    }
+    for (const b of ["https://h", "http://localhost:7777"]) expect(parse(b)).toBe(true);
+  });
 });

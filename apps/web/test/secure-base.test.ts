@@ -173,4 +173,90 @@ describe("secure base", () => {
       host: "h1",
     });
   });
+
+  it("flags an http(s) base without two slashes whatever the page", () => {
+    const pages = [
+      undefined,
+      { protocol: "http:", hostname: "painel.exemplo.com" },
+      { protocol: "https:", hostname: "painel.exemplo.com" },
+      { protocol: "http:", hostname: "localhost" },
+    ];
+    for (const base of [
+      "http:localhost:7777",
+      "http:/localhost:7777",
+      "http:\\localhost:7777",
+      "HTTP:/localhost:7777",
+      " http:/localhost:7777",
+      "http:\t/localhost:7777",
+      "https:host",
+      "https:/host",
+      "https:\\host",
+    ]) {
+      for (const page of pages) expect(isInsecureBase(base, page)).toBe(true);
+    }
+  });
+
+  it("accepts an http(s) base with two separators and keeps judging the host", () => {
+    const https = { protocol: "https:", hostname: "painel.exemplo.com" };
+    for (const base of [
+      "https://h",
+      "http://127.0.0.1:7777",
+      "http://localhost:7777",
+      "http://[::1]:7777",
+      "HTTP://localhost:7777",
+      "http:\\\\localhost:7777",
+      "http:/\\localhost:7777",
+      "http:\\/localhost:7777",
+      " http://localhost:7777",
+      "http:/\t/localhost:7777",
+    ]) {
+      expect(isInsecureBase(base, undefined)).toBe(false);
+      expect(isInsecureBase(base, https)).toBe(false);
+    }
+    expect(isInsecureBase("http://painel.exemplo.com", undefined)).toBe(true);
+  });
+
+  it("never sends the token to a scheme base without two slashes", async () => {
+    vi.stubGlobal("location", { protocol: "http:", hostname: "painel.exemplo.com" });
+    const fn = vi.fn(() =>
+      Promise.resolve(new Response(JSON.stringify({ status: "ok" }), { status: 200 })),
+    );
+    vi.stubGlobal("fetch", fn);
+    for (const base of ["http:/localhost:7777", "http:/localhost:7777/"]) {
+      const client = createApiClient(base, () => "tok");
+      await expect(client.fetchHealth()).rejects.toBeInstanceOf(ApiInsecureError);
+      await expect(client.postDecision("a1", "approve")).rejects.toBeInstanceOf(ApiInsecureError);
+    }
+    expect(fn).toHaveBeenCalledTimes(0);
+
+    await createApiClient("http:/localhost:7777/", () => "").fetchHealth();
+    expect(fn).toHaveBeenCalledTimes(1);
+    expect(fn).toHaveBeenCalledWith(
+      "http:/localhost:7777/health",
+      expect.objectContaining({ redirect: "manual" }),
+    );
+
+    const fn2 = vi.fn(() =>
+      Promise.resolve(new Response(JSON.stringify({ status: "ok" }), { status: 200 })),
+    );
+    vi.stubGlobal("fetch", fn2);
+    await createApiClient("http://localhost:7777", () => "tok").fetchHealth();
+    expect(fn2).toHaveBeenCalledTimes(1);
+    expect(fn2).toHaveBeenCalledWith(
+      "http://localhost:7777/health",
+      expect.objectContaining({ headers: { "x-friday-token": "tok" }, redirect: "manual" }),
+    );
+  });
+
+  it("opens no live stream to a scheme base without two slashes", () => {
+    vi.stubGlobal("location", { protocol: "https:", hostname: "painel.exemplo.com" });
+    vi.stubGlobal("sessionStorage", { getItem: () => "tok", setItem: () => undefined });
+    const target = (baseUrl: string) =>
+      liveTarget({ kind: "selected", host: { name: "h1", baseUrl }, project: "o/r" });
+    expect(target("http:/localhost:7777")).toBeNull();
+    expect(target("https:host")).toBeNull();
+    for (const baseUrl of ["https://h", "http://localhost:7777"]) {
+      expect(target(baseUrl)).toEqual({ baseUrl, project: "o/r", token: "tok", host: "h1" });
+    }
+  });
 });
