@@ -58,7 +58,7 @@ export function App({
 }) {
   const query = useQuery({ queryKey: queryKeys.health, queryFn: () => client.fetchHealth() });
   const [live, setLive] = useState<{ key: string; state: ConnectionState } | null>(null);
-  useSyncExternalStore(subscribeToken, tokenVersion, tokenVersion);
+  const tokenSaves = useSyncExternalStore(subscribeToken, tokenVersion, tokenVersion);
   const selection: Selection = Array.isArray(hosts)
     ? selectionFromSearch(search, hosts)
     : { kind: "none" };
@@ -68,7 +68,14 @@ export function App({
       ? ""
       : JSON.stringify([target.baseUrl, target.project, target.host, target.token]);
   const onLive = useCallback((state: ConnectionState) => setLive({ key, state }), [key]);
-  useLiveEvents(target?.baseUrl ?? "", target?.project, onLive, target?.token, target?.host);
+  useLiveEvents(
+    target?.baseUrl ?? "",
+    target?.project,
+    onLive,
+    target?.token,
+    target?.host,
+    tokenSaves,
+  );
   return (
     <main>
       <h1>Friday</h1>
