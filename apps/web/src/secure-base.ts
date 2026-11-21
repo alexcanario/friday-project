@@ -37,5 +37,8 @@ function escapesPage(baseUrl: string): boolean {
 export function isInsecureBase(baseUrl: string, page: PageLocation | undefined): boolean {
   const url = baseUrl === "" ? null : parse(baseUrl);
   if (url === null) return (baseUrl !== "" && escapesPage(baseUrl)) || isInsecurePage(page);
+  const web = url.protocol === "http:" || url.protocol === "https:";
+  // fetch resolves a scheme without two separators against the page: fail closed.
+  if (web && !/^https?:[/\\]{2}/i.test(normalizeLikeFetch(baseUrl))) return true;
   return url.protocol === "http:" && !LOOPBACK.has(url.hostname);
 }
