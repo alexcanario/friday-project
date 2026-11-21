@@ -86,6 +86,23 @@ describe("read routes need the panel token", () => {
     }
   });
 
+  describe("C5", () => {
+    it("without a token reads are open and approve answers 401", async () => {
+      f = openFixture();
+      seedIssues(f);
+      const app = await buildApp(f.deps, {});
+      try {
+        const read = await app.inject({ method: "GET", url: "/runs?project=p1" });
+        expect(read.statusCode).toBe(200);
+        const approve = await app.inject({ method: "POST", url: "/approvals/x/approve" });
+        expect(approve.statusCode).toBe(401);
+        expect(approve.json()).toEqual({ message: "Token do painel inválido." });
+      } finally {
+        await app.close();
+      }
+    });
+  });
+
   it("uses the shared token comparison", () => {
     const src = join(import.meta.dirname, "../src");
     expect(readFileSync(join(src, "app.ts"), "utf8")).toMatch(
