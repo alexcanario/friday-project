@@ -261,6 +261,79 @@ describe("fetch source", () => {
     under.close();
   });
 
+  const dataLine = (size: number): string => `data: ${"a".repeat(size)}\n`;
+
+  async function runOverflow(chunks: string[], types: string[]) {
+    const fetchImpl = vi.fn(() => Promise.resolve(streamBody(chunks, false)));
+    const source = createFetchSource(URL_, "tok", {
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+    });
+    const seen = listen(source, types);
+    await vi.advanceTimersByTimeAsync(10000);
+    return { fetchImpl, source, seen };
+  }
+
+  it("data lines past 1 MiB in one event stop the stream", async () => {
+    const { fetchImpl, source, seen } = await runOverflow(
+      [dataLine(524_288), dataLine(524_288)],
+      ["message", "error"],
+    );
+    expect(seen).toEqual([{ type: "error", data: undefined }]);
+    expect(source.readyState).toBe(2);
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+  });
+
+  it("data lines at exactly 1 MiB in one event pass", async () => {
+    const fetchImpl = vi.fn(() =>
+      Promise.resolve(streamBody([dataLine(524_288), dataLine(524_287), "\n"], false)),
+    );
+    const source = createFetchSource(URL_, "tok", {
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+    });
+    const seen = listen(source, ["message", "error"]);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(seen).toHaveLength(1);
+    expect(seen[0]?.type).toBe("message");
+    expect((seen[0]?.data as string).length).toBe(1_048_576);
+    source.close();
+  });
+
+  it("a burst of empty data lines stops the stream", async () => {
+    const { fetchImpl, source, seen } = await runOverflow(
+      ["data:\n".repeat(1_048_578)],
+      ["message", "error"],
+    );
+    expect(seen).toEqual([{ type: "error", data: undefined }]);
+    expect(source.readyState).toBe(2);
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+  });
+
+  it("events before the overflow stay delivered", async () => {
+    const { fetchImpl, source, seen } = await runOverflow(
+      ["id: 1\ndata: x\n\n", dataLine(524_288), dataLine(524_288)],
+      ["message", "error"],
+    );
+    expect(seen).toEqual([
+      { type: "message", data: "x" },
+      { type: "error", data: undefined },
+    ]);
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+    expect(source.readyState).toBe(2);
+  });
+
+  it("the data ceiling never leaks the token", async () => {
+    const spies = (["log", "warn", "error"] as const).map((m) =>
+      vi.spyOn(console, m).mockImplementation(() => undefined),
+    );
+    const { seen } = await runOverflow(
+      [dataLine(524_288), dataLine(524_288)],
+      ["message", "error"],
+    );
+    expect(seen.length).toBeGreaterThan(0);
+    for (const event of seen) expect(JSON.stringify(event)).not.toContain("tok");
+    for (const spy of spies) expect(spy).not.toHaveBeenCalled();
+  });
+
   it("empty event name is message", async () => {
     const fetchImpl = vi
       .fn()
