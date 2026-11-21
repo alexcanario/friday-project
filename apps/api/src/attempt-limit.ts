@@ -1,6 +1,6 @@
 import type { ServerResponse } from "node:http";
 import type { Socket } from "node:net";
-import type { FastifyInstance } from "fastify";
+import type { FastifyInstance, FastifyRequest } from "fastify";
 
 export interface AttemptLimit {
   maxFailures: number;
@@ -26,6 +26,17 @@ function writeWarn(log: ((message: string) => void) | undefined, entry: Record<s
   } catch {
     // logging must never change the response
   }
+}
+
+function refusalEntry(req: FastifyRequest, status: number): Record<string, unknown> {
+  return {
+    msg: "request refused",
+    status,
+    method: req.method,
+    path: req.url.split("?")[0]?.slice(0, MAX_PATH),
+    host: headerText(req.headers.host),
+    origin: headerText(req.headers.origin),
+  };
 }
 
 /** One admitted request without a response per socket; the slot is freed when the response closes. */
@@ -85,14 +96,7 @@ export function registerAttemptLimit(
     if (count === 0) start = now();
     count += 1;
     if (count <= limit.maxFailures) {
-      write({
-        msg: "request refused",
-        status: reply.statusCode,
-        method: req.method,
-        path: req.url.split("?")[0]?.slice(0, MAX_PATH),
-        host: headerText(req.headers.host),
-        origin: headerText(req.headers.origin),
-      });
+      write(refusalEntry(req, reply.statusCode));
     }
     if (count >= limit.maxFailures && !warned) {
       warned = true;
